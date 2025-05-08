@@ -4,6 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base:'/new-form/',
+  base:'/lance_ai/',
   plugins: [react(), tailwindcss()],
 })
