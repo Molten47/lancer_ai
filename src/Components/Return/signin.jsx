@@ -53,64 +53,18 @@ const Signin = () => {
     return newErrors;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const validationErrors = validate(); // Your existing front-end validation
-  
+    const validationErrors = validate();
+    
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-  
-    try {
-      const response = await fetch(
-        'THE_BACKEND_SIGNUP_API_ENDPOINT_HERE', // Replace with the actual URL
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            password: formData.password,
-            // Include confirmPassword if the backend also expects it for validation
-          }),
-        }
-      );
-  
-      const responseData = await response.json(); // Parse the JSON response
-  
-      if (response.ok) {
-        // Handle successful sign-up
-        console.log('Sign up successful:', responseData);
-        setSubmitted(true); // Show your success message
-        // Potentially redirect the user:
-        // navigate('/dashboard'); // If you're using React Router
-        // Or clear the form:
-        // setFormData({ name: '', email: '', password: '', confirmPassword: '' });
-        // setErrors({});
-      } else {
-        // Handle sign-up errors from the backend
-        console.error('Sign up failed:', responseData);
-        // Update your component's state to display error messages
-        // You'll need to inspect the `responseData` to see how the backend
-        // is sending error information. For example:
-        if (responseData && responseData.error) {
-          // Generic error message
-          setErrors({ general: responseData.error });
-        } else if (responseData && responseData.errors) {
-          // Field-specific error messages (adjust based on backend response)
-          setErrors(responseData.errors);
-        } else {
-          setErrors({ general: 'An unexpected error occurred.' });
-        }
-      }
-    } catch (error) {
-      // Handle network errors or issues during the API call
-      console.error('There was an error connecting to the server:', error);
-      setErrors({ general: 'Failed to connect to the server. Please try again later.' });
-    }
+    
+    // Form submission logic would go here
+    console.log('Form submitted:', formData);
+    setSubmitted(true);
   };
 
   const handleGoogleSignIn = () => {
