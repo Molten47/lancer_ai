@@ -1,13 +1,18 @@
 @import "tailwindcss";
 
 :root{
-  --primary-color: #b5dbdf;
-  --secondary-color: #dcc760;
-  --tertiary-color: #1b415c;
-  --paragraph-color:#b9a5a0;
+  --primary-color: #0C0950;
+  --accent-1: #3A8DFF;
+  --accent-2: #A7A3FF;
+  --background-light:#F4F6FB;
+  --text-light:#FFFFFF;
+  --text-dark:#1E1E2F;
+  --call-to-action:#00D4D4;
+  --call-to-action-hover:#00b5b5;
 
-  --basic-font:'Montserrat', sans-serif;
-  --new-font:'DM Sans', sans-serif;
+
+  --basic-font:'Sora', sans-serif;
+ 
 }
 
 body, h1, h2, h3, h4, h5, h6, ul {
@@ -16,7 +21,7 @@ body, h1, h2, h3, h4, h5, h6, ul {
     
 }
 
-/* Keep your body styles */
+/*body styles */
 body {
     display: flex;
     flex-direction: column;
@@ -26,33 +31,54 @@ body {
 }
 
 @layer utilities {
-    .new-font{
-      font-family: var(--new-font);
+  /* background-colors */
+  .bg-primary{
+    background-color: var(--primary-color);
     }
-    .text-tertiary{
-      color: var(--tertiary-color);
+    .bg-accent1{
+      background-color: var(--accent-1);
+    }
+    .bg-accent2{
+      background-color: var(--accent-2);
+    }
+    .bg-cta{
+      background-color: var(--call-to-action);
+    }
+    .bg-light{
+      background-color: var(--background-light);
+    }
+    .bg-cta-hover{
+      background-color: var(--call-to-action-hover);
+    }
+
+  /*text-colors*/
+
+    .text-primary{
+      color: var(--primary-color);
+    }
+    .text-light{
+      color: var(--text-light);
     }
     .text-secondary{
       color: var(--secondary-color);
     }
-    .bg-secondary{
-      background-color: var(--secondary-color);
-    }
-    .text-primary{
-      color: var(--primary-color);
-    }
-    .bg-tertiary{
-      background-color: var(--tertiary-color);
-    }
     .text-paragraph{
     color: var(--paragraph-color);
     }
+    .text-cta{
+      color: var(--call-to-action);
+    }
+
+    /*brand-fonts*/
+
     .basic-font{
         font-family: var(--basic-font);
     }
-    .bg-primary{
-        background-color: var(--primary-color);
+    .new-font{
+      font-family: var(--new-font);
     }
+
+  /*extra-styling*/
     .img-shadow{
         filter: drop-shadow(40px 50px 25px #0f1115);
     }
