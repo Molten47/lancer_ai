@@ -1,7 +1,8 @@
 import React from 'react'
 import Signup from './Components/Users/Signup'
 import Signin from './Components/Return/signin'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+
 
 const App = () => {
   return (
