@@ -9,6 +9,7 @@
   --text-dark:#1E1E2F;
   --call-to-action:#00D4D4;
   --call-to-action-hover:#00b5b5;
+  
 
 
   --basic-font:'Sora', sans-serif;
@@ -67,6 +68,9 @@ body {
     }
     .text-cta{
       color: var(--call-to-action);
+    }
+    .text-dark{
+      color: var(--text-dark);
     }
 
     /*brand-fonts*/

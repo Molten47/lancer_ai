@@ -2,6 +2,8 @@ import React from 'react'
 import Navbar from '../Navbar/Navbar'
 import Hero from '../Hero/Hero'
 import Philosophy from '../Philosophy/Philosophy'
+import Unique from '../Unique/Unique'
+import Benefits from '../Benefits/Benefits'
 
 const landhome = () => {
 
@@ -11,6 +13,8 @@ const landhome = () => {
       <Navbar/>
       <Hero/>
       <Philosophy/>
+      <Unique/>
+      <Benefits/>
       </div>
   
       

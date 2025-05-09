@@ -10,7 +10,7 @@ const Hero = () => {
   };
 
   return (
-    <div className='hero-container w-full flex flex-col justify-center items-center min-h-[90vh] z-1 p-12 relative' style={imageDisplay}>
+    <div className='hero-container w-full flex flex-col justify-center items-center min-h-[80vh] z-1 p-12 relative' style={imageDisplay}>
       <div
         className='absolute top-0 left-0 w-full h-full z-2'
         style={{ backgroundColor: 'rgba(244, 246, 251, 0.7)' }} // Adjust opacity here

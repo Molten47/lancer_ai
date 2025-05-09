@@ -8,7 +8,7 @@ import DottedImage from'../../assets/Images/Group 2.png'
 import AiImage from'../../assets/Images/Brainwire.png'
 const Philosophy = () => {
   return (
-    <div className='w-full h-[80vh] flex flex-row pt-20 px-5'>
+    <div className='w-full h-[85vh] bg-white flex flex-row pt-20 pb-26 px-5'>
       <div className='relative w-[40%] flex justify-center items-center'> {/* Added justify-center and items-center */}
   <img src={DottedImage} alt="" className='absolute  w-[40%] h-[30vh] z-0 -top-12 left-20' />
   <img src={AiImage} alt="" className='relative z-5 w-[70%] h-auto' /> {/* Made AiImage relative and adjusted size */}
