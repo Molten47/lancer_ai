@@ -10,6 +10,7 @@ const Signup = () => {
     confirmPassword: '',
     role: ''  
   });
+  
   const [errors, setErrors] = useState({});
   const [submitted, setSubmitted] = useState(false);
 

@@ -1,0 +1,75 @@
+/* Information.css */
+
+/* Existing styles (as before) */
+.flex-col {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* ... other existing styles ... */
+  
+  /* Mobile-specific styles */
+  @media (max-width: 767px) {
+    .mobile-input-width,
+    .mobile-button-width {
+      width: calc(100% - 2rem); /* Adjust for parent padding */
+    }
+  
+    .max-w-2\/4 {
+      max-width: none; /* Override max-width on mobile */
+      width: calc(100% - 2rem); /* Match card width with padding */
+    }
+  
+    .sm\:flex-row {
+      flex-direction: column; /* Stack input and button */
+    }
+  
+    .sm\:flex-row > * {
+      width: 100%; /* Full width for input and button */
+      margin-bottom: 0.75rem; /* Spacing between them */
+    }
+  
+    /* Adjust padding and margins to align with cards */
+    .flex.flex-col.mt-8.md\:mt-10.justify-center.items-center.w-full > div {
+      padding-left: 1rem; /* Match card padding */
+      padding-right: 1rem; /* Match card padding */
+    }
+  
+    .flex.flex-col.mt-8.md\:mt-10.justify-center.items-center.w-full {
+      padding-left: 1rem; /* Match card container padding */
+      padding-right: 1rem; /* Match card container padding */
+    }
+  }
+  
+  /* Large screen styles (undoing mobile stacking) */
+  @media (min-width: 768px) {
+    .sm\:flex-row {
+      flex-direction: row !important; /* Go back to row on larger screens */
+    }
+  
+    .sm\:flex-row > * {
+      width: auto !important; /* Let input and button size themselves */
+      flex-basis: auto !important; /* Reset flex-basis */
+      margin-bottom: 0 !important; /* Remove mobile spacing */
+    }
+  
+    .max-w-2\/4 {
+      max-width: 50%; /* Restore the original max-width */
+      width: auto !important; /* Let the container size itself */
+    }
+  
+    .mobile-input-width,
+    .mobile-button-width {
+      width: auto; /* Reset the mobile-specific widths */
+    }
+  
+    .flex.flex-col.mt-8.md\:mt-10.justify-center.items-center.w-full > div {
+      padding-left: inherit; /* Revert to default padding */
+      padding-right: inherit; /* Revert to default padding */
+    }
+  
+    .flex.flex-col.mt-8.md\:mt-10.justify-center.items-center.w-full {
+      padding-left: inherit; /* Revert to default padding */
+      padding-right: inherit; /* Revert to default padding */
+    }
+  }

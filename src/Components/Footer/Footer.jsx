@@ -3,7 +3,7 @@ import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="bg-primary text-white py-8 sm:py-12 md:py-16 w-full">
+    <footer className="bg-primary text-white py-10 sm:py-12 md:py-16 w-full">
       <div className="container max-w-[90%] mx-auto px-4 sm:px-6">
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 md:gap-8 mb-8 md:mb-12">
@@ -44,7 +44,7 @@ const Footer = () => {
 
           {/* For Clients */}
           <div className="mt-6 sm:mt-0">
-            <h3 className="font-extrabold text-cta basic-font text-[1rem] sm:text-[1.2rem] mb-4 sm:mb-8">For Clients</h3>
+            <h3 className="font-extrabold text-cta basic-font text-[1rem] sm:text-[1.2rem] mb-8 sm:mb-8">For Clients</h3>
             <ul className="space-y-1">
               <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">How to Hire</a></li>
               <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Talent Marketplace</a></li>
@@ -67,9 +67,9 @@ const Footer = () => {
           </div>
 
           {/* Resources */}
-          <div className="mt-6 sm:mt-0">
+          <div className="mt-6 sm:mt-0 ">
             <h3 className="font-extrabold text-cta basic-font text-[1rem] sm:text-[1.2rem] mb-4 sm:mb-8">Resources</h3>
-            <ul className="space-y-1 sm:space-y-2">
+            <ul className="space-y-1 sm:space-y-2 pt-6">
               <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Blogs</a></li>
               <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Community</a></li>
               <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">How we Work</a></li>
@@ -94,15 +94,15 @@ const Footer = () => {
         <hr className="border-gray-800 my-6 sm:my-8" />
 
         {/* Bottom Footer */}
-        <div className="flex flex-col md:flex-row md:justify-between items-center">
-          <div className="mb-4 md:mb-0">
-            <p className="text-white basic-font text-xs sm:text-sm">© 2025 LANCER. All rights reserved.</p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4 sm:space-x-4 text-xs sm:text-sm">
-            <a href="#" className="text-white basic-font hover:text-white transition-colors mb-2">Privacy Policy</a>
-            <a href="#" className="text-white basic-font hover:text-white transition-colors mb-2">Terms of Service</a>
-            <a href="#" className="text-white basic-font hover:text-white transition-colors mb-2">Sitemap</a>
-          </div>
+        <div className="flex flex-row sm:flex-row sm:justify-center lg:justify-between items-center gap-4 mt-8">
+        <div className="text-center md:text-left">
+          <p className="text-white basic-font text-xs sm:text-sm">© 2025 LANCER. All rights reserved.</p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-4 text-xs sm:text-sm">
+          <a href="#" className="text-white basic-font hover:text-gray-300 transition-colors">Privacy Policy</a>
+          <a href="#" className="text-white basic-font hover:text-gray-300 transition-colors">Terms of Service</a>
+          <a href="#" className="text-white basic-font hover:text-gray-300 transition-colors">Sitemap</a>
+        </div>
         </div>
       </div>
     </footer>
