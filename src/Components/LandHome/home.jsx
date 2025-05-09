@@ -4,7 +4,8 @@ import Hero from '../Hero/Hero'
 import Philosophy from '../Philosophy/Philosophy'
 import Unique from '../Unique/Unique'
 import Benefits from '../Benefits/Benefits'
-
+import Information from '../Information/information'
+import Footer from '../Footer/Footer'
 const landhome = () => {
 
   return (
@@ -15,6 +16,8 @@ const landhome = () => {
       <Philosophy/>
       <Unique/>
       <Benefits/>
+      <Information/>
+      <Footer/>
       </div>
   
       

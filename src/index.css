@@ -13,6 +13,7 @@
 
 
   --basic-font:'Sora', sans-serif;
+  --sub-font: 'Inter', sans-serif;
  
 }
 
@@ -79,8 +80,9 @@ body {
         font-family: var(--basic-font);
     }
     .new-font{
-      font-family: var(--new-font);
+      font-family: var(--sub-font);
     }
+ 
 
   /*extra-styling*/
     .img-shadow{
