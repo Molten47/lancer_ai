@@ -33,7 +33,7 @@ const Information = () => {
 
   return (
     <div className='flex flex-col min-h-[70vh] w-full bg-gradient-to-t from-[#E0F7FA] from-10% via-[#ffffff] via-50% via-transparent via-69% p-6 md:p-8 relative'>
-      <div className='flex flex-col justify-center items-center z-10 relative p-4 md:p-5'>
+      <div className='flex flex-col justify-center items-center z-1 relative p-4 md:p-5'>
         <h2 className='basic-font text-gray-900 font-bold text-[1.25rem] md:text-[1.45rem] text-center'>Stay Informed with Lancer</h2>
         <p className='basic-font text-[#6B7280] font-normal text-[0.9rem] md:text-[1rem] mt-2 md:mt-3 text-center'>
           Subscribe to our newsletter for the latest updates, industry trends, and expert analysis.
