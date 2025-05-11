@@ -5,6 +5,7 @@ import Signin from './Components/Return/signin';
 import Landhome from './Components/LandHome/home';
 import Essay from './Pages/Essay/Essay';
 import Setup from './Pages/Setup/Setup';
+import Interview from './Pages/Interview/Interview';
 
 
 const App = () => {
@@ -20,6 +21,7 @@ const App = () => {
                     <Route path="/signin" element={<Signin />} />
                     <Route path="/essay" element={<Essay/>} /> 
                     <Route path="/setup" element={<Setup/>} />
+                    <Route path="/interview" element={<Interview/>}/>
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>
