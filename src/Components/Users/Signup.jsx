@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { Mail, Lock, User, AlertCircle, Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Signup = () => {
   const [formData, setFormData] = useState({
-    name: '',
     email: '',
     password: '',
     confirmPassword: '',
     role: ''  
   });
-  
+
   const [errors, setErrors] = useState({});
-  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,11 +32,7 @@ const Signup = () => {
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    }
-
-    if (!formData.email.trim()) {
+    if (!formData.email || !formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
@@ -49,8 +44,14 @@ const Signup = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    if (!formData.role) {
+      newErrors.role = 'Please select a role';
     }
 
     return newErrors;
@@ -67,33 +68,30 @@ const Signup = () => {
 
     // Form submission logic would go here
     console.log('Form submitted:', formData);
-    setSubmitted(true);
+    
+    // Store role in localStorage for persistence
+    try {
+      localStorage.setItem('userRole', formData.role);
+
+      // Also store a flag to show the success message on the essay page
+      localStorage.setItem('showSignupSuccess', 'true');
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
+    
+    // Navigate directly to the essay page
+    navigate('/essay', { 
+      state: { 
+        role: formData.role,
+        showSuccessAlert: true // Pass success state to show alert
+      } 
+    });
   };
 
   const handleGoogleSignIn = () => {
     // Google sign-in logic would go here
     console.log('Google sign-in initiated');
   };
-
-  if (submitted) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
-        <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-            <Check className="h-6 w-6 text-green-600" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 basic-font">Sign Up Successful!</h2>
-          <p className="text-gray-600 mb-6 basic-font">Thank you for joining us. Check your email for confirmation.</p>
-          <button 
-            onClick={() => setSubmitted(false)}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            Return to Sign Up
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
@@ -105,24 +103,7 @@ const Signup = () => {
         </div>
         
         {/* Sign Up Form */}
-        <div className="space-y-6">
-          {/* Name Field */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-dark basic-font">Full Name</label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <input
-                type="text"
-                name="name"
-                id="name"
-                value={formData.name}
-                onChange={handleChange}
-                className={`block w-full pl-3 pr-3 py-2 border ${errors.name ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                placeholder="John Doe"
-              />
-            </div>
-            {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name}</p>}
-          </div>
-
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-dark basic-font">Email Address</label>
@@ -137,7 +118,7 @@ const Signup = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className={`block w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                placeholder="elonmusk@example.com"
+                placeholder="user@example.com"
               />
               {errors.email && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -207,25 +188,26 @@ const Signup = () => {
                 id="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="block w-full pl-3 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font"
+                className={`block w-full pl-3 pr-3 py-2 border ${errors.role ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font`}
               >
-                 <option value="">Select Role</option>
+                <option value="">Select Role</option>
                 <option value="freelancer">Freelancer</option>
                 <option value="client">Client</option>
               </select>
+              {errors.role && <p className="mt-2 text-sm text-red-600">{errors.role}</p>}
             </div>
           </div>
 
           {/* Submit Button */}
           <div>
-            <button
-              onClick={handleSubmit}
+            <button 
+              type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#00b5b5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
             >
               Sign Up
             </button>
           </div>
-        </div>
+        </form>
 
         {/* Divider */}
         <div className="mt-6 relative">
@@ -239,11 +221,11 @@ const Signup = () => {
 
         {/* Google Sign In Button */}
         <div className="mt-6">
-        <button
+          <button
             onClick={handleGoogleSignIn}
             className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
           >
-            <svg className="h-5 w-5 mr-2 " viewBox="0 0 24 24">
+            <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
                 <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
                 <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />

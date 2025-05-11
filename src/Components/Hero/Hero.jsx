@@ -1,5 +1,6 @@
 import React from 'react';
-import BackImage from '../../assets/Images/backgroundimage.jpg'; // Using placeholder for demo
+import BackImage from '../../assets/Images/backgroundimage.jpg'; 
+
 
 const Hero = () => {
   const imageDisplay = {
@@ -21,7 +22,7 @@ const Hero = () => {
         </p>
       </div>
       <div className='mt-4 z-20 relative'> {/* Added relative for stacking */}
-        <a href="#explore"> {/* Changed to anchor tag */}
+        <a href=""> 
           <button className='py-2 sm:py-2.5 px-8 sm:px-10 bg-cta rounded-lg text-light basic-font hover:bg-[#00b5b5]'>Explore</button>
         </a>
       </div>
