@@ -71,10 +71,10 @@ const Setup = () => {
     sessionStorage.setItem('profileData', JSON.stringify(formData));
     
     if (userRole === 'freelancer') {
-      // Instead of redirecting, show the interview button
+      // 
       setProfileSaved(true);
     } else {
-      navigate('/client-profile');
+      navigate('/dashboardcl');
     }
   };
 
@@ -216,20 +216,20 @@ const Setup = () => {
             </form>
           ) : (
             <div className="space-y-4 sm:space-y-6">
-              <div className="bg-green-50 p-4 sm:p-6 rounded-xl border border-green-100 text-center">
+              <div className="bg-primary p-4 sm:p-6 rounded-xl border border-green-100 text-center">
                 <div className="flex justify-center mb-3 sm:mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 sm:h-16 sm:w-16 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 sm:h-16 sm:w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold text-gray-800 basic-font mb-2">Profile Information Saved!</h3>
-                <p className="text-sm sm:text-base text-gray-600 basic-font mb-4 sm:mb-6">
+                <p className="text-sm sm:text-base text-white basic-font mb-4 sm:mb-6">
                   Now let's complete a short interview to help us understand your experience and working style better.
                 </p>
                 
                 <button
                   onClick={startInterview}
-                  className="py-2 sm:py-3 px-6 sm:px-8 bg-cta hover:bg-[#00b5b5] text-white font-medium text-base sm:text-lg rounded-lg shadow-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 animate-pulse"
+                  className="py-2 sm:py-3 px-6 sm:px-8 bg-cta hover:bg-[#00b5b5] text-white font-medium text-base sm:text-lg rounded-lg shadow-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 animate-pulse basic-font"
                 >
                   Start Interview
                 </button>

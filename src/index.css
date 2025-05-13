@@ -52,6 +52,9 @@ body {
     .bg-cta-hover{
       background-color: var(--call-to-action-hover);
     }
+    .bg-dark{
+      background-color: var(--text-dark);
+    }
 
   /*text-colors*/
 
