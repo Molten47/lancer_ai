@@ -1,55 +1,105 @@
-import React, { useState } from 'react'
-import { Sidebar, Bell, User, Settings, Home, BarChart2, FileText, Search, Wallet, PieChart, MessageCircle, ChevronDown, ChevronUp, Plus, ChevronLeft, ChevronRight, LucideShieldHalf, HardDriveDownload, LockKeyhole, ClipboardPaste, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect, useRef } from 'react'
+import { Sidebar, Bell, User, Settings, Home, BarChart2, FileText, Search, Wallet, PieChart, MessageCircle, Send, AlertCircle, ChevronDown, ChevronUp, Plus, ChevronLeft, ChevronRight, LucideShieldHalf, HardDriveDownload, LockKeyhole, ClipboardPaste, Clipboard, Download} from 'lucide-react'
 import { motion } from 'framer-motion'
+import DashboardView from '../../Sections/DashboardView/DashboardView'
 
-// Import the components
-import MessagesCl from '../../Sections/MessageCL/MessageCL'
-
-// Placeholder components
-const DashboardView = () => <div className="p-6">Dashboard Component</div>
+// These would be imported in a real application
+const MessagesView = () => <div className="p-6">Messages Component</div>
 const WalletsView = () => <div className="p-6">My Wallets Component</div>
 const ActivityView = () => <div className="p-6">Activity Component</div>
 const AnalyticsView = () => <div className="p-6">Analytics Component</div>
 const SettingsView = () => <div className="p-6">Settings Component</div>
 const HelpView = () => <div className="p-6">Get Help Component</div>
 
-const DashboardCl = () => {
+const DashboardFr = () => {
+  // State to track the active view
+  const [activeView, setActiveView] = useState('dashboard')
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [activeView, setActiveView] = useState('messages')
-  const [isTaskDropdownOpen, setTaskDropdownOpen] = useState(false)
+  const [messages, setMessages] = useState([
+    { id: 1, text: "Hi there! I'm your AI assistant. How can I help you today?", sender: "ai" }
+  ])
+  const [inputValue, setInputValue] = useState("")
+  const [showSuggestions, setShowSuggestions] = useState(true)
+  const messagesEndRef = useRef(null)
+  const [isTaskDropdownOpen, setTaskDropdownOpen] = useState(false);
+    
+
   
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen)
   }
-  
-  // Handle menu item clicks
-  const handleMenuClick = (view) => {
-    setActiveView(view)
+    
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+    
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages])
+    
+  const handleSendMessage = (e) => {
+    e.preventDefault()
+    if (!inputValue.trim()) return
+    
+    // Add user message
+    const newUserMessage = { id: messages.length + 1, text: inputValue, sender: "user" }
+    setMessages([...messages, newUserMessage])
+    
+    // Clear input and hide suggestions
+    setInputValue("")
+    setShowSuggestions(false)
+    
+    // Simulate AI response
+    setTimeout(() => {
+      let responseText = ""
+      
+      // Some canned responses based on possible questions
+      if (inputValue.toLowerCase().includes("service")) {
+        responseText = "We offer a wide range of freelance services including web development, design, content writing, marketing, and more!"
+      } else if (inputValue.toLowerCase().includes("freelancer")) {
+        responseText = "You can find freelancers by posting a task and browsing through our talented pool of professionals. You can filter by skills, ratings, and availability."
+      } else if (inputValue.toLowerCase().includes("payment")) {
+        responseText = "We support multiple payment methods including credit cards, PayPal, and bank transfers. All payments are secured through our escrow system."
+      } else if (inputValue.toLowerCase().includes("task")) {
+        responseText = "To create a new task, click on the 'Task' option in the sidebar menu, then click '+ New Task' and fill in the details of your project."
+      } else {
+        responseText = "Thanks for your question! I'd be happy to help with that. Could you provide more details so I can give you the most relevant information?"
+      }
+      
+      const newAiMessage = { id: messages.length + 2, text: responseText, sender: "ai" }
+      setMessages(prevMessages => [...prevMessages, newAiMessage])
+    }, 1000)
+  }
+    
+  const handleSuggestionClick = (question) => {
+    setInputValue(question)
+    handleSendMessage({ preventDefault: () => {} })
   }
 
+  // Function to render the appropriate view based on the active state
   const renderView = () => {
     switch(activeView) {
       case 'dashboard':
-        return <DashboardView />
+        return <DashboardView />;
       case 'messages':
-        return <MessagesCl />
+        return <MessagesView />;
       case 'wallets':
-        return <WalletsView />
+        return <WalletsView />;
       case 'activity':
-        return <ActivityView />
+        return <ActivityView />;
       case 'analytics':
-        return <AnalyticsView />
+        return <AnalyticsView />;
       case 'settings':
-        return <SettingsView />
+        return <SettingsView />;
       case 'help':
-        return <HelpView />
+        return <HelpView />;
       default:
-        return <DashboardView />
+        return <DashboardView />;
     }
   }
 
   return (
-    <div className="flex flex-col w-full min-h-screen overflow-hidden bg-white">
+    <div className="flex flex-col w-full h-screen overflow-hidden bg-[#FEFFFF]">
       {/* Navigation bar */}
       <nav className="w-full py-3 px-6 flex justify-between items-center border-b border-gray-200">
         <div className="flex items-center w-[20%] gap-6">
@@ -130,14 +180,18 @@ const DashboardCl = () => {
           </div>
           
           <nav className="flex-1 px-2 py-4 space-y-1">
+            {/* Dashboard link */}
             <a 
               href="#" 
-              onClick={(e) => {e.preventDefault(); handleMenuClick('dashboard')}}
-              className={`flex items-center px-4 py-4 font-medium text-dark hover:bg-blue-50 rounded-md relative group ${activeView === 'dashboard' ? 'bg-blue-50' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveView('dashboard');
+              }}
+              className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'dashboard' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
               <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'dashboard' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-              <Home size={20} className={`mr-3 ${activeView === 'dashboard' ? 'text-[#0c0950]' : 'text-gray-400 group-hover:text-[#0c0950]'} transition-colors`} />
-              <span className={`${activeView === 'dashboard' ? 'text-[#0c0950]' : 'group-hover:text-[#0c0950]'} basic-font transition-colors`}>Dashboard</span>
+              <Home size={20} className={`mr-3 ${activeView === 'dashboard' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+              <span className="group-hover:text-[#0c0950] basic-font transition-colors">Dashboard</span>
             </a>
          
             {/* Task with dropdown */}
@@ -170,88 +224,107 @@ const DashboardCl = () => {
               )}
             </div>
             
+            {/* Messages link */}
             <a 
               href="#" 
-              onClick={(e) => {e.preventDefault(); handleMenuClick('messages')}}
-              className={`flex items-center px-4 py-4 font-medium text-dark hover:bg-blue-50 rounded-md transition-colors relative group ${activeView === 'messages' ? 'bg-blue-50' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveView('messages');
+              }}
+              className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'messages' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
               <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'messages' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-              <MessageCircle size={20} className={`mr-3 ${activeView === 'messages' ? 'text-[#0c0950]' : 'text-gray-400 group-hover:text-[#0c0950]'} transition-colors`} />
-              <span className={`${activeView === 'messages' ? 'text-[#0c0950]' : 'group-hover:text-[#0c0950]'} basic-font transition-colors`}>Messages</span>
+              <MessageCircle size={20} className={`mr-3 ${activeView === 'messages' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+              <span className="group-hover:text-[#0c0950] basic-font transition-colors">Messages</span>
               <span className="ml-auto flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">2</span>
             </a>
             
+            {/* Wallets link */}
             <a 
               href="#" 
-              onClick={(e) => {e.preventDefault(); handleMenuClick('wallets')}}
-              className={`flex items-center px-4 py-4 font-medium text-dark hover:bg-blue-50 rounded-md transition-colors relative group ${activeView === 'wallets' ? 'bg-blue-50' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveView('wallets');
+              }}
+              className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'wallets' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
               <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'wallets' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-              <Wallet size={20} className={`mr-3 ${activeView === 'wallets' ? 'text-[#0c0950]' : 'text-gray-400 group-hover:text-[#0c0950]'} transition-colors`} />
-              <span className={`${activeView === 'wallets' ? 'text-[#0c0950]' : 'group-hover:text-[#0c0950]'} basic-font transition-colors`}>My Wallets</span>
+              <Wallet size={20} className={`mr-3 ${activeView === 'wallets' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+              <span className="group-hover:text-[#0c0950] basic-font transition-colors">My Wallets</span>
             </a>
             
+            {/* Activity link */}
             <a 
               href="#" 
-              onClick={(e) => {e.preventDefault(); handleMenuClick('activity')}}
-              className={`flex items-center px-4 py-4 font-medium text-dark hover:bg-blue-50 rounded-md transition-colors relative group ${activeView === 'activity' ? 'bg-blue-50' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveView('activity');
+              }}
+              className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'activity' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
               <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'activity' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-              <PieChart size={20} className={`mr-3 ${activeView === 'activity' ? 'text-[#0c0950]' : 'text-gray-400 group-hover:text-[#0c0950]'} transition-colors`} />
-              <span className={`${activeView === 'activity' ? 'text-[#0c0950]' : 'group-hover:text-[#0c0950]'} basic-font transition-colors`}>Activity</span>
+              <PieChart size={20} className={`mr-3 ${activeView === 'activity' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+              <span className="group-hover:text-[#0c0950] basic-font transition-colors">Activity</span>
             </a>
             
+            {/* Analytics link */}
             <a 
               href="#" 
-              onClick={(e) => {e.preventDefault(); handleMenuClick('analytics')}}
-              className={`flex items-center px-4 py-4 font-medium text-dark hover:bg-blue-50 rounded-md transition-colors relative group ${activeView === 'analytics' ? 'bg-blue-50' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveView('analytics');
+              }}
+              className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'analytics' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
               <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'analytics' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-              <BarChart2 size={20} className={`mr-3 ${activeView === 'analytics' ? 'text-[#0c0950]' : 'text-gray-400 group-hover:text-[#0c0950]'} transition-colors`} />
-              <span className={`${activeView === 'analytics' ? 'text-[#0c0950]' : 'group-hover:text-[#0c0950]'} basic-font transition-colors`}>Analytics</span>
+              <BarChart2 size={20} className={`mr-3 ${activeView === 'analytics' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+              <span className="group-hover:text-[#0c0950] basic-font transition-colors">Analytics</span>
             </a>
           </nav>
           
           <div className="p-3 mt-auto">
-            <div className="flex flex-col p-4 bg-gray-50 rounded-lg">
-              <a 
-                href="#" 
-                onClick={(e) => {e.preventDefault(); handleMenuClick('settings')}}
-                className={`flex items-center px-4 py-4 font-medium text-dark hover:bg-blue-50 rounded-md transition-colors relative group ${activeView === 'settings' ? 'bg-blue-50' : ''}`}
-              >
-                <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'settings' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-                <Settings size={20} className={`mr-3 ${activeView === 'settings' ? 'text-[#0c0950]' : 'text-gray-400 group-hover:text-[#0c0950]'} transition-colors`} />
-                <span className={`${activeView === 'settings' ? 'text-[#0c0950]' : 'group-hover:text-[#0c0950]'} basic-font transition-colors`}>Settings</span>
-              </a>
-              
-              <a 
-                href="#" 
-                onClick={(e) => {e.preventDefault(); handleMenuClick('help')}}
-                className={`flex items-center px-4 py-4 font-medium text-dark hover:bg-blue-50 rounded-md transition-colors relative group ${activeView === 'help' ? 'bg-blue-50' : ''}`}
-              >
-                <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'help' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-                <AlertCircle size={20} className={`mr-3 ${activeView === 'help' ? 'text-[#0c0950]' : 'text-gray-400 group-hover:text-[#0c0950]'} transition-colors`} />
-                <span className={`${activeView === 'help' ? 'text-[#0c0950]' : 'group-hover:text-[#0c0950]'} basic-font transition-colors`}>Get Help</span>
-              </a>
+            <div className="flex items-center p-4 bg-gray-50 rounded-lg">
+              <div className="ml-3">
+                {/* Settings link */}
+                <a 
+                  href="#" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveView('settings');
+                  }}
+                  className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'settings' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
+                >
+                  <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'settings' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
+                  <Settings size={20} className={`mr-3 ${activeView === 'settings' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+                  <span className="group-hover:text-[#0c0950] basic-font transition-colors">Settings</span>
+                </a>
+                
+                {/* Get Help link */}
+                <a 
+                  href="#" 
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveView('help');
+                  }}
+                  className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'help' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
+                >
+                  <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'help' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
+                  <AlertCircle size={20} className={`mr-3 ${activeView === 'help' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+                  <span className="group-hover:text-[#0c0950] basic-font transition-colors">Get Help</span>
+                </a>
+              </div>
             </div>
           </div>
         </aside>
 
-        {/* Main content - Chat Interface */}
+        {/* Main content - Conditionally render based on active view */}
         <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? '' : 'pl-6'}`}>
-          {/* User profile section with proper full-width border bottom */}
+          {/* User profile section */}
           <div className="w-full pb-4">
             <div className="flex justify-between w-full py-4 items-center px-7">
-              {/* Interactions container with proper right alignment */}
               <div className='flex flex-col basic-font gap-1'>
                 <h2 className='text-dark font-bold text-[1.4rem]'>
-                  {activeView === 'messages' ? 'Messages' : 
-                  activeView === 'dashboard' ? 'Dashboard' : 
-                  activeView === 'wallets' ? 'My Wallets' : 
-                  activeView === 'activity' ? 'Activity' : 
-                  activeView === 'analytics' ? 'Analytics' : 
-                  activeView === 'settings' ? 'Settings' : 
-                  activeView === 'help' ? 'Get Help' : 'Dashboard'}
+                  {activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                 </h2>
                 <p className='text-dark font-normal text-[1rem]'>Welcome Back, Besamad! What are you doing today?</p>
               </div>
@@ -290,19 +363,14 @@ const DashboardCl = () => {
           </div>
           
           {/* Border that spans the full width */}
-          <div className="w-full border-t border-[#d9d9d9] h-full overflow-hidden">
+          <div className="w-full border-t border-gray-200 flex-1 overflow-y-auto">
+            {/* Render the appropriate view based on the active state */}
             {renderView()}
           </div>
-           <div className="px-6 py-5 border-t border-[#D9D9D9]">
-              <div className="max-w-3xl mx-auto">
-            
-              </div>
-            </div>
-
         </main>
       </div>
     </div>
   )
 }
 
-export default DashboardCl
+export default DashboardFr

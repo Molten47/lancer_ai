@@ -75,15 +75,10 @@ const Interview = () => {
           ...prev, 
           {
             type: 'system',
-            text: 'Thank you for completing the interview! We\'ll now set up your profile.'
+            text: 'Thank you for completing the interview! Your profile is almost ready. Please click the "Continue to Dashboard" button below to proceed.'
           }
         ]);
         setInterviewComplete(true);
-        
-        // Redirect after interview completion
-        setTimeout(() => {
-          navigate('/freelancer-dashboard');
-        }, 3000);
       }, 1000);
     }
   };
@@ -111,6 +106,10 @@ const Interview = () => {
     setTimeout(askNextQuestion, 1000);
   };
 
+  const handleContinueToDashboard = () => {
+    navigate('/freelancer-dashboard');
+  };
+
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex justify-center py-12">
       <div className="w-full max-w-2xl flex flex-col">
@@ -118,7 +117,9 @@ const Interview = () => {
         <div className="bg-white rounded-t-xl shadow-lg px-8 py-6">
           <h2 className="text-3xl font-bold basic-font primary">Freelancer Interview</h2>
           <p className="mt-2 text-lg opacity-90 basic-font primary">
-            Please answer each question to complete your profile setup
+            {!interviewComplete 
+              ? "Please answer each question to complete your profile setup" 
+              : "All questions answered! Your profile is ready"}
           </p>
           <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
             <div 
@@ -127,7 +128,9 @@ const Interview = () => {
             ></div>
           </div>
           <p className="mt-1 text-sm text-gray-500 basic-font">
-            Question {currentQuestionIndex} of {selectedQuestions.length}
+            {!interviewComplete 
+              ? `Question ${currentQuestionIndex} of ${selectedQuestions.length}` 
+              : `${selectedQuestions.length} of ${selectedQuestions.length} complete!`}
           </p>
         </div>
         
@@ -153,28 +156,45 @@ const Interview = () => {
             <div ref={messagesEndRef} />
           </div>
           
-          {/* Input area */}
-          <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">
-            <div className="flex items-center">
-              <input
-                type="text"
-                value={currentInput}
-                onChange={handleInputChange}
-                disabled={!isWaitingForResponse || interviewComplete}
-                className="flex-1 border border-gray-300 rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 basic-font"
-                placeholder={isWaitingForResponse && !interviewComplete ? "Type your answer..." : "Please wait..."}
-              />
+          {/* Input area or CTA button for completion */}
+          {!interviewComplete ? (
+            <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4">
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  value={currentInput}
+                  onChange={handleInputChange}
+                  disabled={!isWaitingForResponse}
+                  className="flex-1 border border-gray-300 rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 basic-font"
+                  placeholder={isWaitingForResponse ? "Type your answer..." : "Please wait..."}
+                />
+                <button
+                  type="submit"
+                  disabled={!isWaitingForResponse || currentInput.trim() === ''}
+                  className="bg-cta hover:bg-[#00b5b5] text-white py-3 px-6 rounded-r-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="border-t border-gray-200 p-6 flex flex-col items-center">
+              <p className="text-center text-gray-700 mb-4 new-font">
+                You've successfully completed the interview! Your profile is now ready.
+              </p>
               <button
-                type="submit"
-                disabled={!isWaitingForResponse || currentInput.trim() === '' || interviewComplete}
-                className="bg-cta hover:bg-[#00b5b5] text-white py-3 px-6 rounded-r-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleContinueToDashboard}
+                className="bg-cta hover:bg-[#00b5b5] text-white py-3 px-8 rounded-lg transition-colors duration-200 flex items-center gap-2 font-medium basic-font"
               >
+                Continue to Dashboard
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </button>
             </div>
-          </form>
+          )}
         </div>
       </div>
     </div>

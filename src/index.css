@@ -9,6 +9,7 @@
   --text-dark:#1E1E2F;
   --call-to-action:#00D4D4;
   --call-to-action-hover:#00b5b5;
+  --jobs-cor: #343744;
   
 
 
@@ -75,6 +76,9 @@ body {
     }
     .text-dark{
       color: var(--text-dark);
+    }
+    .text-jobs{
+      color: var(--jobs-cor);
     }
 
     /*brand-fonts*/

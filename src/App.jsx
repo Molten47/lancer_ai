@@ -7,6 +7,8 @@ import Essay from './Pages/Essay/Essay';
 import Setup from './Pages/Setup/Setup';
 import Interview from './Pages/Interview/Interview';
 import DashboardCl from './Pages/DashboardClient/DashboardCL';
+import DashboardFr from './Pages/DashboardLancer/DashboardFr';
+
 
 
 const App = () => {
@@ -24,6 +26,8 @@ const App = () => {
                     <Route path="/setup" element={<Setup/>} />
                     <Route path="/interview" element={<Interview/>}/>
                     <Route path="/dashboardcl" element={<DashboardCl/>}/>
+                    <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>

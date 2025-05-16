@@ -1,6 +1,7 @@
 import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import {Check} from 'lucide-react'
 
 // Auto-expanding textarea component
 const AutoExpandingTextarea = ({ value, onChange, placeholder, name, id }) => {
@@ -216,14 +217,14 @@ const Setup = () => {
             </form>
           ) : (
             <div className="space-y-4 sm:space-y-6">
-              <div className="bg-primary p-4 sm:p-6 rounded-xl border border-green-100 text-center">
-                <div className="flex justify-center mb-3 sm:mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 sm:h-16 sm:w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="bg-[#F4F6FB] p-4 sm:p-6 rounded-xl border border-green-100 text-center">
+                <div className="flex justify-center mb-3 sm:mb-4 ">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 sm:h-16 sm:w-16 text-white" fill="#00d4d4" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <h3 className="text-lg sm:text-xl font-bold text-gray-800 basic-font mb-2">Profile Information Saved!</h3>
-                <p className="text-sm sm:text-base text-white basic-font mb-4 sm:mb-6">
+                <p className="text-sm sm:text-base text-dark basic-font mb-4 sm:mb-6">
                   Now let's complete a short interview to help us understand your experience and working style better.
                 </p>
                 
