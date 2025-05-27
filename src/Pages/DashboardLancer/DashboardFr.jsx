@@ -1,13 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Sidebar, Bell, User, Settings, Home, BarChart2, FileText, Search, Wallet, PieChart, MessageCircle, Send, AlertCircle, ChevronDown, ChevronUp, Plus, ChevronLeft, ChevronRight, LucideShieldHalf, HardDriveDownload, LockKeyhole, ClipboardPaste, Clipboard, Download} from 'lucide-react'
 import { motion } from 'framer-motion'
+
 import DashboardView from '../../Sections/DashboardView/DashboardView'
+import TaskManagement from '../../Sections/Task/Task'
+import WalletView from '../../Sections/Wallet/Wallet'
+import Activity from '../../Sections/Activity/Activity'
+import MessageCl from '../../Sections/ClientMessage/MessageCl'
+import Analytics from '../../Sections/Analysis/Analytics'
 
 // These would be imported in a real application
-const MessagesView = () => <div className="p-6">Messages Component</div>
-const WalletsView = () => <div className="p-6">My Wallets Component</div>
-const ActivityView = () => <div className="p-6">Activity Component</div>
-const AnalyticsView = () => <div className="p-6">Analytics Component</div>
+const MessagesView = () => <div className="p-6">
+  <MessageCl/>
+</div>
+const WalletsView = () => <div className="p-6">
+  <WalletView/>
+</div>
+const ActivityView = () => <div className="p-6">
+  <Activity/>
+</div>
+const AnalyticsView = () => <div className="p-6">
+  <Analytics/>
+</div>
 const SettingsView = () => <div className="p-6">Settings Component</div>
 const HelpView = () => <div className="p-6">Get Help Component</div>
 
@@ -23,6 +37,29 @@ const DashboardFr = () => {
   const messagesEndRef = useRef(null)
   const [isTaskDropdownOpen, setTaskDropdownOpen] = useState(false);
     
+  // Function to get dynamic description based on active view
+  const getViewDescription = () => {
+    switch(activeView) {
+      case 'dashboard':
+        return 'Welcome Back, Besamad! What are you doing today?';
+      case 'task': 
+        return 'Manage your tasks and track project progress here!';
+      case 'messages':
+        return 'Stay connected with your clients and team members!';
+      case 'wallets':
+        return 'Manage your finances and track your earnings!';
+      case 'activity':
+        return 'Review your recent activities and performance!';
+      case 'analytics':
+        return 'Analyze your data and gain valuable insights!';
+      case 'settings':
+        return 'Customize your preferences and account settings!';
+      case 'help':
+        return 'Get assistance and find answers to your questions!';
+      default:
+        return 'Welcome Back, Besamad! What are you doing today?';
+    }
+  }
 
   
   const toggleSidebar = () => {
@@ -77,26 +114,28 @@ const DashboardFr = () => {
   }
 
   // Function to render the appropriate view based on the active state
-  const renderView = () => {
-    switch(activeView) {
-      case 'dashboard':
-        return <DashboardView />;
-      case 'messages':
-        return <MessagesView />;
-      case 'wallets':
-        return <WalletsView />;
-      case 'activity':
-        return <ActivityView />;
-      case 'analytics':
-        return <AnalyticsView />;
-      case 'settings':
-        return <SettingsView />;
-      case 'help':
-        return <HelpView />;
-      default:
-        return <DashboardView />;
-    }
+const renderView = () => {
+  switch(activeView) {
+    case 'dashboard':
+      return <DashboardView />;
+    case 'task': 
+      return <TaskManagement />;
+    case 'messages':
+      return <MessagesView />;
+    case 'wallets':
+      return <WalletsView />;
+    case 'activity':
+      return <ActivityView />;
+    case 'analytics':
+      return <AnalyticsView />;
+    case 'settings':
+      return <SettingsView />;
+    case 'help':
+      return <HelpView />;
+    default:
+      return <DashboardView />;
   }
+}
 
   return (
     <div className="flex flex-col w-full h-screen overflow-hidden bg-[#FEFFFF]">
@@ -212,16 +251,30 @@ const DashboardFr = () => {
               </button>
               
               {/* Task dropdown items */}
-              {isTaskDropdownOpen && (
-                <div className="ml-10 space-y-1 mt-1">
-                  <a href="#" className="flex items-center px-4 py-3 rounded-md bg-red-500 text-white basic-font">
-                    <span>Ongoing Tasks</span>
-                  </a>
-                  <a href="#" className="flex items-center px-4 py-3 rounded-md bg-green-500 text-white basic-font">
-                    <span>Completed Tasks</span>
-                  </a>
-                </div>
-              )}
+          {isTaskDropdownOpen && (
+  <div className="ml-10 space-y-1 mt-1">
+    <button 
+      onClick={(e) => {
+        e.preventDefault();
+        setActiveView('task');
+        setTaskDropdownOpen(false); // Close dropdown after selection
+      }}
+      className="w-full text-left flex items-center px-4 py-3 rounded-md bg-red-500 text-white basic-font hover:bg-red-600 transition-colors"
+    >
+      <span>Ongoing Tasks</span>
+    </button>
+    <button 
+      onClick={(e) => {
+        e.preventDefault();
+        setActiveView('task');
+        setTaskDropdownOpen(false); // Close dropdown after selection
+      }}
+      className="w-full text-left flex items-center px-4 py-3 rounded-md bg-green-500 text-white basic-font hover:green-600 transition-colors"
+    >
+      <span>Completed Tasks</span>
+    </button>
+  </div>
+)}
             </div>
             
             {/* Messages link */}
@@ -319,19 +372,41 @@ const DashboardFr = () => {
 
         {/* Main content - Conditionally render based on active view */}
         <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? '' : 'pl-6'}`}>
-          {/* User profile section */}
+          {/* Header section */}
           <div className="w-full pb-4">
             <div className="flex justify-between w-full py-4 items-center px-7">
               <div className='flex flex-col basic-font gap-1'>
                 <h2 className='text-dark font-bold text-[1.4rem]'>
                   {activeView.charAt(0).toUpperCase() + activeView.slice(1)}
                 </h2>
-                <p className='text-dark font-normal text-[1rem]'>Welcome Back, Besamad! What are you doing today?</p>
+                <p className='text-gray-500 font-normal text-[0.9rem]'>{getViewDescription()}</p>
               </div>
 
               <div className="flex items-center space-x-4"> 
+                {/* Search bar */}
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                    <Search size={16} className="text-gray-400" />
+                  </div>
+                  <input 
+                    type="search"
+                    placeholder="Search..."
+                    className="w-64 pl-10 pr-4 py-2 rounded-lg border border-gray-200 bg-white text-sm font-normal focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Grid/Menu icon */}
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                  <div className="grid grid-cols-3 gap-1 w-5 h-5">
+                    {[...Array(9)].map((_, i) => (
+                      <div key={i} className="w-1 h-1 bg-gray-600 rounded-full"></div>
+                    ))}
+                  </div>
+                </button>
+
+                {/* Notification bell */}
                 <motion.button 
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative"
                   animate={{ y: [0, -2, 0] }}
                   transition={{
                     duration: 1,
@@ -341,22 +416,20 @@ const DashboardFr = () => {
                     delay: 0.4
                   }}
                 >
-                  <Bell size={20} />
+                  <Bell size={20} className="text-gray-600" />
                   <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">3</span>
                 </motion.button>
-                <div className='flex flex-row justify-center items-center gap-2'>
-                  <div>
-                    <button className="p-2 hover:bg-gray-100 bg-light rounded-full transition-colors">
-                      <User size={24} />
-                    </button>
+
+                {/* User profile */}
+                <div className='flex flex-row items-center gap-3'>
+                  <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">B</span>
                   </div>
                   <div className='flex flex-col basic-font text-dark'>
-                    <h2 className='font-semibold text-[1rem]'>Besamad</h2>
-                    <p className='font-normal text-[0.7rem]'>Lancer.com</p>
+                    <h2 className='font-semibold text-[0.9rem]'>Besamad</h2>
+                    <p className='font-normal text-[0.75rem] text-gray-500'>Lancer.com</p>
                   </div>
-                  <div>
-                    <ChevronDown size={20}/>
-                  </div>
+                  <ChevronDown size={18} className="text-gray-400"/>
                 </div>
               </div>
             </div>

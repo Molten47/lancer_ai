@@ -206,10 +206,10 @@ const jobStatistics = [
   };
   return (
     <div className="w-full border-t flex justify-center items-center border-gray-200 mb-6">
-        <div className='flex flex-col py-5 w-full '>
-            {/* I */}
-        <section className='flex flex-row h-[50vh] py-4 px-6 justify-center '>
-        <div className="w-full md:w-80 h-3/4 flex flex-col p-4 bg-white rounded-lg border-2 border-[#E8E8E8]  hover:shadow-lg">
+        <div className='flex flex-col py-6 w-full '>
+            {/*  */}
+        <section className='flex flex-row h-[50vh] py-6 px-6 justify-center '>
+        <div className="w-full md:w-80 h-3/4 flex flex-col p-5 bg-white rounded-lg border-2 border-[#E8E8E8] hover:shadow-lg">
             <h2 className="text-xl font-semibold basic-font text-dark mb-4">My Wallet</h2>
         {/* Balance Section with Payment Method */}
             <div className="flex flex-row justify-between items-center mb-4 py-2 mt-2 px-2 rounded-lg border-1 border-[#F6F8FB]">
@@ -473,16 +473,7 @@ const jobStatistics = [
             </div>
         </div>
         </div>
-
-        
-        {/* Input with Dollar Sign Inside */}
-    
-        
-        {/* Payment Methods Grid */}
-        
-        
-        </div>
-                            
+        </div>             
         </section>
     <section className='flex flex-row justify-center  mt-6 h-[40vh]'>
             <div className='w-[70%] flex flex-col pt-8'>
