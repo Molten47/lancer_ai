@@ -80,7 +80,7 @@ const Signup = () => {
     }
     
     // Navigate directly to the essay page
-    navigate('/essay', { 
+    navigate('/setup', { 
       state: { 
         role: formData.role,
         showSuccessAlert: true // Pass success state to show alert

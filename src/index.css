@@ -98,12 +98,5 @@ body {
     .img-shadow2{
         filter: drop-shadow(40px 50px 25px #3030307a);
     }
-    .input-style{
-        @apply px-4 py-2 border-[1.5px] border-gray-400 rounded-md
-    }
-    .primary-btn{
-        @apply bg-[#f19509] text-white px-4 py-2 rounded-md font-bold hover:bg-[#e86f00]
-    }
-    
 }
 

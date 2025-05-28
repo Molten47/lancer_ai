@@ -2,7 +2,7 @@
   "name": "new-form",
   "private": true,
   "version": "0.0.0",
-  "homepage": "https://Molten47.github.io/new-form",
+  "homepage": "https://Molten47.github.io/lancer_ai",
   "type": "module",
   "scripts": {
     "dev": "vite",

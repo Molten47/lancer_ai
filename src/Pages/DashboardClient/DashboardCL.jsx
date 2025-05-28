@@ -3,9 +3,10 @@ import { Sidebar, Bell, User, Settings, Home, BarChart2, FileText, Search, Walle
 import { motion } from 'framer-motion'
 
 // Import the components
-import MessagesCl from '../../Sections/MessageCL/MessageCL'
+import MessagesCl from '../../Sections/MessageCL/MessageCli'
 
 // Placeholder components
+const  MessageView = () => <div className="p-6"><MessagesCl/></div>
 const DashboardView = () => <div className="p-6">Dashboard Component</div>
 const WalletsView = () => <div className="p-6">My Wallets Component</div>
 const ActivityView = () => <div className="p-6">Activity Component</div>

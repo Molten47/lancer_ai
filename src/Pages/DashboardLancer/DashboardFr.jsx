@@ -6,12 +6,14 @@ import DashboardView from '../../Sections/DashboardView/DashboardView'
 import TaskManagement from '../../Sections/Task/Task'
 import WalletView from '../../Sections/Wallet/Wallet'
 import Activity from '../../Sections/Activity/Activity'
-import MessageCl from '../../Sections/ClientMessage/MessageCl'
+import MessagesFr from '../../Sections/MessageFL/MessageFr'
 import Analytics from '../../Sections/Analysis/Analytics'
+import Prosettings from '../../Sections/Prosetting/Prosettings'
+import GetHelp from '../../Sections/Gethelp/Help'
 
 // These would be imported in a real application
 const MessagesView = () => <div className="p-6">
-  <MessageCl/>
+  <MessagesFr/>
 </div>
 const WalletsView = () => <div className="p-6">
   <WalletView/>
@@ -22,8 +24,12 @@ const ActivityView = () => <div className="p-6">
 const AnalyticsView = () => <div className="p-6">
   <Analytics/>
 </div>
-const SettingsView = () => <div className="p-6">Settings Component</div>
-const HelpView = () => <div className="p-6">Get Help Component</div>
+const SettingsView = () => <div className="p-6">
+  <Prosettings/>
+</div>
+const HelpView = () => <div className="p-6">
+  <GetHelp/>
+</div>
 
 const DashboardFr = () => {
   // State to track the active view

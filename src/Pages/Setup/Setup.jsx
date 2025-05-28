@@ -59,20 +59,69 @@ const Setup = () => {
     jobTitle: '',
   });
   
+  const [errors, setErrors] = useState({});
   const [profileSaved, setProfileSaved] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const userRole = location.state?.role || sessionStorage.getItem('userRole') || 'freelancer';
 
+  // Job title options for freelancers
+  const jobTitleOptions = [
+    'Web Developer',
+    'Mobile App Developer',
+    'UI/UX Designer',
+    'Graphic Designer',
+    'Digital Marketing Specialist',
+    'Content Writer',
+    'Copywriter',
+    'SEO Specialist',
+    'Social Media Manager',
+    'Video Editor',
+    'Photographer',
+    'Data Analyst',
+    'Virtual Assistant',
+    'Translator',
+    'Voice Over Artist',
+    'Consultant',
+    'Project Manager',
+    'Software Engineer',
+    'DevOps Engineer',
+    'Database Administrator',
+    'Cybersecurity Specialist',
+    'AI/ML Engineer',
+    'Blockchain Developer',
+    'Game Developer',
+    'WordPress Developer',
+    'E-commerce Specialist',
+    'Email Marketing Specialist',
+    'PPC Specialist',
+    'Brand Designer',
+    '3D Artist',
+    'Animation Specialist',
+    'Other'
+  ];
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // Basic validation
+    const newErrors = {};
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (isFreelancer && !formData.jobTitle) newErrors.jobTitle = 'Job title is required';
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
+    setErrors({});
     console.log('Form Data:', formData);
     
     // Save the form data (in a real app, this would go to a database)
     sessionStorage.setItem('profileData', JSON.stringify(formData));
     
     if (userRole === 'freelancer') {
-      // 
       setProfileSaved(true);
     } else {
       navigate('/dashboardcl');
@@ -85,6 +134,14 @@ const Setup = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const startInterview = () => {
@@ -164,30 +221,25 @@ const Setup = () => {
                     <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-1 basic-font">
                       Job Title
                     </label>
-                    <input
-                      type="text"
+                    <select
                       id="jobTitle"
                       name="jobTitle"
                       value={formData.jobTitle}
                       onChange={handleChange}
-                      placeholder="e.g. Senior Graphics Designer"
-                      className="w-full px-4 py-2 border border-indigo-200 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-300 focus:border-indigo-400 transition-all duration-200 ease-in-out text-gray-700"
-                    />
+                      className={`block w-full pl-3 pr-3 py-2 border ${errors.jobTitle ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font`}
+                    >
+                      <option value="">Select Job Title</option>
+                      {jobTitleOptions.map((title, index) => (
+                        <option key={index} value={title}>
+                          {title}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.jobTitle && <p className="mt-2 text-sm text-red-600">{errors.jobTitle}</p>}
                   </div>
+                 
                   
-                  <div>
-                    <label htmlFor="profileBio" className="block text-sm font-medium basic-font text-gray-700 mb-1">
-                      Professional Bio
-                    </label>
-                    <AutoExpandingTextarea
-                      id="profileBio"
-                      name="profileBio"
-                      value={formData.profileBio}
-                      onChange={handleChange}
-                      placeholder="Describe your skills, experience, and what you're looking for in your next opportunity..."
-                    />
-                    <p className="text-xs text-gray-500 mt-1">This bio will be visible to potential clients</p>
-                  </div>
+                
                 </div>
               )}
               
