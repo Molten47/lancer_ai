@@ -208,7 +208,7 @@ const jobStatistics = [
     <div className="w-full border-t flex justify-center items-center border-gray-200 mb-6">
         <div className='flex flex-col py-6 w-full '>
             {/*  */}
-        <section className='flex flex-row h-[50vh] py-6 px-6 justify-center '>
+        <section className='flex flex-row h-[60vh] py-6 px-6 justify-center '>
         <div className="w-full md:w-80 h-3/4 flex flex-col p-5 bg-white rounded-lg border-2 border-[#E8E8E8] hover:shadow-lg">
             <h2 className="text-xl font-semibold basic-font text-dark mb-4">My Wallet</h2>
         {/* Balance Section with Payment Method */}
