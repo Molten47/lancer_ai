@@ -109,7 +109,6 @@ const handleSubmit = async (e) => {
   if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
   if (!formData.country.trim()) newErrors.country = 'Country is required';
   if (!formData.stateProvince.trim()) newErrors.stateProvince = 'State/Province is required';
-
   if (isFreelancer && !formData.jobTitle) newErrors.jobTitle = 'Job title is required';
 
   if (Object.keys(newErrors).length > 0) {
@@ -308,22 +307,6 @@ const handleSubmit = async (e) => {
                     </select>
                     {errors.jobTitle && <p className="mt-2 text-sm text-red-600">{errors.jobTitle}</p>}
                   </div>
-
-                  {/* Profile Bio for freelancers and clients */}
-                  <div className="mb-4 sm:mb-5">
-                    <label htmlFor="profileBio" className="block text-sm font-medium text-gray-700 mb-1 basic-font">
-                      Profile Bio
-                    </label>
-                    <AutoExpandingTextarea
-                      id="profileBio"
-                      name="profileBio"
-                      value={formData.profileBio}
-                      onChange={handleChange}
-                      placeholder="Tell us about your professional background, experience, and what you're looking for..."
-                      error={errors.profileBio} // Pass error prop
-                    />
-                    {errors.profileBio && <p className="mt-2 text-sm text-red-600">{errors.profileBio}</p>}
-                  </div>
                 </div>
               )}
 
@@ -334,21 +317,6 @@ const handleSubmit = async (e) => {
                   <p className="text-sm text-gray-600 basic-font">
                     As a client, you'll be able to browse profiles, post projects, and connect with skilled freelancers after completing your profile.
                   </p>
-                   {/* Profile Bio for clients */}
-                   <div className="mt-4 mb-4 sm:mb-5">
-                    <label htmlFor="profileBio" className="block text-sm font-medium text-gray-700 mb-1 basic-font">
-                      Company/Client Bio
-                    </label>
-                    <AutoExpandingTextarea
-                      id="profileBio"
-                      name="profileBio"
-                      value={formData.profileBio}
-                      onChange={handleChange}
-                      placeholder="Tell us about your company/project and what kind of talent you need..."
-                      error={errors.profileBio} // Pass error prop
-                    />
-                    {errors.profileBio && <p className="mt-2 text-sm text-red-600">{errors.profileBio}</p>}
-                  </div>
                 </div>
               )}
 
