@@ -54,7 +54,7 @@ const Wallet = () => {
     <div className="p-6 bg min-h-screen basic-font">
       <div className="flex flex-col gap-6">
         {/* Top Section */}
-        <div className="flex gap-6 h-90">
+        <div className="flex flex-col lg:flex-row gap-6 h-auto">
           {/* Total Income Card */}
           <div className="flex-1">
             <div className="bg-white rounded-xl p-6 h-full shadow-sm">
@@ -69,7 +69,7 @@ const Wallet = () => {
               </div>
               
               <div className="flex gap-4">
-                <div className="flex-1 bg-[#F0FDF4] rounded-lg p-4 pb-18">
+                <div className="flex-1 bg-[#F0FDF4] rounded-lg p-4 pb-8">
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowUpRight size={26} className="font-bold text-[#4CAF50]"/>
                     <span className="text-[#4CAF50] text-sm font-semibold text-[1.25rem]">Income</span>
@@ -91,7 +91,7 @@ const Wallet = () => {
           </div>
 
           {/* My Wallet Card */}
-          <div className="w-80 h-full">
+          <div className="w-full lg:w-80 h-full">
             <div className="bg-white rounded-xl p-6 h-full shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">My Wallet</h2>
               
@@ -120,7 +120,7 @@ const Wallet = () => {
                   type="text"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full pl-8 pr-4 py-8 text-lg font-medium bg-blue-50 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
+                  className="w-full pl-8 pr-4 py-4 sm:py-6 text-lg font-medium bg-blue-50 border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-1">
 
@@ -128,7 +128,7 @@ const Wallet = () => {
               </div>
               
               {/* Action Buttons */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 xs:grid-cols-2 grid-cols-1">
                 {walletData.map((wallet) => (
                   <div 
                     key={wallet.id} 

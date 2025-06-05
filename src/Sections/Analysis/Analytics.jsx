@@ -51,34 +51,34 @@ const Analytics = () => {
   ];
 
   const taskDistribution = [
-    { category: 'Web Development', count: 50, percentage: 44.2, color: 'bg-[#166534]' },
-    { category: 'Design', count: 35, percentage: 31.0, color: 'bg-[#0C0950]' },
-    { category: 'Technical Writing', count: 60, percentage: 31.0, color: 'bg-[#0C0950]' },
-    { category: 'Content Writing', count: 28, percentage: 24.8, color: 'bg-[#FF3D00]' }
+    { category: 'Web Development', count: 50, percentage: 44.2, color: 'bg-green-700' },
+    { category: 'Design', count: 35, percentage: 31.0, color: 'bg-indigo-900' },
+    { category: 'Technical Writing', count: 60, percentage: 31.0, color: 'bg-blue-600' },
+    { category: 'Content Writing', count: 28, percentage: 24.8, color: 'bg-orange-600' }
   ];
 
   return (
-    <div className="bg-white p-6 space-y-8 basic-font">
+    <div className="bg-white p-4 sm:p-6 space-y-6 sm:space-y-8 basic-font">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Analytics</h2>
           <p className="text-sm text-gray-600">Track your performance and growth</p>
         </div>
-        <div className="flex items-center space-x-3 ">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
           <div className="flex items-center space-x-2 bg-gray-50 px-5 py-3 rounded-lg">
             <Calendar className="w-4 h-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700">{timeRange}</span>
           </div>
-          <div className="flex items-center space-x-2 bg-cta hover:bg-cyan-600 text-white px-5 justify-center py-3 rounded-lg transition-colors">
+          <div className="flex items-center space-x-2 bg-cyan-500 hover:bg-cyan-600 text-white px-5 justify-center py-3 rounded-lg transition-colors">
             <Download size={18} className="" />
-            <span className="text-sm  font-medium">Export</span>
+            <span className="text-sm font-medium">Export</span>
           </div>
         </div>
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((metric, index) => (
           <div key={index} className="bg-white rounded-xl p-6 border border-gray-100 hover:bg-gray-100 transition-colors">
             <div className="flex items-start justify-between">
@@ -107,9 +107,9 @@ const Analytics = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 ">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Earnings Overview */}
-        <div className="lg:col-span-2 bg-white  rounded-lg p-18 shadow-lg">
+        <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-lg">
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Earnings Overview</h3>
             <p className="text-sm text-gray-600">Your earnings performance over time</p>
@@ -143,7 +143,7 @@ const Analytics = () => {
         </div>
 
         {/* Task Distribution */}
-        <div className="bg-white rounded-lg p-6 border border-gray-100">
+        <div className="bg-white rounded-lg p-4 sm:p-6 border border-gray-100">
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Task Distribution</h3>
             <p className="text-sm text-gray-600">Tasks completed by category</p>

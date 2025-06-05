@@ -261,33 +261,46 @@ const Activity = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Activity Feed</h3>
           <div className="space-y-4">
             {activityFeed.map((activity) => (
-              <div key={activity.id} className="bg-white rounded-lg p-6 hover:shadow-md transition-shadow min-h-[120px]">
-                <div className="flex items-start justify-between h-full">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className={`w-12 h-12 ${activity.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
+              <div key={activity.id} className="bg-white rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
+                {/* Mobile: Vertical Stack Layout */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+                  {/* Main Content Section */}
+                  <div className="flex items-start gap-3 sm:gap-4 flex-1">
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 ${activity.bgColor} rounded-lg flex items-center justify-center flex-shrink-0`}>
                       {activity.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-dark mb-2 text-base text-[1rem]">{activity.title}</h4>
-                      <p className="text-[0.9rem] text-[#6B7280] mb-4 leading-relaxed">{activity.description}</p>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                        {activity.amount && (
-                          <span className={`text-sm font-semibold ${
-                            activity.amount.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {activity.amount}
-                          </span>
-                        )}
-                        {activity.status && (
-                          <span className="text-sm text-gray-500 font-medium">{activity.status}</span>
-                        )}
+                      <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base">{activity.title}</h4>
+                      <p className="text-xs sm:text-sm text-[#6B7280] mb-2 sm:mb-4 leading-relaxed">{activity.description}</p>
+                      
+                      {/* Mobile: Stack amount, status, and time vertically */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                        <div className="flex items-center gap-2 sm:gap-4">
+                          {activity.amount && (
+                            <span className={`text-xs sm:text-sm font-semibold ${
+                              activity.amount.startsWith('+') ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {activity.amount}
+                            </span>
+                          )}
+                          {activity.status && (
+                            <span className="text-xs sm:text-sm text-gray-500 font-medium">{activity.status}</span>
+                          )}
+                        </div>
+                        
+                        {/* Time - Show inline on mobile */}
+                        <div className="flex items-center gap-1 text-gray-400 text-xs sm:text-sm">
+                          <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                          <span>{activity.time}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-gray-400 text-sm flex-shrink-0 ml-4">
+                  
+                  {/* Desktop: Time on the right (hidden on mobile since it's shown inline above) */}
+                  <div className="hidden sm:flex items-center gap-1 text-gray-400 text-sm flex-shrink-0">
                     <Clock className="w-4 h-4" />
-                    <span className="hidden sm:inline">{activity.time}</span>
-                    <span className="sm:hidden text-xs">{activity.time.split(' ')[0]}</span>
+                    <span>{activity.time}</span>
                   </div>
                 </div>
               </div>

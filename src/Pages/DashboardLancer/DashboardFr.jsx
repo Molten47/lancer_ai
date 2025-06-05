@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Sidebar, Bell, User, Settings, Home, BarChart2, FileText, Search, Wallet, PieChart, MessageCircle, Send, AlertCircle, ChevronDown, ChevronUp, Plus, ChevronLeft, ChevronRight, LucideShieldHalf, HardDriveDownload, LockKeyhole, ClipboardPaste, Clipboard, Download} from 'lucide-react'
+import { Sidebar, Bell, User, Settings, Home, BarChart2, FileText, Search, Wallet, PieChart, MessageCircle, Send, AlertCircle, ChevronDown, ChevronUp, Plus, ChevronLeft, ChevronRight, LucideShieldHalf, HardDriveDownload, LockKeyhole, ClipboardPaste, Clipboard, Download, X} from 'lucide-react'
 import { motion } from 'framer-motion'
 
 import DashboardView from '../../Sections/DashboardView/DashboardView'
@@ -34,42 +34,72 @@ const HelpView = () => <div className="p-6">
 const DashboardFr = () => {
   // State to track the active view
   const [activeView, setActiveView] = useState('dashboard')
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Default closed
+  // Add state to track screen size
+  const [isMobile, setIsMobile] = useState(false)
+  const [isTaskDropdownOpen, setTaskDropdownOpen] = useState(false)
+  const [userRole, setUserRole] = useState('freelancer') // New state for role switching
+  
+  // Check if screen is mobile on mount and resize
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const mobile = window.innerWidth < 768 // md breakpoint
+      setIsMobile(mobile)
+      // Set initial sidebar state based on screen size
+      if (mobile) {
+        setIsSidebarOpen(false) // Closed on mobile
+      } else {
+        setIsSidebarOpen(true) // Open on desktop
+      }
+    }
+    
+    checkScreenSize()
+    window.addEventListener('resize', checkScreenSize)
+    return () => window.removeEventListener('resize', checkScreenSize)
+  }, [])
+
+  // Lock/unlock body scroll when sidebar opens/closes on mobile
+  useEffect(() => {
+    if (isMobile && isSidebarOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    
+    // Cleanup when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isMobile, isSidebarOpen])
+
   const [messages, setMessages] = useState([
     { id: 1, text: "Hi there! I'm your AI assistant. How can I help you today?", sender: "ai" }
   ])
   const [inputValue, setInputValue] = useState("")
   const [showSuggestions, setShowSuggestions] = useState(true)
   const messagesEndRef = useRef(null)
-  const [isTaskDropdownOpen, setTaskDropdownOpen] = useState(false);
     
-  // Function to get dynamic description based on active view
-  const getViewDescription = () => {
-    switch(activeView) {
-      case 'dashboard':
-        return 'Welcome Back, Besamad! What are you doing today?';
-      case 'task': 
-        return 'Manage your tasks and track project progress here!';
-      case 'messages':
-        return 'Stay connected with your clients and team members!';
-      case 'wallets':
-        return 'Manage your finances and track your earnings!';
-      case 'activity':
-        return 'Review your recent activities and performance!';
-      case 'analytics':
-        return 'Analyze your data and gain valuable insights!';
-      case 'settings':
-        return 'Customize your preferences and account settings!';
-      case 'help':
-        return 'Get assistance and find answers to your questions!';
-      default:
-        return 'Welcome Back, Besamad! What are you doing today?';
-    }
-  }
+
 
   
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen)
+  }
+
+  // Handle menu item clicks
+  const handleMenuClick = (view) => {
+    setActiveView(view)
+    // Close sidebar on mobile after selection
+    if (isMobile) {
+      setIsSidebarOpen(false)
+    }
+  }
+
+  // Close sidebar when clicking outside on mobile
+  const handleOverlayClick = () => {
+    if (isMobile) {
+      setIsSidebarOpen(false)
+    }
   }
     
   const scrollToBottom = () => {
@@ -144,12 +174,12 @@ const renderView = () => {
 }
 
   return (
-    <div className="flex flex-col w-full h-screen overflow-hidden bg-[#FEFFFF]">
-      {/* Navigation bar */}
-      <nav className="w-full py-3 px-6 flex justify-between items-center border-b border-gray-200">
-        <div className="flex items-center w-[20%] gap-6">
+    <div className="flex flex-col w-full h-screen overflow-hidden bg-[#FEFFFF] basic-font">
+      {/* Navigation bar - Fixed at top */}
+      <nav className="w-full py-3 px-3 md:px-6 flex justify-between items-center border-b border-gray-200 relative z-50 flex-shrink-0">
+        <div className="flex items-center gap-2 md:gap-6 md:w-[20%]">
           {/* Brand circles */}
-          <div className="flex items-center gap-2 pl-3">
+          <div className="flex items-center gap-2 pl-1 md:pl-3">
             <div className="flex items-center gap-1">
               <motion.div className="w-3 h-3 rounded-full bg-blue-900"
                             animate={{ y: [0, -2, 0] }}
@@ -190,53 +220,112 @@ const renderView = () => {
           >
             <Sidebar size={20} />
           </button>
-          <div className='flex flex-row gap-0'>
+          <div className='hidden md:flex flex-row gap-0'>
             <ChevronLeft/>
             <ChevronRight/>
           </div>
         </div>
-          <div className='flex flex-row w-[70%] gap-2 justify-center items-center'>
-          <LucideShieldHalf size={20}/>
-        <div className="relative w-4/6 justify-center items-center">
-        <div className="absolute inset-y-0 left-3 flex justify-center items-center pointer-events-none">
-          <LockKeyhole size={14}  />
-        </div>
-        {/* Search Input */}
-        <input 
-          type="search"
-          placeholder="Search or enter URL..."
-          className="w-full pl-10 pr-4 py-2 rounded-lg bg-light text-[12px] font-normal focus:outline-none focus:ring-2 focus:ring-primary"
-        />
-        </div>
+        
+        <div className='flex flex-row flex-1 md:w-[70%] gap-2 justify-center items-center px-2 md:px-0'>
+          <LucideShieldHalf size={20} className="hidden md:block"/>
+          <div className="relative w-full md:w-4/6 justify-center items-center">
+            <div className="absolute inset-y-0 left-3 flex justify-center items-center pointer-events-none">
+              <LockKeyhole size={14} />
+            </div>
+            {/* Search Input */}
+            <input 
+              type="search"
+              placeholder="Search or enter URL..."
+              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 text-[12px] font-normal focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
-          <div className='w-[10%] pl-10 flex flex-row gap-4 justify-center items-center'>
-                    <HardDriveDownload/>
-                    <Plus/>
-                    <ClipboardPaste/>
-          </div>
+        </div>
+        
+        <div className='flex flex-row gap-2 md:gap-4 justify-center items-center md:w-[10%] md:pl-10'>
+          <HardDriveDownload className="hidden md:block"/>
+          <Plus className="hidden md:block"/>
+          <ClipboardPaste className="hidden md:block"/>
+        </div>
       </nav>
 
-      {/* Main content area with sidebar */}
-      <div className="flex flex-1 w-full overflow-hidden">
-        {/* Sidebar */}
-        <aside className={`${isSidebarOpen ? 'w-64' : 'w-0'} border-r border-gray-200 flex flex-col transition-all duration-300 overflow-hidden`}>
-          <div className="p-4">
-            <h2 className="text-2xl font-bold text-primary basic-font">LANCER</h2>
+      {/* Main content area with sidebar - Takes remaining height */}
+      <div className="flex flex-1 w-full overflow-hidden relative">
+        {/* Overlay for mobile sidebar */}
+        {isMobile && isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-white bg-opacity-50 z-30"
+            onClick={handleOverlayClick}
+          />
+        )}
+
+        {/* Sidebar - Fixed position */}
+        <aside className={`
+          ${isMobile ? 'fixed left-0 z-40' : 'relative'} 
+          ${isSidebarOpen ? (isMobile ? 'w-64' : 'w-64') : (isMobile ? 'w-0' : 'w-0')} 
+          border-r border-gray-200 flex flex-col transition-all duration-300 overflow-hidden bg-white
+          ${isMobile ? 'shadow-xl h-full' : 'h-full'}
+        `}>
+          {/* Mobile close button */}
+          {isMobile && (
+            <div className="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
+              <h2 className="text-2xl font-bold text-primary">LANCER</h2>
+              <button 
+                onClick={toggleSidebar}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          )}
+          
+          {!isMobile && (
+            <div className="p-4 flex-shrink-0">
+              <h2 className="text-2xl font-bold text-primary basic-font">LANCER</h2>
+            </div>
+          )}
+          
+          {/* Role Switcher */}
+          <div className="px-4 pb-4 flex-shrink-0">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setUserRole('client')}
+                className={`flex-1 flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  userRole === 'client'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <User size={16} className="mr-2" />
+                Client
+              </button>
+              <button
+                onClick={() => setUserRole('freelancer')}
+                className={`flex-1 flex items-center justify-center px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  userRole === 'freelancer'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <User size={16} className="mr-2" />
+                Freelancer
+              </button>
+            </div>
           </div>
           
-          <nav className="flex-1 px-2 py-4 space-y-1">
+          {/* Navigation - Scrollable */}
+          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
             {/* Dashboard link */}
             <a 
               href="#" 
               onClick={(e) => {
                 e.preventDefault();
-                setActiveView('dashboard');
+                handleMenuClick('dashboard');
               }}
               className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'dashboard' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
               <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'dashboard' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
               <Home size={20} className={`mr-3 ${activeView === 'dashboard' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
-              <span className="group-hover:text-[#0c0950] basic-font transition-colors">Dashboard</span>
+              <span className="group-hover:text-[#0c0950] basic-font transition-colors">Dashboard  </span>
             </a>
          
             {/* Task with dropdown */}
@@ -257,30 +346,30 @@ const renderView = () => {
               </button>
               
               {/* Task dropdown items */}
-          {isTaskDropdownOpen && (
-  <div className="ml-10 space-y-1 mt-1">
-    <button 
-      onClick={(e) => {
-        e.preventDefault();
-        setActiveView('task');
-        setTaskDropdownOpen(false); // Close dropdown after selection
-      }}
-      className="w-full text-left flex items-center px-4 py-3 rounded-md bg-red-500 text-white basic-font hover:bg-red-600 transition-colors"
-    >
-      <span>Ongoing Tasks</span>
-    </button>
-    <button 
-      onClick={(e) => {
-        e.preventDefault();
-        setActiveView('task');
-        setTaskDropdownOpen(false); // Close dropdown after selection
-      }}
-      className="w-full text-left flex items-center px-4 py-3 rounded-md bg-green-500 text-white basic-font hover:green-600 transition-colors"
-    >
-      <span>Completed Tasks</span>
-    </button>
-  </div>
-)}
+              {isTaskDropdownOpen && (
+                <div className="ml-10 space-y-1 mt-1">
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleMenuClick('task');
+                      setTaskDropdownOpen(false); // Close dropdown after selection
+                    }}
+                    className="w-full text-left flex items-center px-4 py-3 rounded-md bg-red-500 text-white basic-font hover:bg-red-600 transition-colors"
+                  >
+                    <span>Ongoing Tasks</span>
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleMenuClick('task');
+                      setTaskDropdownOpen(false); // Close dropdown after selection
+                    }}
+                    className="w-full text-left flex items-center px-4 py-3 rounded-md bg-green-500 text-white basic-font hover:bg-green-600 transition-colors"
+                  >
+                    <span>Completed Tasks</span>
+                  </button>
+                </div>
+              )}
             </div>
             
             {/* Messages link */}
@@ -288,7 +377,7 @@ const renderView = () => {
               href="#" 
               onClick={(e) => {
                 e.preventDefault();
-                setActiveView('messages');
+                handleMenuClick('messages');
               }}
               className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'messages' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
@@ -303,7 +392,7 @@ const renderView = () => {
               href="#" 
               onClick={(e) => {
                 e.preventDefault();
-                setActiveView('wallets');
+                handleMenuClick('wallets');
               }}
               className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'wallets' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
@@ -317,7 +406,7 @@ const renderView = () => {
               href="#" 
               onClick={(e) => {
                 e.preventDefault();
-                setActiveView('activity');
+                handleMenuClick('activity');
               }}
               className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'activity' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
@@ -331,7 +420,7 @@ const renderView = () => {
               href="#" 
               onClick={(e) => {
                 e.preventDefault();
-                setActiveView('analytics');
+                handleMenuClick('analytics');
               }}
               className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'analytics' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
             >
@@ -341,56 +430,64 @@ const renderView = () => {
             </a>
           </nav>
           
-          <div className="p-3 mt-auto">
-            <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-              <div className="ml-3">
-                {/* Settings link */}
-                <a 
-                  href="#" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveView('settings');
-                  }}
-                  className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'settings' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
-                >
-                  <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'settings' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-                  <Settings size={20} className={`mr-3 ${activeView === 'settings' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
-                  <span className="group-hover:text-[#0c0950] basic-font transition-colors">Settings</span>
-                </a>
-                
-                {/* Get Help link */}
-                <a 
-                  href="#" 
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setActiveView('help');
-                  }}
-                  className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'help' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
-                >
-                  <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'help' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
-                  <AlertCircle size={20} className={`mr-3 ${activeView === 'help' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
-                  <span className="group-hover:text-[#0c0950] basic-font transition-colors">Get Help</span>
-                </a>
-              </div>
+          {/* Bottom section - Fixed */}
+          <div className="p-3 mt-auto flex-shrink-0">
+            <div className="flex flex-col p-4 bg-gray-50 rounded-lg">
+              {/* Settings link */}
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleMenuClick('settings');
+                }}
+                className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'settings' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
+              >
+                <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'settings' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
+                <Settings size={20} className={`mr-3 ${activeView === 'settings' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+                <span className="group-hover:text-[#0c0950] basic-font transition-colors">Settings</span>
+              </a>
+              
+              {/* Get Help link */}
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleMenuClick('help');
+                }}
+                className={`flex items-center px-4 py-4 font-medium hover:bg-blue-50 rounded-md relative group ${activeView === 'help' ? 'text-[#0c0950] bg-blue-50' : 'text-dark'}`}
+              >
+                <div className={`absolute left-0 w-1 h-full bg-primary rounded-r-md ${activeView === 'help' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}></div>
+                <AlertCircle size={20} className={`mr-3 ${activeView === 'help' ? 'text-[#0c0950]' : 'text-gray-400'} group-hover:text-[#0c0950] transition-colors`} />
+                <span className="group-hover:text-[#0c0950] basic-font transition-colors">Get Help</span>
+              </a>
             </div>
           </div>
         </aside>
 
-        {/* Main content - Conditionally render based on active view */}
-        <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? '' : 'pl-6'}`}>
-          {/* Header section */}
-          <div className="w-full pb-4">
-            <div className="flex justify-between w-full py-4 items-center px-7">
-              <div className='flex flex-col basic-font gap-1'>
-                <h2 className='text-dark font-bold text-[1.4rem]'>
-                  {activeView.charAt(0).toUpperCase() + activeView.slice(1)}
+        {/* Main content - Scrollable */}
+        <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? '' : 'lg:pl-6'}`}>
+          {/* Header section - Fixed */}
+          <div className="w-full pb-4 flex-shrink-0">
+            <div className="flex flex-col md:flex-row justify-between w-full py-4 items-start md:items-center px-4 md:px-7 gap-4 md:gap-0">
+              {/* Active view should be dynamically controlled */}
+                  <div className='flex flex-col gap-1'>
+                <h2 className='text-gray-800 font-bold text-xl md:text-2xl'>
+                  {activeView === 'messages' ? 'Messages' : 
+                  activeView === 'dashboard' ? `Dashboard (${userRole === 'client' ? 'Client' : 'Freelancer'})` : 
+                  activeView === 'wallets' ? 'My Wallets' : 
+                  activeView === 'activity' ? 'Activity' : 
+                  activeView === 'analytics' ? 'Analytics' : 
+                  activeView === 'settings' ? 'Settings' : 
+                  activeView === 'help' ? 'Get Help' : 'Dashboard'}
                 </h2>
-                <p className='text-gray-500 font-normal text-[0.9rem]'>{getViewDescription()}</p>
+                <p className='text-gray-600 font-normal text-sm md:text-base'>Welcome Back! Here is your overview</p>
               </div>
-
+              <div className='flex flex-col basic-font gap-1'>
+              
+              </div>
               <div className="flex items-center space-x-4"> 
                 {/* Search bar */}
-                <div className="relative">
+                <div className="relative hidden md:block">
                   <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
                     <Search size={16} className="text-gray-400" />
                   </div>
@@ -402,7 +499,7 @@ const renderView = () => {
                 </div>
 
                 {/* Grid/Menu icon */}
-                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors hidden md:block">
                   <div className="grid grid-cols-3 gap-1 w-5 h-5">
                     {[...Array(9)].map((_, i) => (
                       <div key={i} className="w-1 h-1 bg-gray-600 rounded-full"></div>
@@ -431,17 +528,17 @@ const renderView = () => {
                   <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
                     <span className="text-white font-semibold text-sm">B</span>
                   </div>
-                  <div className='flex flex-col basic-font text-dark'>
+                  <div className='hidden md:flex flex-col basic-font text-dark'>
                     <h2 className='font-semibold text-[0.9rem]'>Besamad</h2>
                     <p className='font-normal text-[0.75rem] text-gray-500'>Lancer.com</p>
                   </div>
-                  <ChevronDown size={18} className="text-gray-400"/>
+                  <ChevronDown size={18} className="text-gray-400 hidden md:block"/>
                 </div>
               </div>
             </div>
           </div>
           
-          {/* Border that spans the full width */}
+          {/* Border that spans the full width and content area - Scrollable */}
           <div className="w-full border-t border-gray-200 flex-1 overflow-y-auto">
             {/* Render the appropriate view based on the active state */}
             {renderView()}

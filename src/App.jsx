@@ -7,6 +7,7 @@ import Setup from './Pages/Setup/Setup';
 import Interview from './Pages/Interview/Interview';
 import DashboardCl from './Pages/DashboardClient/DashboardCL';
 import DashboardFr from './Pages/DashboardLancer/DashboardFr';
+import LancerTaskPage from './Pages/TaskPage/Taskpage';
 
 
 
@@ -23,6 +24,7 @@ const App = () => {
                     <Route path="/signin" element={<Signin />} />
                     <Route path="/setup" element={<Setup/>} />
                     <Route path="/interview" element={<Interview/>}/>
+                    <Route path="/tasks" element={<LancerTaskPage/>}/>
                     <Route path="/dashboardcl" element={<DashboardCl/>}/>
                     <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
 

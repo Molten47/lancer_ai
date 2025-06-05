@@ -208,8 +208,8 @@ const jobStatistics = [
     <div className="w-full border-t flex justify-center items-center border-gray-200 mb-6">
         <div className='flex flex-col py-6 w-full '>
             {/*  */}
-        <section className='flex flex-row h-[60vh] py-6 px-6 justify-center '>
-        <div className="w-full md:w-80 h-3/4 flex flex-col p-5 bg-white rounded-lg border-2 border-[#E8E8E8] hover:shadow-lg">
+        <section className='flex flex-col lg:flex-row h-auto lg:h-[60vh] py-6 px-6 justify-center gap-4'>
+        <div className="w-full lg:w-80 h-auto lg:h-3/4 flex flex-col p-5 bg-white rounded-lg border-2 border-[#E8E8E8] hover:shadow-lg">
             <h2 className="text-xl font-semibold basic-font text-dark mb-4">My Wallet</h2>
         {/* Balance Section with Payment Method */}
             <div className="flex flex-row justify-between items-center mb-4 py-2 mt-2 px-2 rounded-lg border-1 border-[#F6F8FB]">
@@ -257,14 +257,14 @@ const jobStatistics = [
             ))}
         </div>
         </div>
-      <div className="w-[60%]  px-4 py-1 mx-4 flex-grow">
+      <div className="w-full lg:w-[60%] px-4 py-1 mx-0 lg:mx-4 flex-grow">
       {/* Responsive container that takes more space */}
-      <div className="w-full h-2/6 p-4 bg-white rounded-lg shadow-3 shadow-lg">
+      <div className="w-full h-auto lg:h-2/6 p-4 bg-white rounded-lg shadow-3 shadow-lg">
         <div className="flex flex-col h-full">
           <h2 className="text-lg font-semibold text-dark basic-font mb-4">Account Statistics</h2>
           
-          {/* 3-column grid with row-based layout as requested */}
-          <div className="grid grid-cols-3 gap-4 mt-4">
+          {/* 3-column grid with row-based layout as requested - responsive */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             {StatisticsData.map((stat, index) => (
               <div key={index} className="flex flex-row items-center group gap-2 cursor-pointer">
                 <div className="rounded-full " style={{ backgroundColor: stat.bgColor }}>
@@ -307,7 +307,7 @@ const jobStatistics = [
         </div>
       </div>
 
-      <div className="flex items-center mb-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center mb-6 gap-2 sm:gap-0">
         <div className="flex items-center">
           <div className="bg-blue-500 rounded-full p-1 mr-2">
             <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -317,10 +317,10 @@ const jobStatistics = [
           </div>
           <span className="font-normal new-font">Hours Worked</span>
         </div>
-        <div className="flex items-center ml-4 basic-font text-">
+        <div className="flex items-center sm:ml-4 basic-font text-">
           <span>+6.79%</span>
         </div>
-        <div className="ml-auto">
+        <div className="sm:ml-auto">
           <div className="relative inline-block text-left">
             <div className="border border-gray-300 rounded-full px-4 py-1 flex items-center">
               <span className="mr-2">Week</span>
@@ -386,7 +386,7 @@ const jobStatistics = [
     </div>
 
       </div>
-        <div className="w-full md:w-80 h-3/4 flex flex-col p-4 bg-white rounded-lg  bg=[#F2F2F2] ">
+        <div className="w-full lg:w-80 h-auto lg:h-3/4 flex flex-col p-4 bg-white rounded-lg  bg=[#F2F2F2] ">
         <div className='flex flex-col'>
         <div className='flex flex-row justify-between'>
             <h2 className="text-xl font-normal text-[1.1rem] basic-font text-dark mb-4">Recent Messages</h2>   
@@ -421,7 +421,7 @@ const jobStatistics = [
         </div>
         </div>
         {/* Balance Section with Payment Method */}
-    <div className="flex flex-col w-full h-[18vh] bg-white rounded-lg shadow-lg mt-4 p-3">
+    <div className="flex flex-col w-full h-auto lg:h-[18vh] bg-white rounded-lg shadow-lg mt-4 p-3">
         <div className="flex flex-col">
             {/* Header */}
             <h2 className="text-lg font-medium basic-font text-[1rem]"> <span className='text-[#7C8CA6]'>New</span> Messages</h2>
@@ -475,21 +475,21 @@ const jobStatistics = [
         </div>
         </div>             
         </section>
-    <section className='flex flex-row justify-center  mt-6 h-[40vh]'>
-            <div className='w-[70%] flex flex-col pt-8'>
+    <section className='flex flex-col lg:flex-row justify-center mt-6 h-auto lg:h-[40vh] gap-4'>
+            <div className='w-full lg:w-[70%] flex flex-col pt-8'>
             {/*This suppposed to be like a table with some haeds then below it will be profile images, job title, durations of the job,watchtime, aount,,status either pending or sucessful */}
         <div className="w-full p-6 ">
-        <div className="flex justify-between items-center ml-8 px-6 mb-6">
-        <h2 className="text-lg font-medium border-b-3 border-[#35C9B7] pb-1 basic-font ml-8">My Tasks</h2>
+        <div className="flex justify-between items-center ml-0 lg:ml-8 px-0 lg:px-6 mb-6">
+        <h2 className="text-lg font-medium border-b-3 border-[#35C9B7] pb-1 basic-font ml-0 lg:ml-8">My Tasks</h2>
         <button className="flex items-center text-[#5E636A] new-font text-sm">
           View all
         <ChevronRight size={18}/>
         </button>
       </div>
       
-      <div className="w-full">
-        {/* Table Header */}
-        <div className="grid grid-cols-6 gap-4 pb-3 ">
+      <div className="w-full overflow-x-auto">
+        {/* Table Header - hidden on mobile, shown on tablet+ */}
+        <div className="hidden md:grid grid-cols-6 gap-4 pb-3 ">
           <div className="col-span-1"></div> {/* Empty column for avatar circles */}
           <div className="col-span-1 text-dark basic-font font-medium">Jobs</div>
           <div className="col-span-1 text-dark basic-font font-medium">Durations</div>
@@ -501,23 +501,49 @@ const jobStatistics = [
         {/* Table Body */}
         <div className="flex flex-col">
           {tasks.map((task) => (
-            <div key={task.id} className="grid grid-cols-6 gap-4 py-4 border-b border-gray-100">
-              <div className="col-span-1 flex items-center justify-center ">
-                <div 
-                  className="w-10 h-10 rounded-full" 
-                  style={{ backgroundImage: `url(${task.color})`, backgroundPosition:'center', backgroundRepeat:'no-repeat', backgroundSize:'cover'}}
-                ></div>
+            <div key={task.id} className="grid grid-cols-1 md:grid-cols-6 gap-4 py-4 border-b border-gray-100">
+              {/* Mobile Layout */}
+              <div className="md:hidden flex flex-col space-y-3 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div 
+                    className="w-12 h-12 rounded-full flex-shrink-0" 
+                    style={{ backgroundImage: `url(${task.color})`, backgroundPosition:'center', backgroundRepeat:'no-repeat', backgroundSize:'cover'}}
+                  ></div>
+                  <div className="flex-grow">
+                    <div className="text-lg font-medium text-jobs basic-font">{task.job}</div>
+                    <div className="text-sm text-gray-600">{task.duration}</div>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full basic-font text-xs ${
+                    task.status === "Pending" ? "bg-red-100 text-red-500" : "bg-green-100 text-green-500"
+                  }`}>
+                    {task.status}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Watchtime: {task.watchtime}</span>
+                  <span className="font-medium text-jobs basic-font">{task.amount}</span>
+                </div>
               </div>
-              <div className="col-span-1 flex items-center text-jobs basic-font">{task.job}</div>
-              <div className="col-span-1 flex items-center text-jobs basic-font">{task.duration}</div>
-              <div className="col-span-1 flex items-center text-jobs basic-font">{task.watchtime}</div>
-              <div className="col-span-1 flex items-center font-medium text-jobs basic-font">{task.amount}</div>
-              <div className="col-span-1 flex items-center">
-                <span className={`px-4 py-2 rounded-lg basic-font text-xs ${
-                  task.status === "Pending" ? "bg-red-100 text-red-500" : "bg-green-100 text-green-500"
-                }`}>
-                  {task.status}
-                </span>
+
+              {/* Desktop Layout */}
+              <div className="hidden md:contents">
+                <div className="col-span-1 flex items-center justify-center ">
+                  <div 
+                    className="w-10 h-10 rounded-full" 
+                    style={{ backgroundImage: `url(${task.color})`, backgroundPosition:'center', backgroundRepeat:'no-repeat', backgroundSize:'cover'}}
+                  ></div>
+                </div>
+                <div className="col-span-1 flex items-center text-jobs basic-font">{task.job}</div>
+                <div className="col-span-1 flex items-center text-jobs basic-font">{task.duration}</div>
+                <div className="col-span-1 flex items-center text-jobs basic-font">{task.watchtime}</div>
+                <div className="col-span-1 flex items-center font-medium text-jobs basic-font">{task.amount}</div>
+                <div className="col-span-1 flex items-center">
+                  <span className={`px-4 py-2 rounded-lg basic-font text-xs ${
+                    task.status === "Pending" ? "bg-red-100 text-red-500" : "bg-green-100 text-green-500"
+                  }`}>
+                    {task.status}
+                  </span>
+                </div>
               </div>
             </div>
           ))}
@@ -527,8 +553,8 @@ const jobStatistics = [
           
 
     </div>
-    <div className='w-[30%]  flex justify-center items-center'>
-    <div className="w-full md:w-80 h-3/4 flex flex-col p-4 bg-white rounded-lg shadow-lg  hover:shadow-lg">
+    <div className='w-full lg:w-[30%] flex justify-center items-center'>
+    <div className="w-full md:w-80 h-auto lg:h-3/4 flex flex-col p-4 bg-white rounded-lg shadow-lg  hover:shadow-lg">
     </div>
     </div>
     </section>

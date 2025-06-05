@@ -7,10 +7,12 @@ const Signup = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: ''  
+    role: ''
   });
 
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState(''); // New state for API-specific errors
+  const [isLoading, setIsLoading] = useState(false); // New state for loading indicator
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -26,6 +28,10 @@ const Signup = () => {
         ...errors,
         [name]: ''
       });
+    }
+    // Clear API error if any when user starts typing
+    if (apiError) {
+      setApiError('');
     }
   };
 
@@ -49,7 +55,7 @@ const Signup = () => {
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-    
+
     if (!formData.role) {
       newErrors.role = 'Please select a role';
     }
@@ -57,8 +63,9 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => { // Make handleSubmit async
     e.preventDefault();
+    setApiError(''); // Clear any previous API errors
     const validationErrors = validate();
 
     if (Object.keys(validationErrors).length > 0) {
@@ -66,31 +73,62 @@ const Signup = () => {
       return;
     }
 
-    // Form submission logic would go here
-    console.log('Form submitted:', formData);
-    
-    // Store role in localStorage for persistence
-    try {
-      localStorage.setItem('userRole', formData.role);
+    setIsLoading(true); // Set loading to true when starting API call
 
-      // Also store a flag to show the success message on the essay page
-      localStorage.setItem('showSignupSuccess', 'true');
-    } catch (e) {
-      console.error('Failed to save to localStorage:', e);
+    try {
+      // API call to the backend signup endpoint
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Only send email and password as per the Swagger definition for /api/signup
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // If the response is not OK (e.g., 400 Bad Request, 409 Conflict if email exists)
+        // The backend JSON showed 'description' for error messages
+        setApiError(data.description || 'Signup failed. Please try again.');
+        return; // Stop execution if there's an API error
+      }
+
+      // If signup is successful (200 OK)
+      console.log('Signup successful:', data);
+
+      // Store role in localStorage for persistence
+      try {
+        localStorage.setItem('userRole', formData.role);
+        localStorage.setItem('showSignupSuccess', 'true');
+      } catch (e) {
+        console.error('Failed to save to localStorage:', e);
+        // You might want to show a user-friendly message about this error as well
+      }
+
+      // Navigate directly to the setup page with state
+      navigate('/setup', {
+        state: {
+          role: formData.role,
+          showSuccessAlert: true
+        }
+      });
+
+    } catch (error) {
+      console.error('Network or unexpected error during signup:', error);
+      setApiError('An unexpected error occurred. Please check your internet connection.');
+    } finally {
+      setIsLoading(false); // Set loading to false after API call completes
     }
-    
-    // Navigate directly to the essay page
-    navigate('/setup', { 
-      state: { 
-        role: formData.role,
-        showSuccessAlert: true // Pass success state to show alert
-      } 
-    });
   };
 
   const handleGoogleSignIn = () => {
-    // Google sign-in logic would go here
     console.log('Google sign-in initiated');
+    // This would typically involve redirecting to a Google OAuth flow
   };
 
   return (
@@ -101,7 +139,15 @@ const Signup = () => {
           <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome to Lancer.ai</h1>
           <p className="mt-2 text-[#6B7280] basic-font">Sign up to get started with your new account</p>
         </div>
-        
+
+        {/* API Error Display */}
+        {apiError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong className="font-bold">Error!</strong>
+            <span className="block sm:inline"> {apiError}</span>
+          </div>
+        )}
+
         {/* Sign Up Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Email Field */}
@@ -117,7 +163,7 @@ const Signup = () => {
                 id="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                className={`block w-full pl-10 pr-3 py-2 border ${errors.email || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="user@example.com"
               />
               {errors.email && (
@@ -142,7 +188,7 @@ const Signup = () => {
                 id="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${errors.password ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                className={`block w-full pl-10 pr-3 py-2 border ${errors.password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
               />
               {errors.password && (
@@ -167,7 +213,7 @@ const Signup = () => {
                 id="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${errors.confirmPassword ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                className={`block w-full pl-10 pr-3 py-2 border ${errors.confirmPassword || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
               />
               {errors.confirmPassword && (
@@ -200,11 +246,12 @@ const Signup = () => {
 
           {/* Submit Button */}
           <div>
-            <button 
+            <button
               type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#00b5b5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
+              disabled={isLoading} // Disable button while loading
             >
-              Sign Up
+              {isLoading ? 'Signing Up...' : 'Sign Up'}
             </button>
           </div>
         </form>
@@ -224,6 +271,7 @@ const Signup = () => {
           <button
             onClick={handleGoogleSignIn}
             className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
+            disabled={isLoading} // Disable Google button while loading
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">

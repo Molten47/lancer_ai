@@ -6,4 +6,12 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   base:'/lancer_ai/',
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy:{
+      '/api': {
+        target: 'http://127.0.0.1:5000', 
+        changeOrigin: true,
+      }
+    }
+  }
 })

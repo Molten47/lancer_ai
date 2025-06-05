@@ -1,375 +1,299 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Phone, Video, MoreHorizontal, Send, Bot, User } from 'lucide-react';
+import io from 'socket.io-client'; // Import Socket.IO client
+
+// IMPORTANT: Replace with the actual authenticated client's ID
+const OWN_ID = 'your_current_client_id'; // e.g., 'client-johndoe' or 'user456'
+// IMPORTANT: Replace with your backend's base URL for API and Socket.IO
+const API_BASE_URL = 'http://127.0.0.1:5000'; // Your backend API base URL
+const SOCKET_IO_SERVER_URL = 'http://localhost:8080'; // Your Socket.IO server URL
+
+let socket; // Declare socket outside to persist connection or manage it in a context
 
 const Messages = () => {
-  const [selectedChat, setSelectedChat] = useState('deandre');
+  // We'll set a default selected chat in useEffect based on initial conversations
+  const [selectedChat, setSelectedChat] = useState('');
+  // Client side will likely initiate 'hiring' or 'custom' chats with freelancers
+  // And 'platform' chats with AI.
+  const [selectedChatType, setSelectedChatType] = useState('hiring'); // Default chat type
+
   const [newMessage, setNewMessage] = useState('');
   const [typingUsers, setTypingUsers] = useState(new Set());
   const messagesEndRef = useRef(null);
 
-  const [conversations, setConversations] = useState([
-    {
-      id: 'lancer-ai',
-      name: 'Lancer AI',
-      avatar: 'AI',
-      avatarBg: 'bg-blue-500',
-      lastMessage: 'I can help you optimize your task workflow and provide suggestions for better productivity.',
-      time: '14m',
-      unread: 1,
-      isOnline: true,
-      isBot: true
-    },
-    {
-      id: 'deandre',
-      name: 'DeAndre',
-      avatar: 'D',
-      avatarBg: 'bg-purple-500',
-      lastMessage: 'The graphics look amazing! Can we schedule a call to discuss the next phase?',
-      time: '2h',
-      unread: 2,
-      isOnline: true,
-      isBot: false
-    },
-    {
-      id: 'peter',
-      name: 'Peter Roseline',
-      avatar: 'P',
-      avatarBg: 'bg-green-500',
-      lastMessage: 'Perfect! The blog content is exactly what I was looking for. Great work!',
-      time: '1d',
-      unread: 0,
-      isOnline: false,
-      isBot: false
-    },
-    {
-      id: 'sarah',
-      name: 'Sarah Mitchell',
-      avatar: 'S',
-      avatarBg: 'bg-pink-500',
-      lastMessage: 'Can you send me the updated wireframes for the mobile app?',
-      time: '2d',
-      unread: 0,
-      isOnline: true,
-      isBot: false
-    },
-    {
-      id: 'mike',
-      name: 'Mike Johnson',
-      avatar: 'M',
-      avatarBg: 'bg-indigo-500',
-      lastMessage: 'Thanks for the quick turnaround on the logo designs!',
-      time: '3d',
-      unread: 0,
-      isOnline: false,
-      isBot: false
+  const [conversations, setConversations] = useState([]); // Will be populated by API or initial dummy data
+  const [allMessages, setAllMessages] = useState({}); // Stores fetched and real-time messages
+
+  // --- Socket.IO Connection and Event Handling ---
+  useEffect(() => {
+    if (!OWN_ID) {
+      console.warn('OWN_ID is not set. Cannot establish Socket.IO connection.');
+      return;
     }
-  ]);
 
-  const [allMessages, setAllMessages] = useState({
-    'deandre': [
-      {
-        id: 1,
-        sender: 'deandre',
-        content: 'Hi Besamad! I wanted to check on the progress of the website graphics.',
-        time: '03:41 PM',
-        isOwn: false
-      },
-      {
-        id: 2,
-        sender: 'me',
-        content: 'Hi DeAndre! The graphics are coming along great. I should have the first draft ready by tomorrow.',
-        time: '04:41 PM',
-        isOwn: true
-      },
-      {
-        id: 3,
-        sender: 'deandre',
-        content: 'The graphics look amazing! Can we schedule a call to discuss the next phase?',
-        time: '05:41 PM',
-        isOwn: false
-      },
-      {
-        id: 4,
-        sender: 'me',
-        content: 'Absolutely! I\'m available tomorrow afternoon. What time works best for you?',
-        time: '05:45 PM',
-        isOwn: true
-      },
-      {
-        id: 5,
-        sender: 'deandre',
-        content: 'How about 2 PM EST? We can discuss the color schemes and final revisions.',
-        time: '05:47 PM',
-        isOwn: false
-      }
-    ],
-    'lancer-ai': [
-      {
-        id: 1,
-        sender: 'lancer-ai',
-        content: 'Hello Besamad! I\'m here to help you optimize your workflow. How can I assist you today?',
-        time: '12:30 PM',
-        isOwn: false
-      },
-      {
-        id: 2,
-        sender: 'me',
-        content: 'Hi! I need help organizing my tasks better. Any suggestions?',
-        time: '12:35 PM',
-        isOwn: true
-      },
-      {
-        id: 3,
-        sender: 'lancer-ai',
-        content: 'I can help you optimize your task workflow and provide suggestions for better productivity. Try prioritizing by deadline and client importance!',
-        time: '12:36 PM',
-        isOwn: false
-      }
-    ],
-    'peter': [
-      {
-        id: 1,
-        sender: 'peter',
-        content: 'Hey Besamad, I reviewed the blog content you sent yesterday.',
-        time: '10:15 AM',
-        isOwn: false
-      },
-      {
-        id: 2,
-        sender: 'me',
-        content: 'Great! What did you think? Any revisions needed?',
-        time: '10:20 AM',
-        isOwn: true
-      },
-      {
-        id: 3,
-        sender: 'peter',
-        content: 'Perfect! The blog content is exactly what I was looking for. Great work!',
-        time: '10:25 AM',
-        isOwn: false
-      },
-      {
-        id: 4,
-        sender: 'me',
-        content: 'Awesome! I\'ll have the next batch ready by Friday.',
-        time: '10:30 AM',
-        isOwn: true
-      }
-    ],
-    'sarah': [
-      {
-        id: 1,
-        sender: 'sarah',
-        content: 'Hi Besamad! Hope you\'re doing well. I have a quick question about the mobile app project.',
-        time: '09:00 AM',
-        isOwn: false
-      },
-      {
-        id: 2,
-        sender: 'me',
-        content: 'Hi Sarah! I\'m doing great, thanks. What\'s your question?',
-        time: '09:15 AM',
-        isOwn: true
-      },
-      {
-        id: 3,
-        sender: 'sarah',
-        content: 'Can you send me the updated wireframes for the mobile app? I want to review them with my team.',
-        time: '09:20 AM',
-        isOwn: false
-      },
-      {
-        id: 4,
-        sender: 'me',
-        content: 'Of course! I\'ll email them to you within the hour.',
-        time: '09:25 AM',
-        isOwn: true
-      }
-    ],
-    'mike': [
-      {
-        id: 1,
-        sender: 'mike',
-        content: 'Besamad, the logo designs you sent are fantastic!',
-        time: '02:30 PM',
-        isOwn: false
-      },
-      {
-        id: 2,
-        sender: 'me',
-        content: 'Thank you Mike! I\'m glad you like them. Which version is your favorite?',
-        time: '02:45 PM',
-        isOwn: true
-      },
-      {
-        id: 3,
-        sender: 'mike',
-        content: 'Thanks for the quick turnaround on the logo designs! I love the blue and gold version.',
-        time: '03:00 PM',
-        isOwn: false
-      }
-    ]
-  });
+    const token = localStorage.getItem('jwt_token'); // Get JWT token
 
-  // Response templates for each contact
-  const responseTemplates = {
-    'lancer-ai': [
-      "That's a great question! I can help you with that. Let me provide some suggestions.",
-      "I understand your concern. Here are some ways to improve your workflow efficiency.",
-      "Based on your current tasks, I recommend focusing on high-priority items first.",
-      "That's an excellent approach! You might also consider using time-blocking techniques.",
-      "I can help you optimize that process. Would you like me to create a task template?",
-      "Perfect! I'll analyze your workflow and suggest improvements.",
-      "That sounds like a smart strategy. Have you considered using automation tools?",
-      "Great thinking! Let me break down the best practices for you.",
-      "I'm here to help! What specific area would you like to focus on first?",
-      "Excellent question! Here's what I recommend based on industry best practices."
-    ],
-    'deandre': [
-      "Sounds good to me! When can we get started?",
-      "That looks perfect! Really impressed with your work.",
-      "Thanks for the update! Can we schedule a quick call?",
-      "Love the direction you're taking with this project.",
-      "Great work as always! The client is going to love this.",
-      "Perfect timing! I was just about to ask about that.",
-      "Awesome! Can you walk me through the next steps?",
-      "This is exactly what I had in mind. Well done!",
-      "Thanks for being so responsive. Really appreciate it!",
-      "Looking forward to seeing the final version!"
-    ],
-    'peter': [
-      "Thanks for keeping me updated! This looks great.",
-      "Perfect! I'll review this and get back to you soon.",
-      "Really happy with how this is turning out.",
-      "Thanks for the quick turnaround on this!",
-      "This is exactly what we needed. Great job!",
-      "Looks good! Just a few minor tweaks and we're done.",
-      "Appreciate your attention to detail on this project.",
-      "This exceeded my expectations. Well done!",
-      "Thanks for being so thorough with the revisions.",
-      "Perfect! I'll share this with the team right away."
-    ],
-    'sarah': [
-      "Thanks for the update! This is looking really good.",
-      "Perfect! I'll review these with my team today.",
-      "Great work! Can we discuss the next phase?",
-      "This is exactly what we were looking for.",
-      "Thanks for being so responsive to our feedback.",
-      "Love the changes you made! Much better now.",
-      "This looks professional and clean. Great job!",
-      "Perfect timing! We needed this for tomorrow's meeting.",
-      "Really impressed with your attention to detail.",
-      "Thanks for making those revisions so quickly!"
-    ],
-    'mike': [
-      "This looks fantastic! Really happy with the results.",
-      "Thanks for the great work! The team loves it.",
-      "Perfect! This is exactly what we needed.",
-      "Really impressed with your creativity on this one.",
-      "Thanks for going above and beyond on this project.",
-      "This exceeded our expectations. Awesome work!",
-      "Love the attention to detail! Professional quality.",
-      "Thanks for being so easy to work with.",
-      "This is going to work perfectly for our campaign.",
-      "Great job! Looking forward to the next project."
-    ]
-  };
+    if (!token) {
+      console.error('No JWT token found. Socket.IO connection aborted.');
+      return;
+    }
+
+    socket = io(SOCKET_IO_SERVER_URL, {
+      query: { token: token }, // Pass JWT as query parameter
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket.IO connected as Client:', socket.id);
+      socket.emit('joinUserRoom', OWN_ID); // Join a user-specific room
+    });
+
+    socket.on('disconnect', () => {
+      console.log('Socket.IO disconnected as Client.');
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('Socket.IO connection error for Client:', err.message);
+    });
+
+    socket.on('receiveMessage', (message) => {
+      console.log('Client received real-time message:', message);
+      // Backend message structure example: { sender_id, recipient_id, message_content, timestamp, chat_type }
+      const formattedMsg = {
+        id: message.id || Date.now(),
+        sender: message.sender_id,
+        content: message.message_content,
+        time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        isOwn: message.sender_id === OWN_ID, // Determine if it's the client's own message
+      };
+
+      setAllMessages(prev => {
+        // The chatKey needs to be the ID of the OTHER party in the conversation
+        const chatKey = formattedMsg.isOwn ? message.recipient_id : message.sender_id;
+        return {
+          ...prev,
+          [chatKey]: [...(prev[chatKey] || []), formattedMsg]
+        };
+      });
+
+      // Update conversation list for the last message received
+      setConversations(prev =>
+        prev.map(conv => {
+          // Find the conversation related to the sender/recipient of the incoming message
+          if (conv.id === formattedMsg.sender || conv.id === formattedMsg.recipient_id) {
+            return {
+              ...conv,
+              lastMessage: formattedMsg.content,
+              time: 'now',
+              unread: conv.id !== selectedChat ? (conv.unread || 0) + 1 : 0, // Increment unread if not selected
+            };
+          }
+          return conv;
+        })
+      );
+    });
+
+    socket.on('typing', ({ userId, chatId }) => {
+      // Only show typing if the other user is typing in the currently selected chat
+      if (chatId === selectedChat && userId !== OWN_ID) {
+        setTypingUsers(prev => new Set([...prev, userId]));
+        setTimeout(() => {
+          setTypingUsers(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(userId);
+            return newSet;
+          });
+        }, 3000); // Adjust duration as needed
+      }
+    });
+
+    return () => {
+      if (socket) {
+        console.log('Disconnecting Socket.IO Client');
+        socket.disconnect();
+      }
+    };
+  }, [OWN_ID, selectedChat]); // selectedChat dependency ensures typing indicators are current
+
+  // --- API Integration: Fetch Past Messages ---
+  const fetchMessages = useCallback(async (chatType, ownId, recipientId) => {
+    if (!chatType || !ownId || !recipientId) return;
+
+    try {
+      const token = localStorage.getItem('jwt_token');
+      if (!token) {
+        console.error('No JWT token found. User might not be authenticated.');
+        alert('Session expired or unauthorized. Please log in again.');
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/chat/${chatType}/${ownId}/${recipientId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`Error fetching messages for ${recipientId} (${chatType}):`, response.status, errorData);
+        if (response.status === 401) {
+          alert('Session expired or unauthorized. Please log in again.');
+        } else if (response.status === 400) {
+          alert(`Error: ${errorData.message || 'Unrecognized chat type.'}`);
+        }
+        setAllMessages(prev => ({ ...prev, [recipientId]: [] }));
+        return;
+      }
+
+      const data = await response.json();
+      console.log(`Client fetched data for ${recipientId} (${chatType}):`, data);
+
+      if (chatType === 'platform') {
+        if (data.well_recieved) {
+          console.log('Platform chat initiated successfully for client. No past messages returned.');
+          setAllMessages(prev => ({ ...prev, [recipientId]: [] }));
+        }
+      } else { // 'hiring' or 'custom' chat types
+        const formattedMessages = data.map(msg => ({
+          id: msg.id || Date.now() + Math.random(),
+          sender: msg.sender_tag, // Use sender_tag from backend
+          content: msg.message_content,
+          time: new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          isOwn: msg.sender_tag === ownId, // Check if sender_tag matches client's ownId
+        }));
+        setAllMessages(prev => ({
+          ...prev,
+          [recipientId]: formattedMessages,
+        }));
+      }
+
+      // Update or add this chat to conversations list
+      setConversations(prevConversations => {
+        const chatExists = prevConversations.some(conv => conv.id === recipientId);
+        if (!chatExists) {
+          const newConv = {
+            id: recipientId,
+            name: `User ${recipientId}`, // Placeholder: Needs actual user names/avatars
+            avatar: recipientId.charAt(0).toUpperCase(),
+            avatarBg: 'bg-gray-500',
+            lastMessage: chatType !== 'platform' && data.length > 0 ? data[data.length - 1].message_content : (chatType === 'platform' ? 'Platform chat' : 'No messages yet.'),
+            time: chatType !== 'platform' && data.length > 0 ? new Date(data[data.length - 1].timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            unread: 0,
+            isOnline: false, // Placeholder
+            isBot: recipientId.includes('ai'),
+            chatType: chatType // Store chat type
+          };
+          return [...prevConversations, newConv];
+        }
+        return prevConversations.map(conv =>
+          conv.id === recipientId
+            ? {
+                ...conv,
+                lastMessage: chatType !== 'platform' && data.length > 0 ? data[data.length - 1].message_content : conv.lastMessage,
+                time: chatType !== 'platform' && data.length > 0 ? new Date(data[data.length - 1].timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : conv.time,
+                unread: 0, // Mark as read when selected
+                chatType: chatType
+              }
+            : conv
+        );
+      });
+
+    } catch (error) {
+      console.error('Network or parsing error for client:', error);
+      setAllMessages(prev => ({ ...prev, [recipientId]: [] }));
+    }
+  }, [OWN_ID]);
+
+  // Effect to fetch messages when selected chat or chat type changes
+  useEffect(() => {
+    if (selectedChat && selectedChatType) {
+      fetchMessages(selectedChatType, OWN_ID, selectedChat);
+    }
+  }, [selectedChat, selectedChatType, fetchMessages]);
+
+
+  // Initial load: Set a default selected chat and type if conversations are empty
+  useEffect(() => {
+    if (OWN_ID && conversations.length === 0) {
+      // Dummy data for initial client view.
+      // In a real app, this would be fetched from an API endpoint for user's conversations.
+      setConversations([
+        { id: 'lancer-ai', name: 'Lancer AI', avatar: 'AI', avatarBg: 'bg-blue-500', lastMessage: 'Ask me anything!', time: 'now', unread: 0, isOnline: true, isBot: true, chatType: 'platform' },
+        { id: 'deandre', name: 'DeAndre', avatar: 'D', avatarBg: 'bg-purple-500', lastMessage: 'The graphics look amazing!', time: '2h', unread: 0, isOnline: true, isBot: false, chatType: 'hiring' },
+        { id: 'peter', name: 'Peter Roseline', avatar: 'P', avatarBg: 'bg-green-500', lastMessage: 'Perfect!', time: '1d', unread: 0, isOnline: false, isBot: false, chatType: 'custom' },
+        { id: 'sarah', name: 'Sarah Mitchell', avatar: 'S', avatarBg: 'bg-pink-500', lastMessage: 'Can you send me the updated wireframes?', time: '2d', unread: 0, isOnline: true, isBot: false, chatType: 'hiring' },
+        { id: 'mike', name: 'Mike Johnson', avatar: 'M', avatarBg: 'bg-indigo-500', lastMessage: 'Thanks for the quick turnaround!', time: '3d', unread: 0, isOnline: false, isBot: false, chatType: 'custom' }
+      ]);
+    }
+    // Set the first conversation as active if none is selected
+    if (conversations.length > 0 && !selectedChat) {
+      setSelectedChat(conversations[0].id);
+      setSelectedChatType(conversations[0].chatType);
+    }
+  }, [OWN_ID, conversations, selectedChat]);
+
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [allMessages, selectedChat]);
 
-  const simulateTyping = (chatId) => {
-    setTypingUsers(prev => new Set([...prev, chatId]));
-    
-    // Random typing duration between 1-3 seconds
-    const typingDuration = Math.random() * 2000 + 1000;
-    
-    setTimeout(() => {
-      setTypingUsers(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(chatId);
-        return newSet;
-      });
-    }, typingDuration);
-
-    return typingDuration;
-  };
-
-  const getRandomResponse = (chatId) => {
-    const templates = responseTemplates[chatId] || responseTemplates['deandre'];
-    return templates[Math.floor(Math.random() * templates.length)];
-  };
-
+  // --- Send Message via Socket.IO ---
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (newMessage.trim()) {
-      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const newMsg = {
-        id: Date.now(),
-        sender: 'me',
-        content: newMessage.trim(),
-        time: timestamp,
-        isOwn: true
+    if (newMessage.trim() && OWN_ID && selectedChat && socket) {
+      const messagePayload = {
+        recipientId: selectedChat, // The person receiving the message
+        chatType: selectedChatType, // The type of chat
+        messageContent: newMessage.trim(),
+        // Backend will add sender_id (OWN_ID), timestamp, etc.
       };
 
-      // Add message to current conversation
+      console.log('Client emitting sendMessage:', messagePayload);
+      socket.emit('sendMessage', messagePayload);
+
+      // Optimistically add the message to the UI
+      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const newMsgForUI = {
+        id: Date.now(),
+        sender: OWN_ID,
+        content: newMessage.trim(),
+        time: timestamp,
+        isOwn: true,
+      };
+
       setAllMessages(prev => ({
         ...prev,
-        [selectedChat]: [...(prev[selectedChat] || []), newMsg]
+        [selectedChat]: [...(prev[selectedChat] || []), newMsgForUI]
       }));
 
-      // Update last message in conversations list
-      setConversations(prev => 
-        prev.map(conv => 
-          conv.id === selectedChat 
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === selectedChat
             ? { ...conv, lastMessage: newMessage.trim(), time: 'now' }
             : conv
         )
       );
 
       setNewMessage('');
-
-      // Simulate response with typing indicator
-      const typingDuration = simulateTyping(selectedChat);
-      
-      // Random response delay (including typing time)
-      const responseDelay = typingDuration + Math.random() * 2000 + 500;
-      
-      setTimeout(() => {
-        const response = getRandomResponse(selectedChat);
-        const responseTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        const responseMsg = {
-          id: Date.now() + 1,
-          sender: selectedChat,
-          content: response,
-          time: responseTime,
-          isOwn: false
-        };
-
-        setAllMessages(prev => ({
-          ...prev,
-          [selectedChat]: [...(prev[selectedChat] || []), responseMsg]
-        }));
-
-        setConversations(prev => 
-          prev.map(conv => 
-            conv.id === selectedChat 
-              ? { ...conv, lastMessage: response, time: 'now', unread: conv.id === selectedChat ? 0 : (conv.unread || 0) + 1 }
-              : conv
-          )
-        );
-      }, responseDelay);
     }
   };
 
-  const handleChatSelect = (chatId) => {
+  // --- Typing Indicator Logic (for real-time) ---
+  const handleTyping = () => {
+    if (socket && OWN_ID && selectedChat) {
+      // Emit typing event to the server
+      socket.emit('typing', { userId: OWN_ID, chatId: selectedChat });
+    }
+  };
+
+  const handleChatSelect = (chatId, chatType) => {
     setSelectedChat(chatId);
+    setSelectedChatType(chatType); // Update the chat type when selecting
     // Mark messages as read
-    setConversations(prev => 
-      prev.map(conv => 
+    setConversations(prev =>
+      prev.map(conv =>
         conv.id === chatId ? { ...conv, unread: 0 } : conv
       )
     );
@@ -377,7 +301,9 @@ const Messages = () => {
 
   const activeChat = conversations.find(conv => conv.id === selectedChat);
   const messages = allMessages[selectedChat] || [];
-  const isTyping = typingUsers.has(selectedChat);
+  // `isTyping` now checks if the OTHER person in the active chat is typing
+  const isTyping = typingUsers.has(activeChat?.id);
+
 
   return (
     <div className="flex h-full bg-white basic-font">
@@ -386,7 +312,7 @@ const Messages = () => {
         {/* Header */}
         <div className="p-4 border-b border-gray-200 mt-5">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Messages (Client)</h2>
-          
+
           {/* Search */}
           <div className="relative mt-3">
             <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -417,57 +343,61 @@ const Messages = () => {
 
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto">
-          {conversations.map((conv) => (
-            <div
-              key={conv.id}
-              onClick={() => handleChatSelect(conv.id)}
-              className={`p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 transition-colors ${
-                selectedChat === conv.id ? 'bg-blue-50 border-r-2 border-r-blue-500' : ''
-              }`}
-            >
-              <div className="flex items-start space-x-3">
-                <div className="relative">
-                  {conv.isBot ? (
-                    <div className={`w-10 h-10 ${conv.avatarBg} rounded-full flex items-center justify-center`}>
-                      <Bot size={16} className="text-white" />
-                    </div>
-                  ) : (
-                    <div className={`w-10 h-10 ${conv.avatarBg} rounded-full flex items-center justify-center`}>
-                      <span className="text-white text-sm font-medium">
-                        {conv.avatar}
-                      </span>
-                    </div>
-                  )}
-                  {conv.isOnline && (
-                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                  )}
-                </div>
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between">
-                    <h3 className="text-sm font-medium text-gray-900 truncate">
-                      {conv.name}
-                    </h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-xs text-gray-500">{conv.time}</span>
-                      {conv.unread > 0 && (
-                        <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                          <span className="text-xs text-white font-medium">{conv.unread}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-600 truncate mt-1">
-                    {typingUsers.has(conv.id) && selectedChat !== conv.id ? (
-                      <span className="italic text-blue-600">typing...</span>
+          {conversations.length === 0 ? (
+            <p className="p-4 text-gray-500 text-center">No conversations yet.</p>
+          ) : (
+            conversations.map((conv) => (
+              <div
+                key={conv.id}
+                onClick={() => handleChatSelect(conv.id, conv.chatType)} 
+                className={`p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 transition-colors ${
+                  selectedChat === conv.id ? 'bg-blue-50 border-r-2 border-r-blue-500' : ''
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  <div className="relative">
+                    {conv.isBot ? (
+                      <div className={`w-10 h-10 ${conv.avatarBg} rounded-full flex items-center justify-center`}>
+                        <Bot size={16} className="text-white" />
+                      </div>
                     ) : (
-                      conv.lastMessage
+                      <div className={`w-10 h-10 ${conv.avatarBg} rounded-full flex items-center justify-center`}>
+                        <span className="text-white text-sm font-medium">
+                          {conv.avatar}
+                        </span>
+                      </div>
                     )}
-                  </p>
+                    {conv.isOnline && (
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <h3 className="text-sm font-medium text-gray-900 truncate">
+                        {conv.name}
+                      </h3>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500">{conv.time}</span>
+                        {conv.unread > 0 && (
+                          <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                            <span className="text-xs text-white font-medium">{conv.unread}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-sm text-gray-600 truncate mt-1">
+                      {isTyping && selectedChat === conv.id ? (
+                        <span className="italic text-blue-600">typing...</span>
+                      ) : (
+                        conv.lastMessage
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -494,13 +424,13 @@ const Messages = () => {
                 )}
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">{activeChat?.name}</h3>
+                <h3 className="font-medium text-gray-900">{activeChat?.name || 'Select a chat'}</h3>
                 <p className="text-sm text-green-600">
-                  {isTyping ? 'typing...' : 'Online'}
+                  {isTyping ? 'typing...' : (activeChat?.isOnline ? 'Online' : 'Offline')}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                 <Phone size={18} className="text-gray-600" />
@@ -517,7 +447,11 @@ const Messages = () => {
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F9FAFB]">
-          {messages.map((message) => (
+          {!selectedChat ? (
+            <p className="text-center text-gray-500">Please select a chat to view messages.</p>
+          ) : messages.length === 0 && selectedChatType !== 'platform' ? (
+            <p className="text-center text-gray-500">No messages in this chat yet. Start a conversation!</p>
+          ) : messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
@@ -549,9 +483,9 @@ const Messages = () => {
               </div>
             </div>
           ))}
-          
-          {/* Typing indicator */}
-          {isTyping && (
+
+          {/* Typing indicator (only for active chat) */}
+          {isTyping && activeChat && (
             <div className="flex justify-start">
               <div className="max-w-md">
                 <div className="flex items-center space-x-2 mb-1">
@@ -573,7 +507,7 @@ const Messages = () => {
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -583,7 +517,10 @@ const Messages = () => {
             <input
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => {
+                setNewMessage(e.target.value);
+                handleTyping(); // Emit typing event on change
+              }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   handleSendMessage(e);
