@@ -123,7 +123,7 @@ const handleSubmit = async (e) => {
   if (!jwtToken) {
     setApiError('Authentication token missing. Please sign in again.');
     setIsLoading(false);
-    navigate('/signin'); // Assuming /signin is your login route
+    navigate('/setup'); 
     return;
   }
 

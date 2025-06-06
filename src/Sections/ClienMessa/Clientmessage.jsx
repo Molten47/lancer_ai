@@ -3,7 +3,7 @@ import { Search, Phone, Video, MoreHorizontal, Send, Bot, User } from 'lucide-re
 import io from 'socket.io-client'; // Import Socket.IO client
 
 // IMPORTANT: Replace with the actual authenticated client's ID
-const OWN_ID = 'your_current_client_id'; // e.g., 'client-johndoe' or 'user456'
+const own_id = 'your_current_client_id'; // e.g., 'client-johndoe' or 'user456'
 // IMPORTANT: Replace with your backend's base URL for API and Socket.IO
 const API_BASE_URL = 'http://127.0.0.1:5000'; // Your backend API base URL
 const SOCKET_IO_SERVER_URL = 'http://localhost:8080'; // Your Socket.IO server URL
@@ -16,11 +16,9 @@ const Messages = () => {
   // Client side will likely initiate 'hiring' or 'custom' chats with freelancers
   // And 'platform' chats with AI.
   const [selectedChatType, setSelectedChatType] = useState('hiring'); // Default chat type
-
   const [newMessage, setNewMessage] = useState('');
   const [typingUsers, setTypingUsers] = useState(new Set());
   const messagesEndRef = useRef(null);
-
   const [conversations, setConversations] = useState([]); // Will be populated by API or initial dummy data
   const [allMessages, setAllMessages] = useState({}); // Stores fetched and real-time messages
 
@@ -44,7 +42,7 @@ const Messages = () => {
 
     socket.on('connect', () => {
       console.log('Socket.IO connected as Client:', socket.id);
-      socket.emit('joinUserRoom', OWN_ID); // Join a user-specific room
+      socket.emit('joinUserRoom', own_id); // Join a user-specific room
     });
 
     socket.on('disconnect', () => {

@@ -82,10 +82,11 @@ const Signup = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        // Only send email and password as per the Swagger definition for /api/signup
+        // Send email, password, AND role to the backend
         body: JSON.stringify({
           email: formData.email,
-          password: formData.password
+          password: formData.password,
+          role: formData.role 
         })
       });
 
