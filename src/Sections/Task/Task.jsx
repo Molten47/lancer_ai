@@ -17,58 +17,95 @@ const TaskManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Function to fetch tasks from the backend
-  const fetchTasks = useCallback(async (status) => {
+  // --- MOCK DATA FOR FRONTEND DEVELOPMENT ---
+  const mockOngoingTasks = [
+    {
+      id: 'task-1',
+      title: 'Design Marketing Website Homepage',
+      assignee: 'Alice Johnson',
+      progress: 75,
+      dueDate: '2025-06-15',
+      daysLeft: 9,
+      budget: '$1200',
+      status: 'Ongoing',
+      avatar: 'AJ',
+      completedDate: null,
+    },
+    {
+      id: 'task-2',
+      title: 'Develop Mobile App Prototype',
+      assignee: 'Bob Williams',
+      progress: 40,
+      dueDate: '2025-07-01',
+      daysLeft: 25,
+      budget: '$3000',
+      status: 'Ongoing',
+      avatar: 'BW',
+      completedDate: null,
+    },
+    {
+      id: 'task-3',
+      title: 'Create Social Media Content Calendar',
+      assignee: 'Charlie Davis',
+      progress: 90,
+      dueDate: '2025-06-08',
+      daysLeft: 2,
+      budget: '$500',
+      status: 'Ongoing',
+      avatar: 'CD',
+      completedDate: null,
+    },
+  ];
+
+  const mockCompletedTasks = [
+    {
+      id: 'task-c1',
+      title: 'Brand Logo Redesign',
+      assignee: 'Alice Johnson',
+      progress: 100,
+      dueDate: '2025-05-20',
+      daysLeft: 0,
+      budget: '$800',
+      status: 'Completed',
+      avatar: 'AJ',
+      completedDate: '2025-05-18',
+    },
+    {
+      id: 'task-c2',
+      title: 'SEO Keyword Research',
+      assignee: 'Charlie Davis',
+      progress: 100,
+      dueDate: '2025-05-25',
+      daysLeft: 0,
+      budget: '$350',
+      status: 'Completed',
+      avatar: 'CD',
+      completedDate: '2025-05-24',
+    },
+  ];
+  // --- END MOCK DATA ---
+
+
+  // Function to simulate fetching tasks (frontend only)
+  const simulateFetchTasks = useCallback((status) => {
     setLoading(true);
     setError(null);
     setClientTasks([]); // Clear previous tasks
 
-    try {
-      const response = await fetch(`/api/client/tasks?status=${status}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          // You'll need to include your JWT token here for authorization
-          // For a client, this would be the client's JWT token
-          // 'Authorization': `Bearer ${yourClientAuthToken}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || `Failed to fetch ${status} tasks.`);
+    setTimeout(() => {
+      if (status === 'ongoing') {
+        setClientTasks(mockOngoingTasks);
+      } else if (status === 'completed') {
+        setClientTasks(mockCompletedTasks);
       }
-
-      // Map backend data to your frontend's expected format if necessary
-      // Assuming backend returns an array of task objects like:
-      // { id, title, assignee, progress, dueDate, daysLeft, budget, status, avatar, completedDate }
-      const formattedTasks = data.tasks.map(task => ({
-        id: task.id,
-        title: task.title,
-        assignee: task.assignee_name, // Assuming backend sends assignee_name
-        progress: task.progress,
-        dueDate: task.due_date, // Assuming backend sends 'YYYY-MM-DD'
-        daysLeft: task.days_left, // Assuming backend calculates this
-        budget: `$${task.budget}`, // Assuming backend sends raw number
-        status: task.status,
-        avatar: task.assignee_avatar_initials || task.assignee_name.split(' ').map(n => n[0]).join('').toUpperCase(), // Generate initials
-        completedDate: task.completed_date, // For completed tasks
-      }));
-
-      setClientTasks(formattedTasks);
-    } catch (err) {
-      setError(err.message);
-      console.error("Error fetching tasks:", err);
-    } finally {
       setLoading(false);
-    }
-  }, []); // No dependencies for fetchTasks itself, it depends on the activeTab via useEffect
+    }, 800); // Simulate network delay
+  }, []);
 
-  // Effect to call fetchTasks whenever activeTab changes
+  // Effect to call simulateFetchTasks whenever activeTab changes
   useEffect(() => {
-    fetchTasks(activeTab);
-  }, [activeTab, fetchTasks]);
+    simulateFetchTasks(activeTab);
+  }, [activeTab, simulateFetchTasks]);
 
   return (
     <div className="p-7 min-h-full">

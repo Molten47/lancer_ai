@@ -75,8 +75,41 @@ const Signup = () => {
 
     setIsLoading(true); // Set loading to true when starting API call
 
+    // --- FRONTEND SIMULATION ONLY: Commented out backend API call ---
     try {
-      // API call to the backend signup endpoint
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Simulate a successful signup response
+      console.log('Frontend Signup simulation successful:', formData);
+
+      // Store role in localStorage for persistence
+      try {
+        localStorage.setItem('userRole', formData.role);
+        localStorage.setItem('showSignupSuccess', 'true');
+      } catch (e) {
+        console.error('Failed to save to localStorage:', e);
+        // You might want to show a user-friendly message about this error as well
+      }
+
+      // Navigate directly to the setup page with state
+      navigate('/setup', {
+        state: {
+          role: formData.role,
+          showSuccessAlert: true
+        }
+      });
+
+    } catch (error) {
+      console.error('Frontend simulation error during signup:', error);
+      setApiError('An unexpected error occurred during signup simulation.');
+    } finally {
+      setIsLoading(false); // Set loading to false after simulation completes
+    }
+
+    /*
+    // --- ORIGINAL BACKEND API CALL (COMMENTED OUT) ---
+    try {
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
@@ -86,7 +119,7 @@ const Signup = () => {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          role: formData.role 
+          role: formData.role
         })
       });
 
@@ -125,11 +158,13 @@ const Signup = () => {
     } finally {
       setIsLoading(false); // Set loading to false after API call completes
     }
+    */
   };
 
   const handleGoogleSignIn = () => {
-    console.log('Google sign-in initiated');
+    console.log('Google sign-in initiated (frontend simulation)');
     // This would typically involve redirecting to a Google OAuth flow
+    // For frontend testing, you can just log it or simulate a redirect.
   };
 
   return (

@@ -98,83 +98,107 @@ const Setup = () => {
   }, [location.state, navigate, location.pathname]);
 
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setApiError(''); // Clear any previous API errors
-  setErrors({}); // Clear previous client-side errors
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setApiError(''); // Clear any previous API errors
+    setErrors({}); // Clear previous client-side errors
 
-  // Basic validation (ensure profileBio validation is removed if the field is also removed from UI/state)
-  const newErrors = {};
-  if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-  if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-  if (!formData.country.trim()) newErrors.country = 'Country is required';
-  if (!formData.stateProvince.trim()) newErrors.stateProvince = 'State/Province is required';
-  if (isFreelancer && !formData.jobTitle) newErrors.jobTitle = 'Job title is required';
+    // Basic validation (ensure profileBio validation is removed if the field is also removed from UI/state)
+    const newErrors = {};
+    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.country.trim()) newErrors.country = 'Country is required';
+    if (!formData.stateProvince.trim()) newErrors.stateProvince = 'State/Province is required';
+    if (isFreelancer && !formData.jobTitle) newErrors.jobTitle = 'Job title is required';
 
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    return;
-  }
-
-  setIsLoading(true); // Start loading
-
-  // --- JWT Authentication Check ---
-  const jwtToken = localStorage.getItem('jwtToken'); // Get token from local storage
-  if (!jwtToken) {
-    setApiError('Authentication token missing. Please sign in again.');
-    setIsLoading(false);
-    navigate('/setup'); 
-    return;
-  }
-
-  try {
-    // Prepare the payload for the API
-    const payload = {
-      first_name: formData.firstName,
-      last_name: formData.lastName,
-      country: formData.country,
-      state_province: formData.stateProvince,
-      role: userRole, // Send the user's role here
-    };
-
-    // Add job_title only if it's a freelancer
-    if (isFreelancer) {
-      payload.job_title = formData.jobTitle;
-    }
-
-    const response = await fetch('/api/profile_setup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${jwtToken}` // Attach the JWT token
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await await response.json();
-
-    if (!response.ok) {
-  
-      setApiError(data.description || 'Profile setup failed. Please try again.');
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    console.log('Profile setup successful:', data);
+    setIsLoading(true); // Start loading
 
-    // --- Success Logic ---
-    if (userRole === 'freelancer') {
-      setProfileSaved(true); // Show the "Start Interview" section
-    } else {
-      navigate('/dashboardcl'); // Navigate client to their dashboard
+    // --- FRONTEND SIMULATION ONLY: Commented out backend API call ---
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate a 1.5-second delay
+
+      // Simulate a successful response
+      console.log('Frontend profile setup simulation successful:', formData);
+
+      // --- Success Logic (from original code) ---
+      if (userRole === 'freelancer') {
+        setProfileSaved(true); // Show the "Start Interview" section
+      } else {
+        navigate('/dashboardcl'); // Navigate client to their dashboard
+      }
+
+    } catch (error) {
+      console.error('Frontend simulation error during profile setup:', error);
+      setApiError('An unexpected error occurred during profile setup simulation.');
+    } finally {
+      setIsLoading(false); // Stop loading regardless of success or failure
     }
 
-  } catch (error) {
-    console.error('Network or unexpected error during profile setup:', error);
-    setApiError('An unexpected error occurred. Please check your internet connection.');
-  } finally {
-    setIsLoading(false); // Stop loading regardless of success or failure
-  }
-};
+    /*
+    // --- ORIGINAL BACKEND API CALL (COMMENTED OUT) ---
+    // JWT Authentication Check (if needed after frontend flow is working)
+    const jwtToken = localStorage.getItem('jwtToken'); // Get token from local storage
+    if (!jwtToken) {
+      setApiError('Authentication token missing. Please sign in again.');
+      setIsLoading(false);
+      navigate('/tasks'); // Or navigate to login page
+      return;
+    }
+
+    try {
+      // Prepare the payload for the API
+      const payload = {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        country: formData.country,
+        state_province: formData.stateProvince,
+        role: userRole, // Send the user's role here
+      };
+
+      // Add job_title only if it's a freelancer
+      if (isFreelancer) {
+        payload.job_title = formData.jobTitle;
+      }
+
+      const response = await fetch('/api/profile_setup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}` // Attach the JWT token
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json(); // Use .json() on response directly
+
+      if (!response.ok) {
+        setApiError(data.description || 'Profile setup failed. Please try again.');
+        return;
+      }
+
+      console.log('Profile setup successful:', data);
+
+      // --- Success Logic ---
+      if (userRole === 'freelancer') {
+        setProfileSaved(true); // Show the "Start Interview" section
+      } else {
+        navigate('/dashboardcl'); // Navigate client to their dashboard
+      }
+
+    } catch (error) {
+      console.error('Network or unexpected error during profile setup:', error);
+      setApiError('An unexpected error occurred. Please check your internet connection.');
+    } finally {
+      setIsLoading(false); // Stop loading regardless of success or failure
+    }
+    */
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;

@@ -67,8 +67,8 @@ const Wallet = () => {
                   <RefreshCcw className="w-5 h-5 text-gray-400"/>
                 </button>
               </div>
-              
-              <div className="flex gap-4">
+
+              <div className="flex flex-col sm:flex-row gap-4"> {/* Added sm:flex-row here for responsiveness */}
                 <div className="flex-1 bg-[#F0FDF4] rounded-lg p-4 pb-8">
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowUpRight size={26} className="font-bold text-[#4CAF50]"/>
@@ -77,7 +77,7 @@ const Wallet = () => {
                   <div className="text-xl font-semibold text-dark text-[1.25rem] mb-1">$2,800</div>
                   <div className="text-gray-500 text-sm">This month</div>
                 </div>
-                
+
                 <div className="flex-1 bg-red-50 rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <ArrowDownRight size={26} className="font-bold text-[#FF3D00]"/>
@@ -91,10 +91,10 @@ const Wallet = () => {
           </div>
 
           {/* My Wallet Card */}
-          <div className="w-full lg:w-80 h-full">
+          <div className="w-full lg:w-80 h-full"> {/* No changes needed here, flex-col on parent handles stacking */}
             <div className="bg-white rounded-xl p-6 h-full shadow-sm">
               <h2 className="text-lg font-semibold text-gray-900 mb-6">My Wallet</h2>
-              
+
               {/* Balance Section */}
               <div className="flex justify-between items-center mb-6 p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-1">
@@ -109,13 +109,13 @@ const Wallet = () => {
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              
+
               {/* Amount Input */}
               <div className="relative mb-6">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4">
                   <span className="text-gray-400 text-lg">$</span>
                 </div>
-                <input 
+                <input
                   placeholder="Enter amount"
                   type="text"
                   value={amount}
@@ -126,12 +126,12 @@ const Wallet = () => {
 
                 </div>
               </div>
-              
+
               {/* Action Buttons */}
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 xs:grid-cols-2 grid-cols-1">
+              <div className="grid grid-cols-3 xs:grid-cols-2 sm:grid-cols-3 gap-3"> {/* Adjusted grid for smaller screens */}
                 {walletData.map((wallet) => (
-                  <div 
-                    key={wallet.id} 
+                  <div
+                    key={wallet.id}
                     className="flex flex-col items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors"
                   >
                     <div className="w-12 h-12 border border-gray-200 rounded-lg flex items-center justify-center mb-2">
@@ -144,7 +144,7 @@ const Wallet = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Recent Transactions Section */}
         <div className="bg-white rounded-xl p-6 shadow-sm">
           <div className="flex justify-between items-center mb-6">
@@ -154,7 +154,7 @@ const Wallet = () => {
               <ChevronDown className="w-4 h-4 rotate-[-90deg]" />
             </button>
           </div>
-          
+
           <div className="space-y-4">
             {transactions.map((transaction) => (
               <div key={transaction.id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors">

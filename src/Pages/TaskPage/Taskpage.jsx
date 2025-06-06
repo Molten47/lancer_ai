@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Clock, Upload, CheckCircle, User, MessageSquare, Timer, XCircle } from 'lucide-react'; // Added XCircle for error
+import { useNavigate } from 'react-router-dom'; // Added for navigation
 
 const LancerTaskPage = () => {
   const [isTaskStarted, setIsTaskStarted] = useState(false);
@@ -9,8 +10,9 @@ const LancerTaskPage = () => {
   const [taskInstructions, setTaskInstructions] = useState(null); // To store task details from API
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [startTime, setStartTime] = useState(null); // Store actual start time for API
-  const [submissionTime, setSubmissionTime] = useState(null); // Store actual submission time for API
+  const navigate = useNavigate(); // Initialize navigation hook
+  // const [startTime, setStartTime] = useState(null); // Store actual start time for API
+  // const [submissionTime, setSubmissionTime] = useState(null); // Store actual submission time for API
 
   // Countdown timer settings (in seconds) - you can adjust this
   // This will be ideally loaded from the taskInstructions from the backend
@@ -58,47 +60,28 @@ const LancerTaskPage = () => {
     return 'bg-red-50 border-red-200';
   };
 
-  // API Call: Start Task (Initiation)
-  const handleStartTask = useCallback(async () => {
+  // Frontend-only: Simulate task start
+  const handleStartTask = useCallback(() => {
     setLoading(true);
     setError(null);
-    const currentStartTime = new Date().toISOString();
-    setStartTime(currentStartTime); // Store actual start time
+    // const currentStartTime = new Date().toISOString();
+    // setStartTime(currentStartTime); // Store actual start time
 
-    const formData = new FormData();
-    formData.append('status', 'initiation');
-    formData.append('start_time', currentStartTime);
-
-    try {
-      // Assuming 'platform_interview' as the task_type for this page
-      const response = await fetch('/api/task/platform_interview', {
-        method: 'POST',
-        headers: {
-          // You'll need to include your JWT token here for authorization
-          // 'Authorization': `Bearer ${yourAuthToken}`, 
-        },
-        body: formData,
+    // Simulate API call delay
+    setTimeout(() => {
+      setTaskInstructions({
+        description: "Design a landing page for a new creative agency, 'Innovate & Create Co.' The page should be visually appealing, user-friendly, and showcase their services. Include a hero section, services offered, a portfolio showcase, testimonials, and a contact form.",
+        deliverables: ["High-fidelity mockups (Figma/Sketch/Adobe XD file)", "Exported JPG/PNG images of the final design", "Brief explanation of design choices"],
+        guidelines: "Use a modern, clean aesthetic. Incorporate a color palette with shades of blue and green. Ensure responsiveness for mobile and desktop. Brand personality: innovative, professional, and approachable."
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to initiate task.');
-      }
-
-      setTaskInstructions(data.task_instruction); // Assuming response has 'task_instruction'
-      setTimeLeft(data.task_instruction?.allocated_time || DEFAULT_TASK_DURATION); // Use allocated time from backend
+      setTimeLeft(DEFAULT_TASK_DURATION); // Use default duration for now
       setIsTaskStarted(true);
       setLoading(false);
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-      console.error("Error starting task:", err);
-    }
-  }, [DEFAULT_TASK_DURATION]); // Added DEFAULT_TASK_DURATION to dependency array
+    }, 1500); // Simulate 1.5 seconds loading time
+  }, [DEFAULT_TASK_DURATION]);
 
-  // API Call: Submit Task
-  const handleCompleteTask = useCallback(async () => {
+  // Frontend-only: Simulate task completion with navigation
+  const handleCompleteTask = useCallback(() => {
     if (uploadedFiles.length === 0) {
       setError('Please upload at least one file before completing the task.');
       return;
@@ -106,70 +89,40 @@ const LancerTaskPage = () => {
 
     setLoading(true);
     setError(null);
-    const currentSubmissionTime = new Date().toISOString();
-    setSubmissionTime(currentSubmissionTime); // Store actual submission time
+    // const currentSubmissionTime = new Date().toISOString();
+    // setSubmissionTime(currentSubmissionTime); // Store actual submission time
 
-    const formData = new FormData();
-    formData.append('status', 'submission');
-    formData.append('submission_time', currentSubmissionTime);
-    
-    // Calculate elapsed_time if needed by the backend
-    // You might also send the duration from the state, or let backend calculate
-    const totalDurationInMinutes = Math.ceil(duration / 60); // Convert seconds to minutes, round up
-    const allocatedDurationInMinutes = Math.ceil(timeLeft / 60); // Time left from start, now elapsed
-    
-    let elapsedTimeBeyondAllocated = 0;
-    if (taskInstructions?.allocated_time) {
-        const allocatedSeconds = taskInstructions.allocated_time;
-        if (duration > allocatedSeconds) {
-            elapsedTimeBeyondAllocated = Math.ceil((duration - allocatedSeconds) / 60);
-        }
-    } else if (duration > DEFAULT_TASK_DURATION) { // Fallback if no allocated_time from backend
-        elapsedTimeBeyondAllocated = Math.ceil((duration - DEFAULT_TASK_DURATION) / 60);
-    }
-
-    if (elapsedTimeBeyondAllocated > 0) {
-        formData.append('elapsed_time', elapsedTimeBeyondAllocated);
-    }
-
-    // Append uploaded files. For simplicity, we are appending just names for now
-    // In a real app, you'd append actual File objects if using a proper file input setup
-    uploadedFiles.forEach((file) => {
-        // Assuming file is an actual File object, not just its name
-        // If file is just name, you would need to store actual File objects in state
-        // For this example, we'll assume `uploadedFiles` holds `File` objects or similar
-        // If it's `File` objects, you can directly append them: formData.append('file', file);
-        // For now, let's mock it if `uploadedFiles` just has names
-        // You'll need to adjust `handleFileUpload` to store actual `File` objects.
-        // For now, I'll append a dummy blob if only names are stored.
-        formData.append('file', new Blob(["dummy content for ", file], {type: "text/plain"}), file);
-    });
-
-    try {
-      const response = await fetch('/api/task/platform_interview', {
-        method: 'POST',
-        headers: {
-          // 'Authorization': `Bearer ${yourAuthToken}`,
-          // Content-Type will be 'multipart/form-data' automatically handled by FormData
-        },
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to submit task.');
-      }
-
+    // Simulate API call delay
+    setTimeout(() => {
       setIsTaskCompleted(true);
       setLoading(false);
-      // Optionally, redirect or show a success message
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-      console.error("Error completing task:", err);
-    }
-  }, [uploadedFiles, duration, taskInstructions, DEFAULT_TASK_DURATION, timeLeft]); // Added dependencies
+      
+  
+      
+      // Navigate to freelancer dashboard after a short delay
+      setTimeout(() => {
+        navigate('/freelancer-dashboard', {
+          state: {
+            taskCompleted: true,
+            completionTime: duration,
+            filesSubmitted: uploadedFiles.length
+          }
+        });
+      }, 2000); // 2 second delay to show completion state
+      
+    }, 1500); // Simulate 1.5 seconds loading time
+  }, [uploadedFiles, duration, navigate]);
+
+  // Navigate to dashboard function (can be used for a manual "Go to Dashboard" button)
+  const handleGoToDashboard = () => {
+    navigate('/freelancer-dashboard', {
+      state: {
+        taskCompleted: true,
+        completionTime: duration,
+        filesSubmitted: uploadedFiles.length
+      }
+    });
+  };
 
   // Modified handleFileUpload to store actual File objects if possible
   const handleFileUpload = (event) => {
@@ -369,7 +322,7 @@ const LancerTaskPage = () => {
             ) : !isTaskCompleted ? (
               <div className="space-y-4 md:space-y-6">
                 <h3 className="text-lg md:text-[1.2rem] font-semibold text-gray-900 mb-4 md:mb-6">Task Progress</h3>
-                
+
                 {/* Progress Stats */}
                 <div className="grid grid-cols-2 gap-3 md:gap-4 mt-3">
                   <div className="bg-gray-50 rounded-lg md:rounded-xl p-3 md:p-4 text-center">
@@ -414,7 +367,7 @@ const LancerTaskPage = () => {
                 <p className="text-sm md:text-base text-gray-600 mb-4 md:mb-6">
                   Excellent work! Your submission has been sent for review.
                 </p>
-                <div className="bg-gray-50 rounded-lg md:rounded-xl p-4 md:p-6">
+                <div className="bg-gray-50 rounded-lg md:rounded-xl p-4 md:p-6 mb-4">
                   <div className="grid grid-cols-2 gap-3 md:gap-4 text-center">
                     <div>
                       <p className="text-xs md:text-sm text-gray-600">Total Time</p>
@@ -429,6 +382,14 @@ const LancerTaskPage = () => {
                     <p className="text-xs md:text-sm text-gray-600">Files Submitted: <span className="font-bold">{uploadedFiles.length}</span></p>
                   </div>
                 </div>
+                {/* Manual Dashboard Navigation Button */}
+                <button
+                  onClick={handleGoToDashboard}
+                  className="bg-cta hover:bg-cyan-600 text-white px-6 py-3 rounded-xl text-base md:text-lg font-medium transition-all transform hover:scale-105 shadow-lg"
+                >
+                  Go to Dashboard
+                </button>
+                <p className="text-xs md:text-sm text-gray-500 mt-3">Redirecting automatically...</p>
               </div>
             )}
           </div>
