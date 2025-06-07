@@ -1,33 +1,8 @@
 import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Check, AlertCircle } from 'lucide-react'; // Added AlertCircle for error display
+import { Check, AlertCircle, Loader2 } from 'lucide-react'; // Added Loader2 for loading states
 
-// Auto-expanding textarea component
-const AutoExpandingTextarea = ({ value, onChange, placeholder, name, id, error }) => {
-  const textareaRef = useRef(null);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      // Reset height to get proper scrollHeight
-      textareaRef.current.style.height = 'auto';
-      // Set new height based on scrollHeight
-      textareaRef.current.style.height = `${Math.max(100, textareaRef.current.scrollHeight)}px`;
-    }
-  }, [value]);
-
-  return (
-    <textarea
-      ref={textareaRef}
-      name={name}
-      id={id}
-      value={value}
-      onChange={onChange}
-      className={`mt-1 block w-full border ${error ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm min-h-[100px] overflow-hidden`}
-      placeholder={placeholder}
-    />
-  );
-};
 
 // Input field component with consistent styling
 const FormInput = ({ label, id, name, value, onChange, placeholder, type = "text", error }) => {
@@ -39,7 +14,7 @@ const FormInput = ({ label, id, name, value, onChange, placeholder, type = "text
       <input
         type={type}
         id={id}
-        name={name}
+        name={name} // This name will now be snake_case
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -56,11 +31,12 @@ const Setup = () => {
   const userRole = location.state?.role || sessionStorage.getItem('userRole') || 'freelancer'; // Default to freelancer if not found
 
   const [formData, setFormData] = useState({
+    // --- ALL KEYS ARE NOW SNAKE_CASE ---
     first_name: '',
     last_name: '',
     country: '',
-    state_name: '',
-    skill: '',
+    state_name: '', // Kept as state_name to match your original formData and backend likely expects
+    skill: '', // Kept as skill to match your original formData and backend likely expects
   });
 
   const [errors, setErrors] = useState({});
@@ -103,12 +79,12 @@ const Setup = () => {
     setApiError(''); // Clear any previous API errors
     setErrors({}); // Clear previous client-side errors
 
-    // Basic validation (ensure profileBio validation is removed if the field is also removed from UI/state)
+    // Basic validation (using snake_case keys)
     const newErrors = {};
-    if (!formData.firstName.trim()) newErrors.first_name = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.last_name = 'Last name is required';
+    if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
+    if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
     if (!formData.country.trim()) newErrors.country = 'Country is required';
-    if (!formData.stateProvince.trim()) newErrors.state_name = 'State/Province is required';
+    if (!formData.state_name.trim()) newErrors.state_name = 'State/Province is required';
     if (isFreelancer && !formData.skill) newErrors.skill = 'Job title is required';
 
     if (Object.keys(newErrors).length > 0) {
@@ -118,31 +94,7 @@ const Setup = () => {
 
     setIsLoading(true); // Start loading
 
-    // --- FRONTEND SIMULATION ONLY: Commented out backend API call ---
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate a 1.5-second delay
-
-      // Simulate a successful response
-      console.log('Frontend profile setup simulation successful:', formData);
-
-      // --- Success Logic (from original code) ---
-      if (userRole === 'freelancer') {
-        setProfileSaved(true); // Show the "Start Interview" section
-      } else {
-        navigate('/dashboardcl'); // Navigate client to their dashboard
-      }
-
-    } catch (error) {
-      console.error('Frontend simulation error during profile setup:', error);
-      setApiError('An unexpected error occurred during profile setup simulation.');
-    } finally {
-      setIsLoading(false); // Stop loading regardless of success or failure
-    }
-
-    
-    // --- ORIGINAL BACKEND API CALL (COMMENTED OUT) ---
-    // JWT Authentication Check (if needed after frontend flow is working)
+    // JWT Authentication Check
     const jwtToken = localStorage.getItem('jwtToken'); // Get token from local storage
     if (!jwtToken) {
       setApiError('Authentication token missing. Please sign in again.');
@@ -152,18 +104,20 @@ const Setup = () => {
     }
 
     try {
-      // Prepare the payload for the API
+      // Payload for the API - directly use formData since keys are already snake_case
       const payload = {
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        country: formData.country,
-        state_province: formData.state_province,
+        ...formData, // Spread all snake_case fields from formData
+        role: userRole // Ensure userRole is also sent
       };
 
-      // Add job_title only if it's a freelancer
-      if (isFreelancer) {
-        payload.job_title = formData.job_title;
+      // Ensure 'skill' is mapped to 'job_title' if the backend expects it specifically
+      // If your backend expects 'skill' directly, then this conversion isn't needed.
+      // Based on your previous code, 'job_title' was expected.
+      if (isFreelancer && payload.skill) {
+          payload.job_title = payload.skill;
+          delete payload.skill; // Remove 'skill' if 'job_title' is preferred by backend
       }
+
 
       const response = await fetch('/api/profile_setup', {
         method: 'POST',
@@ -174,7 +128,7 @@ const Setup = () => {
         body: JSON.stringify(payload)
       });
 
-      const data = await response.json(); // Use .json() on response directly
+      const data = await response.json();
 
       if (!response.ok) {
         setApiError(data.description || 'Profile setup failed. Please try again.');
@@ -182,6 +136,11 @@ const Setup = () => {
       }
 
       console.log('Profile setup successful:', data);
+
+      // If successful, and you get user_id from backend, store it
+      if (data.user_id) {
+          localStorage.setItem('user_id', data.user_id.toString());
+      }
 
       // --- Success Logic ---
       if (userRole === 'freelancer') {
@@ -196,14 +155,13 @@ const Setup = () => {
     } finally {
       setIsLoading(false); // Stop loading regardless of success or failure
     }
-  
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: value // This will now correctly update the snake_case keys in formData
     }));
 
     // Clear error when user starts typing
@@ -265,42 +223,42 @@ const Setup = () => {
                 <div className="grid grid-cols-1 gap-4 sm:gap-5">
                   <FormInput
                     label="First Name"
-                    id="firstName"
-                    name="firstName"
+                    id="first_name" // ID is for accessibility, can be anything
+                    name="first_name" // --- SNAKE_CASE NAME ---
                     value={formData.first_name}
                     onChange={handleChange}
                     placeholder="John"
-                    error={errors.first_name} // Pass error prop
+                    error={errors.first_name}
                   />
 
                   <FormInput
                     label="Last Name"
-                    id="lastName"
-                    name="lastName"
+                    id="last_name"
+                    name="last_name" // --- SNAKE_CASE NAME ---
                     value={formData.last_name}
                     onChange={handleChange}
                     placeholder="Doe"
-                    error={errors.last_name} // Pass error prop
+                    error={errors.last_name}
                   />
 
                   <FormInput
                     label="Country"
                     id="country"
-                    name="country"
+                    name="country" // --- SNAKE_CASE NAME ---
                     value={formData.country}
                     onChange={handleChange}
                     placeholder="United States"
-                    error={errors.country} // Pass error prop
+                    error={errors.country}
                   />
 
                   <FormInput
                     label="State/Province"
-                    id="stateProvince"
-                    name="stateProvince"
-                    value={formData.state_province}
+                    id="state_name"
+                    name="state_name" // --- SNAKE_CASE NAME ---
+                    value={formData.state_name}
                     onChange={handleChange}
                     placeholder="California"
-                    error={errors.state_province} // Pass error prop
+                    error={errors.state_name}
                   />
                 </div>
               </div>
@@ -311,13 +269,13 @@ const Setup = () => {
                   <h3 className="text-base sm:text-lg font-medium text-dark mb-3 sm:mb-4 basic-font">Professional Details</h3>
 
                   <div className="mb-4 sm:mb-5">
-                    <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-1 basic-font">
+                    <label htmlFor="skill" className="block text-sm font-medium text-gray-700 mb-1 basic-font">
                       Job Title
                     </label>
                     <select
-                      id="jobTitle"
-                      name="jobTitle"
-                      value={formData.skill}
+                      id="skill" // ID is for accessibility, can be anything
+                      name="skill" // --- SNAKE_CASE NAME ---
+                      value={formData.skill} // --- SNAKE_CASE VALUE ---
                       onChange={handleChange}
                       className={`block w-full pl-3 pr-3 py-2 border ${errors.skill ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font`}
                     >
@@ -354,6 +312,7 @@ const Setup = () => {
                   } focus:outline-none focus:ring-2 focus:ring-offset-2`}
                   disabled={isLoading} // Disable button when loading
                 >
+                  {isLoading ? <Loader2 className="animate-spin h-5 w-5 inline-block mr-2" /> : ''}
                   {isLoading ? 'Saving Profile...' : (isFreelancer ? 'Save Profile Information' : 'Create Client Profile')}
                 </button>
               </div>
