@@ -1,260 +1,79 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Phone, Video, MoreHorizontal, Send, Bot, User } from 'lucide-react';
-import io from 'socket.io-client'; // Import Socket.IO client
+// import io from 'socket.io-client'; // Removed Socket.IO client import
 
-// IMPORTANT: Replace with the actual authenticated client's ID
-const own_id = 'your_current_client_id'; // e.g., 'client-johndoe' or 'user456'
-// IMPORTANT: Replace with your backend's base URL for API and Socket.IO
-const API_BASE_URL = 'http://127.0.0.1:5000'; // Your backend API base URL
-const SOCKET_IO_SERVER_URL = 'http://localhost:8080'; // Your Socket.IO server URL
-
-let socket; // Declare socket outside to persist connection or manage it in a context
+// Frontend simulation: A dummy ID for the current "client" user
+const OWN_ID = 'client-johndoe'; // This will represent the currently logged-in user
 
 const Messages = () => {
-  // We'll set a default selected chat in useEffect based on initial conversations
   const [selectedChat, setSelectedChat] = useState('');
-  // Client side will likely initiate 'hiring' or 'custom' chats with freelancers
-  // And 'platform' chats with AI.
   const [selectedChatType, setSelectedChatType] = useState('hiring'); // Default chat type
   const [newMessage, setNewMessage] = useState('');
-  const [typingUsers, setTypingUsers] = useState(new Set());
+  const [typingUsers, setTypingUsers] = useState(new Set()); // This will now be simulated or manually controlled
   const messagesEndRef = useRef(null);
-  const [conversations, setConversations] = useState([]); // Will be populated by API or initial dummy data
-  const [allMessages, setAllMessages] = useState({}); // Stores fetched and real-time messages
+  const [conversations, setConversations] = useState([]);
+  const [allMessages, setAllMessages] = useState({}); // Stores dummy fetched and simulated real-time messages
 
-  // --- Socket.IO Connection and Event Handling ---
+  // --- Frontend Simulation: Initial Conversations and Messages ---
   useEffect(() => {
-    if (!OWN_ID) {
-      console.warn('OWN_ID is not set. Cannot establish Socket.IO connection.');
-      return;
-    }
+    // Dummy data for initial client view of conversations.
+    // In a real frontend-only scenario, these would be hardcoded or loaded from a local JSON/context.
+    const initialConversations = [
+      { id: 'lancer-ai', name: 'Lancer AI', avatar: 'AI', avatarBg: 'bg-blue-500', lastMessage: 'Ask me anything!', time: 'now', unread: 0, isOnline: true, isBot: true, chatType: 'platform' },
+      { id: 'deandre', name: 'DeAndre', avatar: 'D', avatarBg: 'bg-purple-500', lastMessage: 'The graphics look amazing!', time: '2h', unread: 0, isOnline: true, isBot: false, chatType: 'hiring' },
+      { id: 'peter', name: 'Peter Roseline', avatar: 'P', avatarBg: 'bg-green-500', lastMessage: 'Perfect!', time: '1d', unread: 0, isOnline: false, isBot: false, chatType: 'custom' },
+      { id: 'sarah', name: 'Sarah Mitchell', avatar: 'S', avatarBg: 'bg-pink-500', lastMessage: 'Can you send me the updated wireframes?', time: '2d', unread: 0, isOnline: true, isBot: false, chatType: 'hiring' },
+      { id: 'mike', name: 'Mike Johnson', avatar: 'M', avatarBg: 'bg-indigo-500', lastMessage: 'Thanks for the quick turnaround!', time: '3d', unread: 0, isOnline: false, isBot: false, chatType: 'custom' }
+    ];
 
-    const token = localStorage.getItem('jwt_token'); // Get JWT token
+    setConversations(initialConversations);
 
-    if (!token) {
-      console.error('No JWT token found. Socket.IO connection aborted.');
-      return;
-    }
-
-    socket = io(SOCKET_IO_SERVER_URL, {
-      query: { token: token }, // Pass JWT as query parameter
-    });
-
-    socket.on('connect', () => {
-      console.log('Socket.IO connected as Client:', socket.id);
-      socket.emit('joinUserRoom', own_id); // Join a user-specific room
-    });
-
-    socket.on('disconnect', () => {
-      console.log('Socket.IO disconnected as Client.');
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('Socket.IO connection error for Client:', err.message);
-    });
-
-    socket.on('receiveMessage', (message) => {
-      console.log('Client received real-time message:', message);
-      // Backend message structure example: { sender_id, recipient_id, message_content, timestamp, chat_type }
-      const formattedMsg = {
-        id: message.id || Date.now(),
-        sender: message.sender_id,
-        content: message.message_content,
-        time: new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isOwn: message.sender_id === OWN_ID, // Determine if it's the client's own message
-      };
-
-      setAllMessages(prev => {
-        // The chatKey needs to be the ID of the OTHER party in the conversation
-        const chatKey = formattedMsg.isOwn ? message.recipient_id : message.sender_id;
-        return {
-          ...prev,
-          [chatKey]: [...(prev[chatKey] || []), formattedMsg]
-        };
-      });
-
-      // Update conversation list for the last message received
-      setConversations(prev =>
-        prev.map(conv => {
-          // Find the conversation related to the sender/recipient of the incoming message
-          if (conv.id === formattedMsg.sender || conv.id === formattedMsg.recipient_id) {
-            return {
-              ...conv,
-              lastMessage: formattedMsg.content,
-              time: 'now',
-              unread: conv.id !== selectedChat ? (conv.unread || 0) + 1 : 0, // Increment unread if not selected
-            };
-          }
-          return conv;
-        })
-      );
-    });
-
-    socket.on('typing', ({ userId, chatId }) => {
-      // Only show typing if the other user is typing in the currently selected chat
-      if (chatId === selectedChat && userId !== OWN_ID) {
-        setTypingUsers(prev => new Set([...prev, userId]));
-        setTimeout(() => {
-          setTypingUsers(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(userId);
-            return newSet;
-          });
-        }, 3000); // Adjust duration as needed
-      }
-    });
-
-    return () => {
-      if (socket) {
-        console.log('Disconnecting Socket.IO Client');
-        socket.disconnect();
-      }
+    // Dummy messages for each initial conversation
+    const dummyMessages = {
+      'lancer-ai': [
+        { id: 'msg1_ai', sender: 'lancer-ai', content: 'Hello! How can I assist you today?', time: '09:00 AM', isOwn: false },
+        { id: 'msg2_ai', sender: OWN_ID, content: 'Hi AI, I need some help with project management.', time: '09:01 AM', isOwn: true },
+        { id: 'msg3_ai', sender: 'lancer-ai', content: 'Certainly! What specifically would you like to know about project management?', time: '09:02 AM', isOwn: false },
+      ],
+      'deandre': [
+        { id: 'msg1_d', sender: 'deandre', content: 'Hey, just finished the first draft of the designs!', time: '10:00 AM', isOwn: false },
+        { id: 'msg2_d', sender: OWN_ID, content: 'Awesome! Can you send them over?', time: '10:01 AM', isOwn: true },
+        { id: 'msg3_d', sender: 'deandre', content: 'Sure, attaching them now. Let me know your thoughts.', time: '10:02 AM', isOwn: false },
+        { id: 'msg4_d', sender: 'deandre', content: 'The graphics look amazing!', time: '10:03 AM', isOwn: false },
+      ],
+      'peter': [
+        { id: 'msg1_p', sender: OWN_ID, content: 'Hope you are doing well with the project.', time: 'yesterday', isOwn: true },
+        { id: 'msg2_p', sender: 'peter', content: 'Perfect!', time: 'yesterday', isOwn: false },
+      ],
+      'sarah': [
+        { id: 'msg1_s', sender: 'sarah', content: 'Can you send me the updated wireframes?', time: '2 days ago', isOwn: false },
+      ],
+      'mike': [
+        { id: 'msg1_m', sender: OWN_ID, content: 'Just received the final report. Looks great!', time: '3 days ago', isOwn: true },
+        { id: 'msg2_m', sender: 'mike', content: 'Thanks for the quick turnaround!', time: '3 days ago', isOwn: false },
+      ],
     };
-  }, [OWN_ID, selectedChat]); // selectedChat dependency ensures typing indicators are current
+    setAllMessages(dummyMessages);
 
-  // --- API Integration: Fetch Past Messages ---
-  const fetchMessages = useCallback(async (chatType, ownId, recipientId) => {
-    if (!chatType || !ownId || !recipientId) return;
-
-    try {
-      const token = localStorage.getItem('jwt_token');
-      if (!token) {
-        console.error('No JWT token found. User might not be authenticated.');
-        alert('Session expired or unauthorized. Please log in again.');
-        return;
-      }
-
-      const response = await fetch(`${API_BASE_URL}/api/chat/${chatType}/${ownId}/${recipientId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error(`Error fetching messages for ${recipientId} (${chatType}):`, response.status, errorData);
-        if (response.status === 401) {
-          alert('Session expired or unauthorized. Please log in again.');
-        } else if (response.status === 400) {
-          alert(`Error: ${errorData.message || 'Unrecognized chat type.'}`);
-        }
-        setAllMessages(prev => ({ ...prev, [recipientId]: [] }));
-        return;
-      }
-
-      const data = await response.json();
-      console.log(`Client fetched data for ${recipientId} (${chatType}):`, data);
-
-      if (chatType === 'platform') {
-        if (data.well_recieved) {
-          console.log('Platform chat initiated successfully for client. No past messages returned.');
-          setAllMessages(prev => ({ ...prev, [recipientId]: [] }));
-        }
-      } else { // 'hiring' or 'custom' chat types
-        const formattedMessages = data.map(msg => ({
-          id: msg.id || Date.now() + Math.random(),
-          sender: msg.sender_tag, // Use sender_tag from backend
-          content: msg.message_content,
-          time: new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isOwn: msg.sender_tag === ownId, // Check if sender_tag matches client's ownId
-        }));
-        setAllMessages(prev => ({
-          ...prev,
-          [recipientId]: formattedMessages,
-        }));
-      }
-
-      // Update or add this chat to conversations list
-      setConversations(prevConversations => {
-        const chatExists = prevConversations.some(conv => conv.id === recipientId);
-        if (!chatExists) {
-          const newConv = {
-            id: recipientId,
-            name: `User ${recipientId}`, // Placeholder: Needs actual user names/avatars
-            avatar: recipientId.charAt(0).toUpperCase(),
-            avatarBg: 'bg-gray-500',
-            lastMessage: chatType !== 'platform' && data.length > 0 ? data[data.length - 1].message_content : (chatType === 'platform' ? 'Platform chat' : 'No messages yet.'),
-            time: chatType !== 'platform' && data.length > 0 ? new Date(data[data.length - 1].timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
-            unread: 0,
-            isOnline: false, // Placeholder
-            isBot: recipientId.includes('ai'),
-            chatType: chatType // Store chat type
-          };
-          return [...prevConversations, newConv];
-        }
-        return prevConversations.map(conv =>
-          conv.id === recipientId
-            ? {
-                ...conv,
-                lastMessage: chatType !== 'platform' && data.length > 0 ? data[data.length - 1].message_content : conv.lastMessage,
-                time: chatType !== 'platform' && data.length > 0 ? new Date(data[data.length - 1].timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : conv.time,
-                unread: 0, // Mark as read when selected
-                chatType: chatType
-              }
-            : conv
-        );
-      });
-
-    } catch (error) {
-      console.error('Network or parsing error for client:', error);
-      setAllMessages(prev => ({ ...prev, [recipientId]: [] }));
-    }
-  }, [OWN_ID]);
-
-  // Effect to fetch messages when selected chat or chat type changes
-  useEffect(() => {
-    if (selectedChat && selectedChatType) {
-      fetchMessages(selectedChatType, OWN_ID, selectedChat);
-    }
-  }, [selectedChat, selectedChatType, fetchMessages]);
-
-
-  // Initial load: Set a default selected chat and type if conversations are empty
-  useEffect(() => {
-    if (OWN_ID && conversations.length === 0) {
-      // Dummy data for initial client view.
-      // In a real app, this would be fetched from an API endpoint for user's conversations.
-      setConversations([
-        { id: 'lancer-ai', name: 'Lancer AI', avatar: 'AI', avatarBg: 'bg-blue-500', lastMessage: 'Ask me anything!', time: 'now', unread: 0, isOnline: true, isBot: true, chatType: 'platform' },
-        { id: 'deandre', name: 'DeAndre', avatar: 'D', avatarBg: 'bg-purple-500', lastMessage: 'The graphics look amazing!', time: '2h', unread: 0, isOnline: true, isBot: false, chatType: 'hiring' },
-        { id: 'peter', name: 'Peter Roseline', avatar: 'P', avatarBg: 'bg-green-500', lastMessage: 'Perfect!', time: '1d', unread: 0, isOnline: false, isBot: false, chatType: 'custom' },
-        { id: 'sarah', name: 'Sarah Mitchell', avatar: 'S', avatarBg: 'bg-pink-500', lastMessage: 'Can you send me the updated wireframes?', time: '2d', unread: 0, isOnline: true, isBot: false, chatType: 'hiring' },
-        { id: 'mike', name: 'Mike Johnson', avatar: 'M', avatarBg: 'bg-indigo-500', lastMessage: 'Thanks for the quick turnaround!', time: '3d', unread: 0, isOnline: false, isBot: false, chatType: 'custom' }
-      ]);
-    }
     // Set the first conversation as active if none is selected
-    if (conversations.length > 0 && !selectedChat) {
-      setSelectedChat(conversations[0].id);
-      setSelectedChatType(conversations[0].chatType);
+    if (initialConversations.length > 0 && !selectedChat) {
+      setSelectedChat(initialConversations[0].id);
+      setSelectedChatType(initialConversations[0].chatType);
     }
-  }, [OWN_ID, conversations, selectedChat]);
+  }, []); // Empty dependency array means this runs once on mount
 
-
-  // Scroll to bottom when new messages arrive
+  // Scroll to bottom when new messages arrive or chat changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [allMessages, selectedChat]);
 
-  // --- Send Message via Socket.IO ---
+  // Frontend-only: Simulate sending a message
   const handleSendMessage = (e) => {
     e.preventDefault();
-    if (newMessage.trim() && OWN_ID && selectedChat && socket) {
-      const messagePayload = {
-        recipientId: selectedChat, // The person receiving the message
-        chatType: selectedChatType, // The type of chat
-        messageContent: newMessage.trim(),
-        // Backend will add sender_id (OWN_ID), timestamp, etc.
-      };
-
-      console.log('Client emitting sendMessage:', messagePayload);
-      socket.emit('sendMessage', messagePayload);
-
-      // Optimistically add the message to the UI
+    if (newMessage.trim() && OWN_ID && selectedChat) {
       const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const newMsgForUI = {
-        id: Date.now(),
+        id: Date.now(), // Unique ID for frontend
         sender: OWN_ID,
         content: newMessage.trim(),
         time: timestamp,
@@ -275,14 +94,47 @@ const Messages = () => {
       );
 
       setNewMessage('');
+
+      // Optional: Simulate a response from the "other" user (e.g., AI or another freelancer)
+      if (selectedChat === 'lancer-ai') {
+        setTimeout(() => {
+          const aiResponse = {
+            id: Date.now() + 1,
+            sender: 'lancer-ai',
+            content: `Thanks for your message: "${newMsgForUI.content}". I'm a frontend AI, so I'll process this mentally!`,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isOwn: false,
+          };
+          setAllMessages(prev => ({
+            ...prev,
+            [selectedChat]: [...(prev[selectedChat] || []), aiResponse]
+          }));
+          setConversations(prev =>
+            prev.map(conv =>
+              conv.id === selectedChat
+                ? { ...conv, lastMessage: aiResponse.content, time: 'now' }
+                : conv
+            )
+          );
+        }, 1000); // Simulate AI response after 1 second
+      }
     }
   };
 
-  // --- Typing Indicator Logic (for real-time) ---
+  // Frontend-only: Simulate typing status
   const handleTyping = () => {
-    if (socket && OWN_ID && selectedChat) {
-      // Emit typing event to the server
-      socket.emit('typing', { userId: OWN_ID, chatId: selectedChat });
+    // This function can be used to visually show a typing indicator if desired,
+    // but it won't communicate with a backend for real-time updates.
+    // For a basic frontend, we can just clear it after a short delay to simulate "stopped typing".
+    if (newMessage.length > 0) {
+      setTypingUsers(prev => new Set([...prev, activeChat?.id])); // Simulate other user typing
+      setTimeout(() => {
+        setTypingUsers(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(activeChat?.id);
+          return newSet;
+        });
+      }, 3000); // Typing indicator disappears after 3 seconds
     }
   };
 
@@ -299,9 +151,8 @@ const Messages = () => {
 
   const activeChat = conversations.find(conv => conv.id === selectedChat);
   const messages = allMessages[selectedChat] || [];
-  // `isTyping` now checks if the OTHER person in the active chat is typing
+  // `isTyping` now checks if the OTHER person in the active chat is typing (simulated)
   const isTyping = typingUsers.has(activeChat?.id);
-
 
   return (
     <div className="flex h-full bg-white basic-font">
@@ -347,7 +198,7 @@ const Messages = () => {
             conversations.map((conv) => (
               <div
                 key={conv.id}
-                onClick={() => handleChatSelect(conv.id, conv.chatType)} 
+                onClick={() => handleChatSelect(conv.id, conv.chatType)}
                 className={`p-4 cursor-pointer hover:bg-gray-50 border-b border-gray-100 transition-colors ${
                   selectedChat === conv.id ? 'bg-blue-50 border-r-2 border-r-blue-500' : ''
                 }`}
@@ -517,7 +368,7 @@ const Messages = () => {
               value={newMessage}
               onChange={(e) => {
                 setNewMessage(e.target.value);
-                handleTyping(); // Emit typing event on change
+                handleTyping(); // Emit typing event on change (frontend only)
               }}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
