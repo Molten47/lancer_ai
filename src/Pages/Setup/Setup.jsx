@@ -56,11 +56,11 @@ const Setup = () => {
   const userRole = location.state?.role || sessionStorage.getItem('userRole') || 'freelancer'; // Default to freelancer if not found
 
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    first_name: '',
+    last_name: '',
     country: '',
-    stateProvince: '',
-    jobTitle: '',
+    state_name: '',
+    skill: '',
   });
 
   const [errors, setErrors] = useState({});
@@ -105,11 +105,11 @@ const Setup = () => {
 
     // Basic validation (ensure profileBio validation is removed if the field is also removed from UI/state)
     const newErrors = {};
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
+    if (!formData.firstName.trim()) newErrors.first_name = 'First name is required';
+    if (!formData.lastName.trim()) newErrors.last_name = 'Last name is required';
     if (!formData.country.trim()) newErrors.country = 'Country is required';
-    if (!formData.stateProvince.trim()) newErrors.stateProvince = 'State/Province is required';
-    if (isFreelancer && !formData.jobTitle) newErrors.jobTitle = 'Job title is required';
+    if (!formData.stateProvince.trim()) newErrors.state_name = 'State/Province is required';
+    if (isFreelancer && !formData.skill) newErrors.skill = 'Job title is required';
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -140,7 +140,7 @@ const Setup = () => {
       setIsLoading(false); // Stop loading regardless of success or failure
     }
 
-    /*
+    
     // --- ORIGINAL BACKEND API CALL (COMMENTED OUT) ---
     // JWT Authentication Check (if needed after frontend flow is working)
     const jwtToken = localStorage.getItem('jwtToken'); // Get token from local storage
@@ -154,16 +154,15 @@ const Setup = () => {
     try {
       // Prepare the payload for the API
       const payload = {
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
         country: formData.country,
-        state_province: formData.stateProvince,
-        role: userRole, // Send the user's role here
+        state_province: formData.state_province,
       };
 
       // Add job_title only if it's a freelancer
       if (isFreelancer) {
-        payload.job_title = formData.jobTitle;
+        payload.job_title = formData.job_title;
       }
 
       const response = await fetch('/api/profile_setup', {
@@ -197,7 +196,7 @@ const Setup = () => {
     } finally {
       setIsLoading(false); // Stop loading regardless of success or failure
     }
-    */
+  
   };
 
   const handleChange = (e) => {
@@ -268,20 +267,20 @@ const Setup = () => {
                     label="First Name"
                     id="firstName"
                     name="firstName"
-                    value={formData.firstName}
+                    value={formData.first_name}
                     onChange={handleChange}
                     placeholder="John"
-                    error={errors.firstName} // Pass error prop
+                    error={errors.first_name} // Pass error prop
                   />
 
                   <FormInput
                     label="Last Name"
                     id="lastName"
                     name="lastName"
-                    value={formData.lastName}
+                    value={formData.last_name}
                     onChange={handleChange}
                     placeholder="Doe"
-                    error={errors.lastName} // Pass error prop
+                    error={errors.last_name} // Pass error prop
                   />
 
                   <FormInput
@@ -298,10 +297,10 @@ const Setup = () => {
                     label="State/Province"
                     id="stateProvince"
                     name="stateProvince"
-                    value={formData.stateProvince}
+                    value={formData.state_province}
                     onChange={handleChange}
                     placeholder="California"
-                    error={errors.stateProvince} // Pass error prop
+                    error={errors.state_province} // Pass error prop
                   />
                 </div>
               </div>
@@ -318,9 +317,9 @@ const Setup = () => {
                     <select
                       id="jobTitle"
                       name="jobTitle"
-                      value={formData.jobTitle}
+                      value={formData.skill}
                       onChange={handleChange}
-                      className={`block w-full pl-3 pr-3 py-2 border ${errors.jobTitle ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font`}
+                      className={`block w-full pl-3 pr-3 py-2 border ${errors.skill ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font`}
                     >
                       <option value="">Select Job Title</option>
                       {jobTitleOptions.map((title, index) => (
@@ -329,7 +328,7 @@ const Setup = () => {
                         </option>
                       ))}
                     </select>
-                    {errors.jobTitle && <p className="mt-2 text-sm text-red-600">{errors.jobTitle}</p>}
+                    {errors.skill && <p className="mt-2 text-sm text-red-600">{errors.skill}</p>}
                   </div>
                 </div>
               )}

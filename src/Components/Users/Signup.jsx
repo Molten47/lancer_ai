@@ -6,7 +6,7 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
+    confirm_password: '',
     role: ''
   });
 
@@ -50,10 +50,10 @@ const Signup = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if (!formData.confirmPassword) {
+    if (!formData.confirm_password) {
       newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+    } else if (formData.password !== formData.confirm_password) {
+      newErrors.confirm_password = 'Passwords do not match';
     }
 
     if (!formData.role) {
@@ -75,41 +75,8 @@ const Signup = () => {
 
     setIsLoading(true); // Set loading to true when starting API call
 
-    // --- FRONTEND SIMULATION ONLY: Commented out backend API call ---
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Simulate a successful signup response
-      console.log('Frontend Signup simulation successful:', formData);
-
-      // Store role in localStorage for persistence
-      try {
-        localStorage.setItem('userRole', formData.role);
-        localStorage.setItem('showSignupSuccess', 'true');
-      } catch (e) {
-        console.error('Failed to save to localStorage:', e);
-        // You might want to show a user-friendly message about this error as well
-      }
-
-      // Navigate directly to the setup page with state
-      navigate('/setup', {
-        state: {
-          role: formData.role,
-          showSuccessAlert: true
-        }
-      });
-
-    } catch (error) {
-      console.error('Frontend simulation error during signup:', error);
-      setApiError('An unexpected error occurred during signup simulation.');
-    } finally {
-      setIsLoading(false); // Set loading to false after simulation completes
-    }
-
-    /*
-    // --- ORIGINAL BACKEND API CALL (COMMENTED OUT) ---
-    try {
+      // API call to the backend signup endpoint
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
@@ -119,7 +86,7 @@ const Signup = () => {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          role: formData.role
+          role: formData.role 
         })
       });
 
@@ -158,17 +125,15 @@ const Signup = () => {
     } finally {
       setIsLoading(false); // Set loading to false after API call completes
     }
-    */
   };
 
   const handleGoogleSignIn = () => {
-    console.log('Google sign-in initiated (frontend simulation)');
+    console.log('Google sign-in initiated');
     // This would typically involve redirecting to a Google OAuth flow
-    // For frontend testing, you can just log it or simulate a redirect.
   };
 
   return (
-    <div className="flex flex-col items-center justify-center  basic-font min-h-screen bg-gray-50 p-4">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
         {/* Welcome Message */}
         <div className="text-center mb-8">
@@ -247,7 +212,7 @@ const Signup = () => {
                 type="password"
                 name="confirmPassword"
                 id="confirmPassword"
-                value={formData.confirmPassword}
+                value={formData.confirm_password}
                 onChange={handleChange}
                 className={`block w-full pl-10 pr-3 py-2 border ${errors.confirmPassword || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
@@ -258,7 +223,7 @@ const Signup = () => {
                 </div>
               )}
             </div>
-            {errors.confirmPassword && <p className="mt-2 text-sm text-red-600">{errors.confirmPassword}</p>}
+            {errors.confirmPassword && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
           </div>
 
           {/* Role Selection */}
