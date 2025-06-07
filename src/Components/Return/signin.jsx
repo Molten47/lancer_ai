@@ -65,7 +65,7 @@ const Signin = () => {
 
   if (submitted) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-light p-4">
+      <div className="flex flex-col items-center justify-center basic-font min-h-screen bg-light p-4">
         <div className="bg-white rounded-lg shadow-lg p-6 md:p-8 w-full max-w-md text-center">
           <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
             <Check className="h-6 w-6 text-green-600" />

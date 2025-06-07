@@ -225,7 +225,7 @@ const Setup = () => {
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex justify-center items-center py-6 px-4 sm:py-12 sm:px-6">
+    <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex justify-center items-center py-6 px-4 sm:py-12 sm:px-6 basic-font">
       <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl overflow-hidden">
         {/* Header with conditional styling based on role */}
         <div className={`px-4 py-5 sm:px-8 sm:py-6 ${isFreelancer ? 'bg-light' : 'bg-light'}`}>

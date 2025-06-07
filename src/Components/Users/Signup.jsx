@@ -168,7 +168,7 @@ const Signup = () => {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+    <div className="flex flex-col items-center justify-center  basic-font min-h-screen bg-gray-50 p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
         {/* Welcome Message */}
         <div className="text-center mb-8">
