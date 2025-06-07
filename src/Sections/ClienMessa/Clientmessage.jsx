@@ -188,9 +188,9 @@ const Messages = () => {
       )}
 
       {/* Left sidebar - Conversations list */}
-      <div className={`sidebar-container w-80 lg:w-80 border-r border-gray-200 flex flex-col bg-white z-50 fixed lg:relative inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
+      <div className={`sidebar-container border-r border-gray-200 flex flex-col bg-white z-50 fixed lg:relative inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      }`}>
+      } ${isSidebarOpen ? 'w-full sm:w-80' : 'w-80'} lg:w-80`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 mt-5">
           <div className="flex items-center justify-between mb-6">
