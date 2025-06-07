@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, Phone, Video, MoreHorizontal, Send, Bot, User } from 'lucide-react';
-// import io from 'socket.io-client'; // Removed Socket.IO client import
+import { Search, Phone, Video, MoreHorizontal, Send, Bot, User, Menu, ArrowLeft, X } from 'lucide-react';
 
 // Frontend simulation: A dummy ID for the current "client" user
 const OWN_ID = 'client-johndoe'; // This will represent the currently logged-in user
@@ -10,6 +9,7 @@ const Messages = () => {
   const [selectedChatType, setSelectedChatType] = useState('hiring'); // Default chat type
   const [newMessage, setNewMessage] = useState('');
   const [typingUsers, setTypingUsers] = useState(new Set()); // This will now be simulated or manually controlled
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
   const messagesEndRef = useRef(null);
   const [conversations, setConversations] = useState([]);
   const [allMessages, setAllMessages] = useState({}); // Stores dummy fetched and simulated real-time messages
@@ -66,6 +66,27 @@ const Messages = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [allMessages, selectedChat]);
+
+  // Close sidebar when clicking outside on mobile
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isSidebarOpen && !event.target.closest('.sidebar-container') && !event.target.closest('.sidebar-toggle')) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    if (isSidebarOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isSidebarOpen]);
 
   // Frontend-only: Simulate sending a message
   const handleSendMessage = (e) => {
@@ -141,6 +162,7 @@ const Messages = () => {
   const handleChatSelect = (chatId, chatType) => {
     setSelectedChat(chatId);
     setSelectedChatType(chatType); // Update the chat type when selecting
+    setIsSidebarOpen(false); // Close sidebar on mobile when chat is selected
     // Mark messages as read
     setConversations(prev =>
       prev.map(conv =>
@@ -149,18 +171,37 @@ const Messages = () => {
     );
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
   const activeChat = conversations.find(conv => conv.id === selectedChat);
   const messages = allMessages[selectedChat] || [];
   // `isTyping` now checks if the OTHER person in the active chat is typing (simulated)
   const isTyping = typingUsers.has(activeChat?.id);
 
   return (
-    <div className="flex h-full bg-white basic-font">
+    <div className="flex h-full bg-white basic-font relative">
+      {/* Mobile Overlay */}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" />
+      )}
+
       {/* Left sidebar - Conversations list */}
-      <div className="w-80 border-r border-gray-200 flex flex-col">
+      <div className={`sidebar-container w-80 lg:w-80 border-r border-gray-200 flex flex-col bg-white z-50 fixed lg:relative inset-y-0 left-0 transform transition-transform duration-300 ease-in-out ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
         {/* Header */}
         <div className="p-4 border-b border-gray-200 mt-5">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Messages (Client)</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900">Messages (Client)</h2>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <X size={20} className="text-gray-600" />
+            </button>
+          </div>
 
           {/* Search */}
           <div className="relative mt-3">
@@ -251,11 +292,19 @@ const Messages = () => {
       </div>
 
       {/* Right side - Chat area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col lg:ml-0 w-full">
         {/* Chat header */}
         <div className="p-4 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
+              {/* Mobile menu button */}
+              <button
+                onClick={toggleSidebar}
+                className="sidebar-toggle lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Menu size={20} className="text-gray-600" />
+              </button>
+
               <div className="relative">
                 {activeChat?.isBot ? (
                   <div className={`w-10 h-10 ${activeChat.avatarBg} rounded-full flex items-center justify-center`}>
@@ -273,29 +322,29 @@ const Messages = () => {
                 )}
               </div>
               <div>
-                <h3 className="font-medium text-gray-900">{activeChat?.name || 'Select a chat'}</h3>
-                <p className="text-sm text-green-600">
+                <h3 className="font-medium text-gray-900 text-sm sm:text-base">{activeChat?.name || 'Select a chat'}</h3>
+                <p className="text-xs sm:text-sm text-green-600">
                   {isTyping ? 'typing...' : (activeChat?.isOnline ? 'Online' : 'Offline')}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Phone size={18} className="text-gray-600" />
+                <Phone size={16} className="text-gray-600 sm:w-5 sm:h-5" />
               </button>
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <Video size={18} className="text-gray-600" />
+                <Video size={16} className="text-gray-600 sm:w-5 sm:h-5" />
               </button>
               <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <MoreHorizontal size={18} className="text-gray-600" />
+                <MoreHorizontal size={16} className="text-gray-600 sm:w-5 sm:h-5" />
               </button>
             </div>
           </div>
         </div>
 
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#F9FAFB]">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 bg-[#F9FAFB]">
           {!selectedChat ? (
             <p className="text-center text-gray-500">Please select a chat to view messages.</p>
           ) : messages.length === 0 && selectedChatType !== 'platform' ? (
@@ -305,7 +354,7 @@ const Messages = () => {
               key={message.id}
               className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`max-w-md ${message.isOwn ? 'order-2' : 'order-1'}`}>
+              <div className={`max-w-[85%] sm:max-w-md ${message.isOwn ? 'order-2' : 'order-1'}`}>
                 {!message.isOwn && (
                   <div className="flex items-center space-x-2 mb-1">
                     <div className={`w-6 h-6 ${activeChat?.avatarBg || 'bg-gray-400'} rounded-full flex items-center justify-center`}>
@@ -318,13 +367,13 @@ const Messages = () => {
                   </div>
                 )}
                 <div
-                  className={`px-4 py-6 rounded-2xl ${
+                  className={`px-3 sm:px-4 py-4 sm:py-6 rounded-2xl ${
                     message.isOwn
                       ? 'bg-[#4F46E5] text-white rounded-br-md'
                       : 'bg-[#F3F4F6] text-[#111827] border border-gray-200 rounded-bl-md'
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm break-words">{message.content}</p>
                 </div>
                 <p className={`text-xs text-gray-500 mt-1 ${message.isOwn ? 'text-right' : 'text-left'}`}>
                   {message.time}
@@ -336,7 +385,7 @@ const Messages = () => {
           {/* Typing indicator (only for active chat) */}
           {isTyping && activeChat && (
             <div className="flex justify-start">
-              <div className="max-w-md">
+              <div className="max-w-[85%] sm:max-w-md">
                 <div className="flex items-center space-x-2 mb-1">
                   <div className={`w-6 h-6 ${activeChat?.avatarBg || 'bg-gray-400'} rounded-full flex items-center justify-center`}>
                     {activeChat?.isBot ? (
@@ -361,8 +410,8 @@ const Messages = () => {
         </div>
 
         {/* Message input */}
-        <div className="p-4 border-t border-gray-200 bg-white">
-          <div className="flex items-center space-x-3">
+        <div className="p-3 sm:p-4 border-t border-gray-200 bg-white">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <input
               type="text"
               value={newMessage}
@@ -376,13 +425,13 @@ const Messages = () => {
                 }
               }}
               placeholder="Send a Message..."
-              className="flex-1 px-4 py-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="flex-1 px-3 sm:px-4 py-3 sm:py-4 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
             />
             <button
               onClick={handleSendMessage}
-              className="p-2 bg-cyan-500 hover:bg-cta rounded-full transition-colors"
+              className="p-2.5 sm:p-3 bg-cyan-500 hover:bg-cyan-600 rounded-full transition-colors"
             >
-              <Send size={18} className="text-white" />
+              <Send size={16} className="text-white sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
