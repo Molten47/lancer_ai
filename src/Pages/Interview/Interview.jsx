@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom'; // Import useLocation
-import io from 'socket.io-client'; // Import the socket.io-client library
+// import io from 'socket.io-client'; // Commented out: Import the socket.io-client library
 import { Loader2, MessageSquare, CornerDownLeft, XCircle } from 'lucide-react'; // Added Loader2 for loading states
 
-// Define your backend Socket.IO URL
-const SOCKET_SERVER_URL = '/'; // Use your Vite proxy, or 'http://127.0.0.1:5000' if direct
+// Define your backend Socket.IO URL (Commented out as we're simulating)
+// const SOCKET_SERVER_URL = '/'; // Use your Vite proxy, or 'http://127.0.0.1:5000' if direct
 
 const Interview = () => {
   const navigate = useNavigate();
@@ -13,19 +13,29 @@ const Interview = () => {
   // Retrieve user_id. This is crucial for room joining.
   // Assuming it's stored in localStorage after successful authentication/profile setup.
   const userId = localStorage.getItem('user_id');
-  const room = String(userId); // Room ID is user_id stringified
+  // const room = String(userId); // Room ID is user_id stringified (Commented out)
 
-  const [socket, setSocket] = useState(null);
+  // const [socket, setSocket] = useState(null); // Commented out: Socket state
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
-  const [isConnected, setIsConnected] = useState(false); // To show connection status
+  const [isConnected, setIsConnected] = useState(true); // Changed to true for simulation
   const [socketError, setSocketError] = useState(''); // To display socket connection errors
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false); // For AI typing indicator
   const messagesEndRef = useRef(null);
 
-  // --- Socket.IO Connection and Event Handling ---
+  // --- Simulated Interview Flow (Replaces Socket.IO Logic) ---
+  const interviewQuestions = [
+    "Tell me about your most significant project experience related to your chosen job title.",
+    "How do you handle tight deadlines and pressure in your work?",
+    "Describe a time you faced a technical challenge and how you overcame it.",
+    "What are your strengths and weaknesses as a freelancer/professional?",
+    "How do you ensure effective communication with clients or team members?",
+    "What are your long-term career goals?",
+  ];
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
   useEffect(() => {
     if (!userId) {
       setSocketError('User ID is missing. Cannot start interview. Please log in.');
@@ -34,86 +44,34 @@ const Interview = () => {
       return;
     }
 
-    const newSocket = io(SOCKET_SERVER_URL, {
-      transports: ['websocket', 'polling'],
-      auth: {
-        token: localStorage.getItem('jwtToken') // Send JWT for authentication if your backend requires it
-      },
-      query: {
-        userId: userId // Send userId in query for initial server-side identification if needed
-      }
-    });
-
-    setSocket(newSocket);
-
-    // Socket Event Listeners
-    newSocket.on('connect', () => {
-      console.log('Socket Connected:', newSocket.id);
-      setIsConnected(true);
-      setSocketError(''); // Clear any previous errors
-
-      // Emit 'join' event to join the specific room
-      console.log(`Attempting to join room: ${room} with user_id: ${userId}`);
-      newSocket.emit('join', { user_id: parseInt(userId), room: room }); // user_id as int, room as string
-
-      // Initial greeting from the AI (emitted by backend or hardcoded here after join success)
-      // If the backend sends an 'initial_greeting' event, listen for that instead.
+    // Simulate initial greeting and first question
+    setIsLoadingQuestion(true);
+    setTimeout(() => {
+      setMessages([
+        {
+          sender_id: 'ai',
+          message_content: 'Welcome to the interview! This will help us understand your experience and working style better. I\'ll ask you 6 questions - please answer them one at a time.',
+          sender_tag: 'sender_a' // AI is sender_a
+        }
+      ]);
       setTimeout(() => {
-        setMessages([
-          {
+        if (interviewQuestions[currentQuestionIndex]) {
+          setMessages(prev => [...prev, {
             sender_id: 'ai',
-            message_content: 'Welcome to the interview! This will help us understand your experience and working style better. I\'ll ask you 6 questions - please answer them one at a time.',
-            sender_tag: 'sender_a' // AI is sender_a
-          }
-        ]);
-        // Signal backend to send the first question after initial greeting
-        newSocket.emit('request_next_question', { own_id: room });
-        setIsLoadingQuestion(true); // Show typing indicator while waiting for first question
-      }, 500);
-    });
+            message_content: interviewQuestions[currentQuestionIndex],
+            sender_tag: 'sender_a',
+            is_question: true,
+            interview_complete: false
+          }]);
+          setIsWaitingForResponse(true);
+        }
+        setIsLoadingQuestion(false);
+      }, 1000); // Simulate delay for first question
+    }, 500);
 
-    newSocket.on('disconnect', () => {
-      console.log('Socket Disconnected');
-      setIsConnected(false);
-      setSocketError('Disconnected from chat. Please check your network.');
-      setIsLoadingQuestion(false);
-    });
-
-    newSocket.on('connect_error', (err) => {
-      console.error('Socket Connection Error:', err.message);
-      setSocketError(`Connection failed: ${err.message}. Retrying...`);
-      setIsConnected(false);
-      setIsLoadingQuestion(false);
-    });
-
-    // Listen for incoming messages/questions from the AI
-    // The backend should emit a 'message' event for AI responses/questions
-    newSocket.on('message', (message) => {
-      console.log('Received message:', message);
-      // Expected structure: { sender_id: 'ai', message_content: 'Question?', sender_tag: 'sender_a', is_question: true/false, interview_complete: true/false }
-      setMessages((prevMessages) => [...prevMessages, message]);
-
-      if (message.interview_complete) {
-        setInterviewComplete(true);
-        setIsWaitingForResponse(false); // No more input
-      } else {
-        setIsWaitingForResponse(true); // Ready for user input after receiving a question
-      }
-      setIsLoadingQuestion(false); // Hide typing indicator
-    });
-
-    // Cleanup on component unmount
-    return () => {
-      console.log('Disconnecting socket...');
-      newSocket.off('connect');
-      newSocket.off('disconnect');
-      newSocket.off('connect_error');
-      newSocket.off('message');
-      newSocket.off('join'); // Ensure all listeners are cleaned up
-      newSocket.off('request_next_question');
-      newSocket.disconnect();
-    };
-  }, [userId, room]); // Dependencies for useEffect
+    // No socket cleanup needed for simulation
+    return () => {};
+  }, [userId]); // Dependencies for useEffect
 
   // Auto-scroll to bottom of chat when messages update
   useEffect(() => {
@@ -131,8 +89,7 @@ const Interview = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (currentInput.trim() === '' || !isWaitingForResponse || !socket || !isConnected) {
-      if (!isConnected) setSocketError('Not connected to chat server. Please wait.');
+    if (currentInput.trim() === '' || !isWaitingForResponse) {
       return;
     }
 
@@ -143,24 +100,52 @@ const Interview = () => {
       sender_tag: 'sender_b', // Freelancer is sender_b
     };
     setMessages(prev => [...prev, userMessage]);
-
-    // Emit the message to the AI via Socket.IO
-    const messageDataForAI = {
-      message_content: currentInput.trim(),
-      own_id: room, // freelancer's user_id stringified
-      recipient_id: 'ai', // AI's ID
-      sender_tag: 'sender_b', // Freelancer is sender_b
-    };
-    console.log('Emitting send_message to AI:', messageDataForAI);
-    socket.emit('send_message', messageDataForAI);
-
     setCurrentInput('');
-    setIsWaitingForResponse(false); // Wait for AI's next question
+    setIsWaitingForResponse(false);
     setIsLoadingQuestion(true); // Show typing indicator for AI response
+
+    // Simulate AI response and next question
+    setTimeout(() => {
+      const nextQuestionIndex = currentQuestionIndex + 1;
+      if (nextQuestionIndex < interviewQuestions.length) {
+        // Simulate AI's acknowledgement and next question
+        setMessages(prev => [...prev,
+          {
+            sender_id: 'ai',
+            message_content: "Thank you for your answer. Here's the next question:",
+            sender_tag: 'sender_a',
+            is_question: false,
+            interview_complete: false
+          },
+          {
+            sender_id: 'ai',
+            message_content: interviewQuestions[nextQuestionIndex],
+            sender_tag: 'sender_a',
+            is_question: true,
+            interview_complete: false
+          }
+        ]);
+        setCurrentQuestionIndex(nextQuestionIndex);
+        setIsWaitingForResponse(true);
+      } else {
+        // Interview complete
+        setMessages(prev => [...prev,
+          {
+            sender_id: 'ai',
+            message_content: "That concludes our interview! Thank you for your time and thoughtful responses. Your profile is now complete.",
+            sender_tag: 'sender_a',
+            is_question: false,
+            interview_complete: true
+          }
+        ]);
+        setInterviewComplete(true);
+      }
+      setIsLoadingQuestion(false);
+    }, 1500); // Simulate AI thinking time
   };
 
   const handleContinueToDashboard = () => {
-    navigate('/dashboard'); // Assuming '/dashboard' is the freelancer's main dashboard
+    navigate('/tasks'); // Navigate freelancer to '/tasks'
   };
 
   // Render warning if userId is not found
@@ -196,20 +181,13 @@ const Interview = () => {
           <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
             <div
               className="bg-cta h-2.5 rounded-full transition-all duration-500 ease-out"
-              // Progress bar logic will now be driven by backend (number of questions answered vs total)
-              // For now, we'll make it static or remove it if backend doesn't send progress.
-              // For demonstration, a placeholder might be used, or removed entirely.
-              // The original component used `currentQuestionIndex` which is removed now.
-              // We'll approximate progress based on message count or remove if backend doesn't send total questions.
-              // Let's assume for now the backend will eventually provide total questions/current question count.
-              // For a simple progress bar, we'd need to know total questions from backend.
-              // If not, progress bar might be removed or simplified.
-              style={{ width: `0%` }} // Placeholder, will update based on backend data
+              // Progress bar based on simulated questions
+              style={{ width: `${(currentQuestionIndex / interviewQuestions.length) * 100}%` }}
             ></div>
           </div>
-          {/* <p className="mt-1 text-sm text-gray-500 basic-font">
-            Progress will be shown here (based on backend feedback)
-          </p> */}
+          <p className="mt-1 text-sm text-gray-500 basic-font">
+            {currentQuestionIndex} of {interviewQuestions.length} questions answered
+          </p>
         </div>
 
         {/* Chat area */}
@@ -221,9 +199,9 @@ const Interview = () => {
               </div>
             )}
             {!isConnected && !socketError && (
-                 <div className="text-center text-blue-600 p-2 bg-blue-100 rounded-md">
-                    <Loader2 className="inline-block h-4 w-4 animate-spin mr-1" /> Connecting to chat server...
-                 </div>
+                   <div className="text-center text-blue-600 p-2 bg-blue-100 rounded-md">
+                     <Loader2 className="inline-block h-4 w-4 animate-spin mr-1" /> Connecting to chat server...
+                   </div>
             )}
             {messages.length === 0 && isConnected && !isLoadingQuestion && (
               <div className="text-center text-gray-500 mt-10">
@@ -295,7 +273,7 @@ const Interview = () => {
                 onClick={handleContinueToDashboard}
                 className="bg-cta hover:bg-[#00b5b5] text-white py-3 px-8 rounded-lg transition-colors duration-200 flex items-center gap-2 font-medium basic-font"
               >
-                Continue to Dashboard
+                Continue to Tasks
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>

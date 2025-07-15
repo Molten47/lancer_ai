@@ -225,22 +225,6 @@ const renderView = () => {
             <ChevronRight/>
           </div>
         </div>
-        
-        <div className='flex flex-row flex-1 md:w-[70%] gap-2 justify-center items-center px-2 md:px-0'>
-          <LucideShieldHalf size={20} className="hidden md:block"/>
-          <div className="relative w-full md:w-4/6 justify-center items-center">
-            <div className="absolute inset-y-0 left-3 flex justify-center items-center pointer-events-none">
-              <LockKeyhole size={14} />
-            </div>
-            {/* Search Input */}
-            <input 
-              type="search"
-              placeholder="Search or enter URL..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 text-[12px] font-normal focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-        </div>
-        
         <div className='flex flex-row gap-2 md:gap-4 justify-center items-center md:w-[10%] md:pl-10'>
           <HardDriveDownload className="hidden md:block"/>
           <Plus className="hidden md:block"/>

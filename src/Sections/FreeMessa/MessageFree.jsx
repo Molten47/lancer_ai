@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, Phone, Video, MoreHorizontal, Send, Bot, User } from 'lucide-react';
-// import io from 'socket.io-client'; // Removed Socket.IO client
+// import io from 'socket.io-client'; 
 
 // IMPORTANT: For frontend presentation, define a static OWN_ID
 const OWN_ID = 'your_current_user_id'; // e.g., 'freelancer-besamad' or 'user123'

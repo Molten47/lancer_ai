@@ -6,13 +6,13 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirm_password: '',
+    confirm_password: '', // Correctly named in state
     role: ''
   });
 
   const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState(''); // New state for API-specific errors
-  const [isLoading, setIsLoading] = useState(false); // New state for loading indicator
+  const [apiError, setApiError] = useState(''); // State for API-specific errors
+  const [isLoading, setIsLoading] = useState(false); // State for loading indicator
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -50,8 +50,9 @@ const Signup = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
+    // This is where the confirm_password check happens
     if (!formData.confirm_password) {
-      newErrors.confirmPassword = 'Please confirm your password';
+      newErrors.confirm_password = 'Please confirm your password';
     } else if (formData.password !== formData.confirm_password) {
       newErrors.confirm_password = 'Passwords do not match';
     }
@@ -63,7 +64,7 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = async (e) => { // Make handleSubmit async
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError(''); // Clear any previous API errors
     const validationErrors = validate();
@@ -73,58 +74,71 @@ const Signup = () => {
       return;
     }
 
-    setIsLoading(true); // Set loading to true when starting API call
+    setIsLoading(true); // Set loading to true when starting operation
 
-    try {
-      // API call to the backend signup endpoint
-      const response = await fetch('/api/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Send email, password, AND role to the backend
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          role: formData.role 
-        })
-      });
+    // --- Backend API Call (Commented Out) ---
+    // try {
+    //   const response = await fetch('/api/signup', {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({
+    //       email: formData.email,
+    //       password: formData.password,
+    //       role: formData.role
+    //     })
+    //   });
 
-      const data = await response.json();
+    //   const data = await response.json();
 
-      if (!response.ok) {
-        // If the response is not OK (e.g., 400 Bad Request, 409 Conflict if email exists)
-        // The backend JSON showed 'description' for error messages
-        setApiError(data.description || 'Signup failed. Please try again.');
-        return; // Stop execution if there's an API error
-      }
+    //   if (!response.ok) {
+    //     setApiError(data.description || 'Signup failed. Please try again.');
+    //     return;
+    //   }
 
-      // If signup is successful (200 OK)
-      console.log('Signup successful:', data);
+    //   console.log('Signup successful:', data);
 
-      // Store role in localStorage for persistence
+    //   try {
+    //     localStorage.setItem('userRole', formData.role);
+    //     localStorage.setItem('showSignupSuccess', 'true');
+    //   } catch (e) {
+    //     console.error('Failed to save to localStorage:', e);
+    //   }
+
+    //   navigate('/setup', {
+    //     state: {
+    //       role: formData.role,
+    //       showSuccessAlert: true
+    //     }
+    //   });
+
+    // } catch (error) {
+    //   console.error('Network or unexpected error during signup:', error);
+    //   setApiError('An unexpected error occurred. Please check your internet connection.');
+    // } finally {
+    //   setIsLoading(false); // Set loading to false after API call completes
+    // }
+    // --- End of Backend API Call ---
+
+    // --- Simulated Frontend Success (Replaces Backend Call) ---
+    console.log('Simulating signup success with data:', formData);
+    setTimeout(() => {
       try {
         localStorage.setItem('userRole', formData.role);
         localStorage.setItem('showSignupSuccess', 'true');
       } catch (e) {
         console.error('Failed to save to localStorage:', e);
-        // You might want to show a user-friendly message about this error as well
       }
-
-      // Navigate directly to the setup page with state
       navigate('/setup', {
         state: {
           role: formData.role,
           showSuccessAlert: true
         }
       });
-
-    } catch (error) {
-      console.error('Network or unexpected error during signup:', error);
-      setApiError('An unexpected error occurred. Please check your internet connection.');
-    } finally {
-      setIsLoading(false); // Set loading to false after API call completes
-    }
+      setIsLoading(false);
+    }, 1500); // Simulate a 1.5 second delay for "API call"
+    // --- End of Simulated Frontend Success ---
   };
 
   const handleGoogleSignIn = () => {
@@ -201,29 +215,29 @@ const Signup = () => {
             {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
           </div>
 
-          {/* Confirm Password Field */}
+          {/* Confirm Password Field - FIX APPLIED HERE */}
           <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
+            <label htmlFor="confirm_password" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-dark" />
               </div>
               <input
                 type="password"
-                name="confirmPassword"
-                id="confirmPassword"
+                name="confirm_password" // Changed name to match formData key
+                id="confirm_password" // Changed id to match name
                 value={formData.confirm_password}
                 onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${errors.confirmPassword || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                className={`block w-full pl-10 pr-3 py-2 border ${errors.confirm_password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
               />
-              {errors.confirmPassword && (
+              {errors.confirm_password && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <AlertCircle className="h-5 w-5 text-red-500" />
                 </div>
               )}
             </div>
-            {errors.confirmPassword && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
+            {errors.confirm_password && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
           </div>
 
           {/* Role Selection */}

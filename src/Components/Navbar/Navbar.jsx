@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import {Link} from 'react-router-dom'
+import Logo from '../../assets/Images/SVG/Artboard 19.svg'
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -11,10 +12,12 @@ const Navbar = () => {
 
   return (
     <div className='w-full bg-light py-3 md:py-4 lg:py-5 px-4 md:px-6 lg:px-8 fixed z-30 shadow-sm'>
-      <nav className='flex flex-row justify-between items-center'>
+      <nav className='flex flex-row justify-between items-center relative'>
         {/* Logo (Left) */}
-        <div>
-          <h2 className='text-2xl md:text-[28px] lg:text-[32px] font-bold text-primary uppercase basic-font'>Lancer</h2>
+        <div className='absolute text-cta flex flex-row items-center justify-center'>
+        
+          <img src={Logo} className='h-45' alt="" />
+          
         </div>
 
         {/* Mobile Menu Button - Only visible on small screens */}

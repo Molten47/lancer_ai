@@ -125,19 +125,7 @@ const DashboardCl = () => {
           </div>
         </div>
         
-        <div className='flex flex-row flex-1 md:w-[70%] gap-2 justify-center items-center px-2 md:px-0'>
-          <LucideShieldHalf size={20} className="hidden md:block"/>
-          <div className="relative w-full md:w-4/6 justify-center items-center">
-            <div className="absolute inset-y-0 left-3 flex justify-center items-center pointer-events-none">
-              <LockKeyhole size={14} />
-            </div>
-            <input 
-              type="search"
-              placeholder="Search or enter URL..."
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 text-[12px] font-normal focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-        </div>
+      
         
         <div className='flex flex-row gap-2 md:gap-4 justify-center items-center md:w-[10%] md:pl-10'>
           <HardDriveDownload className="hidden md:block"/>
@@ -232,7 +220,7 @@ const DashboardCl = () => {
                 <div className="flex items-center">
                   <div className="absolute left-0 w-1 h-full bg-blue-600 rounded-r-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
                   <FileText size={20} className="mr-3 text-gray-400 group-hover:text-blue-900 transition-colors" />
-                  <span className="group-hover:text-blue-900 transition-colors">Task</span>
+                  <span className="group-hover:text-blue-900 transition-colors">Projects</span>
                 </div>
                 {isTaskDropdownOpen ? 
                   <ChevronUp size={16} className="text-gray-400" /> : 
@@ -244,10 +232,10 @@ const DashboardCl = () => {
               {isTaskDropdownOpen && (
                 <div className="ml-10 space-y-1 mt-1">
                   <a href="#" className="flex items-center px-4 py-3 rounded-md bg-blue-500 text-white">
-                    <span>Ongoing Tasks</span>
+                    <span>Project Manager</span>
                   </a>
                   <a href="#" className="flex items-center px-4 py-3 rounded-md bg-green-500 text-white">
-                    <span>Completed Tasks</span>
+                    <span>Project Analytics</span>
                   </a>
                 </div>
               )}
