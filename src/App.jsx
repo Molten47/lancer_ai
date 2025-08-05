@@ -7,8 +7,7 @@ import Setup from './Pages/Setup/Setup';
 import Interview from './Pages/Interview/Interview';
 import DashboardCl from './Pages/DashboardClient/DashboardCL';
 import DashboardFr from './Pages/DashboardLancer/DashboardFr';
-import LancerTaskPage from './Pages/TaskPage/Taskpage';
-
+import LancerTaskPage from './Pages/TaskPage/Taskpage'
 
 
 const App = () => {
@@ -27,6 +26,8 @@ const App = () => {
                     <Route path="/tasks" element={<LancerTaskPage/>}/>
                     <Route path="/dashboardcl" element={<DashboardCl/>}/>
                     <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
+                    
+
 
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

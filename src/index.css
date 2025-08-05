@@ -7,9 +7,10 @@
   --background-light:#F4F6FB;
   --text-light:#FFFFFF;
   --text-dark:#1E1E2F;
-  --call-to-action:#00D4D4;
-  --call-to-action-hover:#00b5b5;
+  --call-to-action:#2563EB;
+  --call-to-action-hover:#1447e6;
   --jobs-cor: #343744;
+  --updated-background:#0C0950;
   
 
 
@@ -55,6 +56,9 @@ body {
     }
     .bg-dark{
       background-color: var(--text-dark);
+    }
+    .bg-updated{
+      background-color: var(--updated-background);
     }
 
   /*text-colors*/

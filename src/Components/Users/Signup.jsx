@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Signup = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirm_password: '', // Correctly named in state
-    role: ''
+  const [formData, setFormData] = useState(() => {
+    const savedData = localStorage.getItem('signupFormData');
+    return savedData ? JSON.parse(savedData) : {
+      email: '',
+      password: '',
+      confirm_password: '',
+      role: ''
+    };
   });
 
   const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState(''); // State for API-specific errors
-  const [isLoading, setIsLoading] = useState(false); // State for loading indicator
+  const [apiError, setApiError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    localStorage.setItem('signupFormData', JSON.stringify(formData));
+  }, [formData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -22,14 +29,12 @@ const Signup = () => {
       [name]: value
     });
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
         [name]: ''
       });
     }
-    // Clear API error if any when user starts typing
     if (apiError) {
       setApiError('');
     }
@@ -50,7 +55,6 @@ const Signup = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    // This is where the confirm_password check happens
     if (!formData.confirm_password) {
       newErrors.confirm_password = 'Please confirm your password';
     } else if (formData.password !== formData.confirm_password) {
@@ -64,9 +68,9 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setApiError(''); // Clear any previous API errors
+    setApiError('');
     const validationErrors = validate();
 
     if (Object.keys(validationErrors).length > 0) {
@@ -74,88 +78,41 @@ const Signup = () => {
       return;
     }
 
-    setIsLoading(true); // Set loading to true when starting operation
+    setIsLoading(true);
 
-    // --- Backend API Call (Commented Out) ---
-    // try {
-    //   const response = await fetch('/api/signup', {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //     },
-    //     body: JSON.stringify({
-    //       email: formData.email,
-    //       password: formData.password,
-    //       role: formData.role
-    //     })
-    //   });
+    console.log('Simulated signup successful:', formData);
 
-    //   const data = await response.json();
+    try {
+      localStorage.setItem('userRole', formData.role);
+      localStorage.setItem('showSignupSuccess', 'true');
+      localStorage.removeItem('signupFormData');
+    } catch (e) {
+      console.error('Failed to save to localStorage:', e);
+    }
 
-    //   if (!response.ok) {
-    //     setApiError(data.description || 'Signup failed. Please try again.');
-    //     return;
-    //   }
-
-    //   console.log('Signup successful:', data);
-
-    //   try {
-    //     localStorage.setItem('userRole', formData.role);
-    //     localStorage.setItem('showSignupSuccess', 'true');
-    //   } catch (e) {
-    //     console.error('Failed to save to localStorage:', e);
-    //   }
-
-    //   navigate('/setup', {
-    //     state: {
-    //       role: formData.role,
-    //       showSuccessAlert: true
-    //     }
-    //   });
-
-    // } catch (error) {
-    //   console.error('Network or unexpected error during signup:', error);
-    //   setApiError('An unexpected error occurred. Please check your internet connection.');
-    // } finally {
-    //   setIsLoading(false); // Set loading to false after API call completes
-    // }
-    // --- End of Backend API Call ---
-
-    // --- Simulated Frontend Success (Replaces Backend Call) ---
-    console.log('Simulating signup success with data:', formData);
-    setTimeout(() => {
-      try {
-        localStorage.setItem('userRole', formData.role);
-        localStorage.setItem('showSignupSuccess', 'true');
-      } catch (e) {
-        console.error('Failed to save to localStorage:', e);
+    navigate('/setup', {
+      state: {
+        role: formData.role,
+        email: formData.email,
+        showSuccessAlert: true
       }
-      navigate('/setup', {
-        state: {
-          role: formData.role,
-          showSuccessAlert: true
-        }
-      });
-      setIsLoading(false);
-    }, 1500); // Simulate a 1.5 second delay for "API call"
-    // --- End of Simulated Frontend Success ---
+    });
+
+    setIsLoading(false);
   };
 
   const handleGoogleSignIn = () => {
-    console.log('Google sign-in initiated');
-    // This would typically involve redirecting to a Google OAuth flow
+    console.log('Google sign-in initiated (frontend only, no backend integration)');
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
-        {/* Welcome Message */}
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome to Lancer.ai</h1>
           <p className="mt-2 text-[#6B7280] basic-font">Sign up to get started with your new account</p>
         </div>
 
-        {/* API Error Display */}
         {apiError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
             <strong className="font-bold">Error!</strong>
@@ -163,9 +120,7 @@ const Signup = () => {
           </div>
         )}
 
-        {/* Sign Up Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-dark basic-font">Email Address</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -190,7 +145,6 @@ const Signup = () => {
             {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
           </div>
 
-          {/* Password Field */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">Password</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -215,7 +169,6 @@ const Signup = () => {
             {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
           </div>
 
-          {/* Confirm Password Field - FIX APPLIED HERE */}
           <div>
             <label htmlFor="confirm_password" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -224,16 +177,16 @@ const Signup = () => {
               </div>
               <input
                 type="password"
-                name="confirm_password" // Changed name to match formData key
-                id="confirm_password" // Changed id to match name
+                name="confirm_password"
+                id="confirm_password"
                 value={formData.confirm_password}
                 onChange={handleChange}
                 className={`block w-full pl-10 pr-3 py-2 border ${errors.confirm_password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
               />
               {errors.confirm_password && (
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
+                <div className="absolute inset-y-0 right-0 text-sm text-red-600">
+                  <AlertCircle className="h-5 text-red-500" />
                 </div>
               )}
             </div>
@@ -242,36 +195,47 @@ const Signup = () => {
 
           {/* Role Selection */}
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-dark basic-font">Select Role</label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <select
-                name="role"
-                id="role"
-                value={formData.role}
-                onChange={handleChange}
-                className={`block w-full pl-3 pr-3 py-2 border ${errors.role ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font`}
-              >
-                <option value="">Select Role</option>
-                <option value="freelancer">Freelancer</option>
-                <option value="client">Client</option>
-              </select>
-              {errors.role && <p className="mt-2 text-sm text-red-600">{errors.role}</p>}
+            <label className="block text-sm font-medium text-dark basic-font">Select Role</label>
+            <div className="mt-2 flex flex-col sm:flex-row gap-4">
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  name="role"
+                  id="freelancer"
+                  value="Freelancer"
+                  checked={formData.role === 'Freelancer'}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+                <label htmlFor="freelancer" className="ml-2 text-sm text-dark basic-font">Freelancer</label>
+              </div>
+              <div className="flex items-center">
+                <input
+                  type="radio"
+                  name="role"
+                  id="client"
+                  value="Client"
+                  checked={formData.role === 'Client'}
+                  onChange={handleChange}
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                />
+                <label htmlFor="client" className="ml-2 text-sm text-dark basic-font">Client</label>
+              </div>
             </div>
+            {errors.role && <p className="mt-2 text-sm text-red-600">{errors.role}</p>}
           </div>
 
-          {/* Submit Button */}
           <div>
             <button
               type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#00b5b5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
-              disabled={isLoading} // Disable button while loading
+              disabled={isLoading}
             >
               {isLoading ? 'Signing Up...' : 'Sign Up'}
             </button>
           </div>
         </form>
 
-        {/* Divider */}
         <div className="mt-6 relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
@@ -281,12 +245,11 @@ const Signup = () => {
           </div>
         </div>
 
-        {/* Google Sign In Button */}
         <div className="mt-6">
           <button
             onClick={handleGoogleSignIn}
             className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
-            disabled={isLoading} // Disable Google button while loading
+            disabled={isLoading}
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -300,7 +263,6 @@ const Signup = () => {
           </button>
         </div>
 
-        {/* Sign In Link */}
         <div className="mt-6 text-center text-sm">
           <p className="text-dark basic-font">Already have an account? <Link to="/signin" className="font-medium text-cta basic-font">Sign in</Link></p>
         </div>

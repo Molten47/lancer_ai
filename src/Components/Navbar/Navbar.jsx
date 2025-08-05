@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
-import {Link} from 'react-router-dom'
-import Logo from '../../assets/Images/SVG/Artboard 19.svg'
+import { Link } from 'react-router-dom';
+import Logo from '../../assets/Images/SVG/Artboard 19.svg';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -10,18 +10,39 @@ const Navbar = () => {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  const closeMenu = () => {
+    setIsMenuOpen(false);
+  };
+
+  // Close menu when clicking outside or on escape key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isMenuOpen]);
+
   return (
-    <div className='w-full bg-light py-3 md:py-4 lg:py-5 px-4 md:px-6 lg:px-8 fixed z-30 shadow-sm'>
+    <div className='w-full bg-light py-3 md:py-4 lg:py-5 px-3 md:px-6 lg:px-8 fixed top-0 left-0 z-30 shadow-sm'>
       <nav className='flex flex-row justify-between items-center relative'>
         {/* Logo (Left) */}
         <div className='absolute text-cta flex flex-row items-center justify-center'>
-        
-          <img src={Logo} className='h-45' alt="" />
-          
+          <img src={Logo} className=' h-32 md:h-45' alt="" />
         </div>
 
         {/* Mobile Menu Button - Only visible on small screens */}
-        <div className='lg:hidden'>
+        <div className='lg:hidden ml-auto'>
           <button 
             onClick={toggleMenu} 
             className='text-primary p-2 focus:outline-none'
@@ -49,21 +70,46 @@ const Navbar = () => {
           </Link>
         </div>
 
-        {/* Mobile Menu - Full screen overlay, only shown when menu is open */}
+        {/* Mobile Menu - Dropdown */}
         {isMenuOpen && (
-          <div className='lg:hidden fixed inset-0 top-[60px] bg-light z-50 flex flex-col p-5'>
-            <ul className='flex flex-col gap-6 items-center basic-font text-primary font-semibold text-xl mt-10'>
-              <li className='hover:text-[#00b5b5] cursor-pointer py-2'>Find Work</li>
-              <li className='hover:text-[#00b5b5] cursor-pointer py-2'>Hire Creatives</li>
-              <li className='hover:text-[#00b5b5] cursor-pointer py-2'>Why Lancer?</li>
-              <li className='mt-6 w-full'>
-                <Link to='/signup' className='block w-full'>
-                  <button className='py-3 px-10 bg-cta rounded-lg text-light basic-font hover:bg-[#00b5b5] w-full'>
+          <div className='lg:hidden absolute top-full left-0 w-full bg-light shadow-lg border-t border-gray-200 z-50'>
+            <div className='flex flex-col p-4'>
+              <ul className='flex flex-col gap-4 basic-font text-primary font-semibold text-lg'>
+                <li>
+                  <button 
+                    onClick={closeMenu}
+                    className='hover:text-[#00b5b5] cursor-pointer py-2 w-full text-left transition-colors duration-200'
+                  >
+                    Find Work
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={closeMenu}
+                    className='hover:text-[#00b5b5] cursor-pointer py-2 w-full text-left transition-colors duration-200'
+                  >
+                    Hire Creatives
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={closeMenu}
+                    className='hover:text-[#00b5b5] cursor-pointer py-2 w-full text-left transition-colors duration-200'
+                  >
+                    Why Lancer?
+                  </button>
+                </li>
+              </ul>
+
+              {/* Mobile CTA */}
+              <div className='mt-6 pt-4 border-t border-gray-200'>
+                <Link to='/signup' onClick={closeMenu} className='block w-full'>
+                  <button className='py-3 px-6 bg-cta rounded-lg text-light basic-font hover:bg-[#00b5b5] w-full transition-colors duration-200 text-base font-semibold'>
                     Get Started
                   </button>
                 </Link>
-              </li>
-            </ul>
+              </div>
+            </div>
           </div>
         )}
       </nav>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, AlertCircle, Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const Signin = () => {
   const [formData, setFormData] = useState({
@@ -8,7 +8,10 @@ const Signin = () => {
     password: '',
   });
   const [errors, setErrors] = useState({});
+  const [apiError, setApiError] = useState(''); // Added for API error handling
+  const [isLoading, setIsLoading] = useState(false); // Added for loading state
   const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate(); // Added for navigation
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -17,12 +20,14 @@ const Signin = () => {
       [name]: value,
     });
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
         [name]: '',
       });
+    }
+    if (apiError) {
+      setApiError('');
     }
   };
 
@@ -44,23 +49,137 @@ const Signin = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const validationErrors = validate();
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setApiError('');
+  const validationErrors = validate();
 
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
+  if (Object.keys(validationErrors).length > 0) {
+    setErrors(validationErrors);
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    const response = await fetch('https://lancer-backend-y9bv.onrender.com/api/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: formData.email,
+        password: formData.password,
+      }),
+    });
+
+    console.log('Signin: Response status:', response.status);
+    console.log('Signin: Request payload sent:', {
+      email: formData.email,
+      password: '[REDACTED]', // Avoid logging passwords
+    });
+
+    let data;
+    try {
+      data = await response.json();
+      console.log('Signin: Response data:', data);
+    } catch (jsonError) {
+      console.error('Signin: Failed to parse JSON response:', jsonError);
+      const textResponse = await response.text();
+      console.log('Signin: Raw response text:', textResponse);
+      setApiError('Server returned invalid response format');
       return;
     }
 
-    // Form submission logic would go here
-    console.log('Form submitted:', formData);
+    if (!response.ok) {
+      console.error('Signin: API Error:', data);
+      setApiError(data.description || data.message || 'Sign-in failed. Please check your credentials.');
+      return;
+    }
+
+    console.log('Signin: Sign-in successful:', {
+      well_received: data.well_received,
+      role: data.role,
+      user_id: data.user_id,
+      access_jwt: '[REDACTED]',
+      refresh_jwt: '[REDACTED]',
+    });
+
+    // Store JWT tokens, user_id, and role
+    try {
+      localStorage.setItem('access_jwt', data.access_jwt);
+      localStorage.setItem('refresh_jwt', data.refresh_jwt);
+      localStorage.setItem('userRole', data.role);
+      if (data.user_id) {
+        localStorage.setItem('user_id', data.user_id.toString());
+      } else {
+        console.warn('Signin: user_id not found in /api/login response');
+        setApiError('User ID not provided by server. Please try again.');
+        return;
+      }
+      console.log('Signin: localStorage after storing:', {
+        access_jwt: '[REDACTED]',
+        refresh_jwt: '[REDACTED]',
+        userRole: localStorage.getItem('userRole'),
+        user_id: localStorage.getItem('user_id'),
+      });
+    } catch (e) {
+      console.error('Signin: Failed to save to localStorage:', e);
+      setApiError('Failed to save authentication data.');
+      return;
+    }
+
     setSubmitted(true);
-  };
+
+    // Check profile completion for freelancers
+    if (data.role === 'freelancer') {
+      try {
+        const profileResponse = await fetch('https://lancer-backend-y9bv.onrender.com/api/profile', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${data.access_jwt}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        const profileData = await profileResponse.json();
+        console.log('Signin: Profile data:', profileData);
+        if (!profileResponse.ok) {
+          console.error('Signin: Profile fetch failed:', profileData);
+          navigate('/setup', { state: { role: data.role } });
+          return;
+        }
+        if (!profileData.is_complete) {
+          console.log('Signin: Profile incomplete, redirecting to /setup');
+          navigate('/setup', { state: { role: data.role } });
+        } else {
+          console.log('Signin: Profile complete, redirecting to /interview');
+          console.log('Signin: Before redirect to /interview, localStorage:', {
+            user_id: localStorage.getItem('user_id'),
+            userRole: localStorage.getItem('userRole'),
+            access_jwt: '[REDACTED]',
+            refresh_jwt: '[REDACTED]',
+          });
+          navigate('/interview');
+        }
+      } catch (error) {
+        console.error('Signin: Error checking profile:', error);
+        navigate('/setup', { state: { role: data.role } });
+      }
+    } else {
+      console.log('Signin: Navigating to /dashboardcl');
+      navigate('/dashboardcl');
+    }
+  } catch (error) {
+    console.error('Signin: Network or unexpected error during sign-in:', error);
+    setApiError('An unexpected error occurred. Please check your internet connection.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleGoogleSignIn = () => {
-    // Google sign-in logic would go here
     console.log('Google sign-in initiated');
+    // Implement Google OAuth flow here
   };
 
   if (submitted) {
@@ -71,7 +190,7 @@ const Signin = () => {
             <Check className="h-6 w-6 text-green-600" />
           </div>
           <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 new-font">Sign In Successful!</h2>
-          <p className="text-gray-600 mb-4 md:mb-6 new-font ">You have successfully signed in.</p>
+          <p className="text-gray-600 mb-4 md:mb-6 new-font">You have successfully signed in.</p>
           <button
             onClick={() => setSubmitted(false)}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 new-font"
@@ -92,8 +211,16 @@ const Signin = () => {
           <p className="mt-1 md:mt-2 text-[#6B7280] basic-font text-sm">Let's get back to work</p>
         </div>
 
+        {/* API Error Display */}
+        {apiError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <strong className="font-bold">Error!</strong>
+            <span className="block sm:inline"> {apiError}</span>
+          </div>
+        )}
+
         {/* Log in Form */}
-        <div className="space-y-4 md:space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           {/* User Email */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-dark basic-font">
@@ -110,9 +237,10 @@ const Signin = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className={`block w-full pl-10 pr-3 py-2 border ${
-                  errors.email ? 'border-red-300' : 'border-gray-300'
+                  errors.email || apiError ? 'border-red-300' : 'border-gray-300'
                 } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm new-font`}
                 placeholder="you@example.com"
+                disabled={isLoading}
               />
               {errors.email && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -123,7 +251,7 @@ const Signin = () => {
             {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
           </div>
 
-          {/* Password  */}
+          {/* Password */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">
               Password
@@ -139,9 +267,10 @@ const Signin = () => {
                 value={formData.password}
                 onChange={handleChange}
                 className={`block w-full pl-10 pr-3 py-2 border ${
-                  errors.password ? 'border-red-300' : 'border-gray-300'
+                  errors.password || apiError ? 'border-red-300' : 'border-gray-300'
                 } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm new-font`}
                 placeholder="••••••••"
+                disabled={isLoading}
               />
               {errors.password && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -155,13 +284,14 @@ const Signin = () => {
           {/* Submit Button */}
           <div>
             <button
-              onClick={handleSubmit}
+              type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#00b5b5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
+              disabled={isLoading}
             >
-              Sign In
+              {isLoading ? 'Signing In...' : 'Sign In'}
             </button>
           </div>
-        </div>
+        </form>
 
         {/* Or continue with */}
         <div className="mt-4 md:mt-6 relative">
@@ -173,11 +303,12 @@ const Signin = () => {
           </div>
         </div>
 
-        {/* Google Sign Up option */}
+        {/* Google Sign In option */}
         <div className="mt-4 md:mt-6">
           <button
             onClick={handleGoogleSignIn}
             className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
+            disabled={isLoading}
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -191,7 +322,7 @@ const Signin = () => {
           </button>
         </div>
 
-        {/* Don't have  account link */}
+        {/* Don't have account link */}
         <div className="mt-4 md:mt-6 text-center">
           <p className="text-sm text-dark basic-font">
             Don't have an account?{' '}
