@@ -3,7 +3,6 @@ import Image1 from '../../assets/Images/Bello.jpg'
 import Image2 from '../../assets/Images/sodeeq.jpeg'
 import Image3 from '../../assets/Images/Uche.jpeg'
 import Image4 from '../../assets/Images/Damilare.jpg'
-import Image5 from '../../assets/Images/Daniela.jpeg'
 import Image7 from '../../assets/Images/Ellipse 1.png'
 import DottedImage from '../../assets/Images/Group 2.png'
 import AiImage from '../../assets/Images/Brainwire.png'
@@ -100,18 +99,6 @@ const Philosophy = () => {
                   <div className="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-[#DBEAFE]"></div>
                 </div>
                 <img src={Image4} alt="Person" className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-md" />
-              </div>
-
-              <div className='relative flex flex-col items-center'>
-                <div
-                  className='px-4 py-3 basic-font rounded-xl bg-[#DBEAFE] mb-4 relative shadow-sm'
-                  style={{ minWidth: '130px' }}
-                >
-                  <span className="text-sm text-center block text-gray-700">I need a copywriter</span>
-                  {/* Speech bubble tail */}
-                  <div className="absolute bottom-[-10px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[10px] border-t-[#DBEAFE]"></div>
-                </div>
-                <img src={Image5} alt="Person" className="w-20 h-20 rounded-full object-cover border-2 border-white shadow-md" />
               </div>
             </div>
           )}
