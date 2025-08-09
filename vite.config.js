@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base:'/lancer_ai/',
+  base:'/',
   plugins: [react(), tailwindcss()],
   server: {
     proxy:{
