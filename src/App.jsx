@@ -14,7 +14,7 @@ const App = () => {
  
 
     return (
-        <Router basename='/lancer_ai'> 
+        <Router> 
         
             <div>
                 <Routes>
