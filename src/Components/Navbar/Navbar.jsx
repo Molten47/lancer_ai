@@ -66,12 +66,12 @@ const Navbar = () => {
         {/* Call to Action (Right) - Hidden on mobile, shown on large screens */}
         <div className='flex fl-row gap-2'>
          <div className='hidden lg:flex justify-end items-center'>
-          <Link to='/signup'>
+          <Link to='/login'>
             <button className='py-2 px-6 bg-light rounded-lg b basic-font text-cta '>Log in</button>
           </Link>
           </div>
           <div className='hidden lg:flex justify-end items-center'>
-          <Link to='/login'>
+          <Link to='/signup'>
             <button className='py-2 px-6 bg-cta rounded-lg text-light basic-font hover:bg-[#1447e6]'>Become a Lancer</button>
           </Link>
         </div>
