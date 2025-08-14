@@ -221,49 +221,97 @@ const Setup = () => {
     }
   }, [signupSuccess]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setApiError('');
-    setErrors({});
+// 
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setApiError('');
+  setErrors({});
 
-    const newErrors = {};
-    if (!formData.firstname.trim()) newErrors.firstname = 'First name is required';
-    if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
-    if (!formData.country.trim()) newErrors.country = 'Country is required';
-    if (!formData.state.trim()) newErrors.state = 'State/Province is required';
-    if (isFreelancer && formData.skills.length === 0) newErrors.skills = 'At least one skill is required';
-    if (!isFreelancer && !formData.industry.trim()) newErrors.industry = 'Industry is required';
+  const newErrors = {};
+  if (!formData.firstname.trim()) newErrors.firstname = 'First name is required';
+  if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
+  if (!formData.country.trim()) newErrors.country = 'Country is required';
+  if (!formData.state.trim()) newErrors.state = 'State/Province is required';
+  if (isFreelancer && formData.skills.length === 0) newErrors.skills = 'At least one skill is required';
+  if (!isFreelancer && !formData.industry.trim()) newErrors.industry = 'Industry is required';
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // Get the access token from localStorage
+    const accessToken = localStorage.getItem('access_token');
+    if (!accessToken) {
+      setApiError('Authentication token not found. Please sign in again.');
+      navigate('/signin');
       return;
     }
 
-    setIsLoading(true);
+    // Prepare the request body according to API specification
+    const requestBody = {
+      firstname: formData.firstname.trim(),
+      lastname: formData.lastname.trim(),
+      country: formData.country,
+      state: formData.state,
+      // Convert skills array to comma-separated string for API
+      skill: isFreelancer ? formData.skills.join(', ') : formData.industry
+    };
 
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Profile setup successful');
+    // API call to the backend profile setup endpoint
+    const response = await fetch('https://lancer-web-service.onrender.com/api/profile_setup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}` // Include JWT token
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Handle error response (likely 401 for invalid token or 400 for validation)
+      setApiError(data.error_message || 'Profile setup failed. Please try again.');
       
-      if (selectedRole === 'freelancer') {
-        setProfileSaved(true);
-      } else {
-        // Navigate directly to dashboard for clients
-        navigate('/dashboard', { 
-          state: { 
-            profileCompleted: true,
-            userRole: 'client',
-            userName: `${formData.firstname} ${formData.lastname}`
-          }
-        });
+      // If token is invalid, redirect to signin
+      if (response.status === 401) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('userRole');
+        navigate('/signin');
       }
-    } catch (error) {
-      console.error('Error during profile setup:', error);
-      setApiError('An unexpected error occurred. Please try again.');
-    } finally {
-      setIsLoading(false);
+      return;
     }
-  };
+
+    // If profile setup is successful (200 OK)
+    console.log('Profile setup successful:', data);
+    
+    // Store profile completion status
+    localStorage.setItem('profileCompleted', 'true');
+    
+    if (selectedRole === 'freelancer') {
+      setProfileSaved(true);
+    } else {
+      // Navigate directly to dashboard for clients
+      navigate('/client-dashboard', { 
+        state: { 
+          profileCompleted: true,
+          userRole: 'client',
+          userName: `${formData.firstname} ${formData.lastname}`
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Network or unexpected error during profile setup:', error);
+    setApiError('An unexpected error occurred. Please check your internet connection.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;

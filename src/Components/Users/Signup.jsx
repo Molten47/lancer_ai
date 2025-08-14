@@ -1,26 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Mail, Lock, User, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Signup = () => {
-  const [formData, setFormData] = useState(() => {
-    const savedData = localStorage.getItem('signupFormData');
-    return savedData ? JSON.parse(savedData) : {
-      email: '',
-      password: '',
-      confirm_password: '',
-      role: ''
-    };
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    role: ''
   });
 
   const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState(''); // New state for API-specific errors
+  const [isLoading, setIsLoading] = useState(false); // New state for loading indicator
   const navigate = useNavigate();
-
-  useEffect(() => {
-    localStorage.setItem('signupFormData', JSON.stringify(formData));
-  }, [formData]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -29,12 +23,14 @@ const Signup = () => {
       [name]: value
     });
 
+    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
         [name]: ''
       });
     }
+    // Clear API error if any when user starts typing
     if (apiError) {
       setApiError('');
     }
@@ -68,9 +64,9 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => { // Make handleSubmit async
     e.preventDefault();
-    setApiError('');
+    setApiError(''); // Clear any previous API errors
     const validationErrors = validate();
 
     if (Object.keys(validationErrors).length > 0) {
@@ -78,41 +74,81 @@ const Signup = () => {
       return;
     }
 
-    setIsLoading(true);
-
-    console.log('Simulated signup successful:', formData);
+    setIsLoading(true); // Set loading to true when starting API call
 
     try {
-      localStorage.setItem('userRole', formData.role);
-      localStorage.setItem('showSignupSuccess', 'true');
-      localStorage.removeItem('signupFormData');
-    } catch (e) {
-      console.error('Failed to save to localStorage:', e);
-    }
+      // API call to the backend signup endpoint
+      const response = await fetch('https://lancer-web-service.onrender.com/api/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Send email, password, AND role to the backend
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          role: formData.role 
+        })
+      });
 
-    navigate('/setup', {
-      state: {
-        role: formData.role,
-        email: formData.email,
-        showSuccessAlert: true
+      const data = await response.json();
+
+    if (!response.ok) {
+  // For 401 errors (email already exists)
+  setApiError(data.error_message || 'Signup failed. Please try again.');
+  return;
+}
+
+// If signup is successful (200 OK)
+console.log('Signup successful:', data);
+
+// Store JWT tokens and user data
+   localStorage.setItem('access_token', data.access_jwt);
+   localStorage.setItem('refresh_token', data.refresh_jwt);
+   localStorage.setItem('userRole', data.role); // Use the role from server response
+   localStorage.setItem('showSignupSuccess', 'true');
+
+      // If signup is successful (200 OK)
+      console.log('Signup successful:', data);
+
+      // Store role in localStorage for persistence
+      try {
+        localStorage.setItem('userRole', formData.role);
+        localStorage.setItem('showSignupSuccess', 'true');
+      } catch (e) {
+        console.error('Failed to save to localStorage:', e);
       }
-    });
+      // Navigate directly to the setup page with state
+      navigate('/profile_setup', {
+        state: {
+          role: formData.role,
+          showSuccessAlert: true
+        }
+      });
 
-    setIsLoading(false);
+    } catch (error) {
+      console.error('Network or unexpected error during signup:', error);
+      setApiError('An unexpected error occurred. Please check your internet connection.');
+    } finally {
+      setIsLoading(false); // Set loading to false after API call completes
+    }
   };
 
   const handleGoogleSignIn = () => {
-    console.log('Google sign-in initiated (frontend only, no backend integration)');
+    console.log('Google sign-in initiated');
+    // This would typically involve redirecting to a Google OAuth flow
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
+        {/* Welcome Message */}
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome to Lancer.ai</h1>
           <p className="mt-2 text-[#6B7280] basic-font">Sign up to get started with your new account</p>
         </div>
 
+        {/* API Error Display */}
         {apiError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
             <strong className="font-bold">Error!</strong>
@@ -120,7 +156,9 @@ const Signup = () => {
           </div>
         )}
 
+        {/* Sign Up Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-dark basic-font">Email Address</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -145,97 +183,118 @@ const Signup = () => {
             {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">Password</label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-dark" />
-              </div>
-              <input
-                type="password"
-                name="password"
-                id="password"
-                value={formData.password}
-                onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${errors.password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                placeholder="••••••••"
-              />
-              {errors.password && (
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <AlertCircle className="h-5 w-5 text-red-500" />
-                </div>
-              )}
-            </div>
-            {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
-          </div>
+          {/* Password Field */}
+       <div>
+  <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">Password</label>
+  <div className="mt-1 relative rounded-md shadow-sm">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Lock className="h-5 w-5 text-dark" />
+    </div>
+    <input
+      type={showPassword ? "text" : "password"}
+      name="password"
+      id="password"
+      value={formData.password}
+      onChange={handleChange}
+      className={`block w-full pl-10 pr-10 py-2 border ${errors.password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+      placeholder="••••••••"
+    />
+    {/* Password Toggle Button */}
+    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+      <button
+        type="button"
+        onClick={() => setShowPassword(!showPassword)}
+        className="text-gray-400 hover:text-gray-600 focus:outline-none"
+      >
+        {showPassword ? (
+          <EyeOff className="h-5 w-5" />
+        ) : (
+          <Eye className="h-5 w-5" />
+        )}
+      </button>
+    </div>
+    {/* Error Icon - adjust position when toggle is present */}
+    {errors.password && (
+      <div className="absolute inset-y-0 right-8 pr-3 flex items-center pointer-events-none">
+        <AlertCircle className="h-5 w-5 text-red-500" />
+      </div>
+    )}
+  </div>
+  {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
+</div>
 
-          <div>
-            <label htmlFor="confirm_password" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
-            <div className="mt-1 relative rounded-md shadow-sm">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Lock className="h-5 w-5 text-dark" />
-              </div>
-              <input
-                type="password"
-                name="confirm_password"
-                id="confirm_password"
-                value={formData.confirm_password}
-                onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${errors.confirm_password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-                placeholder="••••••••"
-              />
-              {errors.confirm_password && (
-                <div className="absolute inset-y-0 right-0 text-sm text-red-600">
-                  <AlertCircle className="h-5 text-red-500" />
-                </div>
-              )}
-            </div>
-            {errors.confirm_password && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
-          </div>
+{/* Confirm Password Field with Toggle */}
+<div>
+  <label htmlFor="confirm_password" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
+  <div className="mt-1 relative rounded-md shadow-sm">
+    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <Lock className="h-5 w-5 text-dark" />
+    </div>
+    <input
+      type={showConfirmPassword ? "text" : "password"}
+      name="confirm_password"
+      id="confirm_password"
+      value={formData.confirm_password}
+      onChange={handleChange}
+      className={`block w-full pl-10 pr-10 py-2 border ${errors.confirm_password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+      placeholder="••••••••"
+    />
+    {/* Password Toggle Button */}
+    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+      <button
+        type="button"
+        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+        className="text-gray-400 hover:text-gray-600 focus:outline-none"
+      >
+        {showConfirmPassword ? (
+          <EyeOff className="h-5 w-5" />
+        ) : (
+          <Eye className="h-5 w-5" />
+        )}
+      </button>
+    </div>
+    {/* Error Icon - adjust position when toggle is present */}
+    {errors.confirm_password && (
+      <div className="absolute inset-y-0 right-8 pr-3 flex items-center pointer-events-none">
+        <AlertCircle className="h-5 w-5 text-red-500" />
+      </div>
+    )}
+  </div>
+  {errors.confirm_password && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
+</div>
 
           {/* Role Selection */}
           <div>
-            <label className="block text-sm font-medium text-dark basic-font">Select Role</label>
-            <div className="mt-2 flex flex-col sm:flex-row gap-4">
-              <div className="flex items-center">
-                <input
-                  type="radio"
-                  name="role"
-                  id="freelancer"
-                  value="Freelancer"
-                  checked={formData.role === 'Freelancer'}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                />
-                <label htmlFor="freelancer" className="ml-2 text-sm text-dark basic-font">Freelancer</label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="radio"
-                  name="role"
-                  id="client"
-                  value="Client"
-                  checked={formData.role === 'Client'}
-                  onChange={handleChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
-                />
-                <label htmlFor="client" className="ml-2 text-sm text-dark basic-font">Client</label>
-              </div>
+            <label htmlFor="role" className="block text-sm font-medium text-dark basic-font">Select Role</label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <select
+                name="role"
+                id="role"
+                value={formData.role}
+                onChange={handleChange}
+                className={`block w-full pl-3 pr-3 py-2 border ${errors.role ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark basic-font`}
+              >
+                <option value="">Select Role</option>
+                <option value="freelancer">Freelancer</option>
+                <option value="client">Client</option>
+              </select>
+              {errors.role && <p className="mt-2 text-sm text-red-600">{errors.role}</p>}
             </div>
-            {errors.role && <p className="mt-2 text-sm text-red-600">{errors.role}</p>}
           </div>
 
+          {/* Submit Button */}
           <div>
             <button
               type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#00b5b5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
-              disabled={isLoading}
+              disabled={isLoading} // Disable button while loading
             >
               {isLoading ? 'Signing Up...' : 'Sign Up'}
             </button>
           </div>
         </form>
 
+        {/* Divider */}
         <div className="mt-6 relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
@@ -245,11 +304,12 @@ const Signup = () => {
           </div>
         </div>
 
+        {/* Google Sign In Button */}
         <div className="mt-6">
           <button
             onClick={handleGoogleSignIn}
             className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
-            disabled={isLoading}
+            disabled={isLoading} // Disable Google button while loading
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
@@ -263,8 +323,9 @@ const Signup = () => {
           </button>
         </div>
 
+        {/* Sign In Link */}
         <div className="mt-6 text-center text-sm">
-          <p className="text-dark basic-font">Already have an account? <Link to="/signin" className="font-medium text-cta basic-font">Sign in</Link></p>
+          <p className="text-dark basic-font">Already have an account? <Link to="/login" className="font-medium text-cta basic-font">Sign in</Link></p>
         </div>
       </div>
     </div>

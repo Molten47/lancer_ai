@@ -20,15 +20,12 @@ const App = () => {
                 <Routes>
                     <Route path="/" element={<Landhome />} /> 
                     <Route path="/signup" element={<Signup />} />
-                    <Route path="/signin" element={<Signin />} />
-                    <Route path="/setup" element={<Setup/>} />
+                    <Route path="/login" element={<Signin />} />
+                    <Route path="/profile_setup" element={<Setup/>} />
                     <Route path="/interview" element={<Interview/>}/>
-                    <Route path="/tasks" element={<LancerTaskPage/>}/>
-                    <Route path="/dashboardcl" element={<DashboardCl/>}/>
+                    <Route path="/task" element={<LancerTaskPage/>}/>
+                    <Route path="/client-dashboard" element={<DashboardCl/>}/>
                     <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
-                    
-
-
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>

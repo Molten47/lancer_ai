@@ -145,12 +145,12 @@ const handleSubmit = async (e) => {
         console.log('Signin: Profile data:', profileData);
         if (!profileResponse.ok) {
           console.error('Signin: Profile fetch failed:', profileData);
-          navigate('/setup', { state: { role: data.role } });
+          navigate('/profile_setup', { state: { role: data.role } });
           return;
         }
         if (!profileData.is_complete) {
           console.log('Signin: Profile incomplete, redirecting to /setup');
-          navigate('/setup', { state: { role: data.role } });
+          navigate('/profile_setup', { state: { role: data.role } });
         } else {
           console.log('Signin: Profile complete, redirecting to /interview');
           console.log('Signin: Before redirect to /interview, localStorage:', {
@@ -163,11 +163,11 @@ const handleSubmit = async (e) => {
         }
       } catch (error) {
         console.error('Signin: Error checking profile:', error);
-        navigate('/setup', { state: { role: data.role } });
+        navigate('/profile_setup', { state: { role: data.role } });
       }
     } else {
       console.log('Signin: Navigating to /dashboardcl');
-      navigate('/dashboardcl');
+      navigate('/client-dashboard');
     }
   } catch (error) {
     console.error('Signin: Network or unexpected error during sign-in:', error);

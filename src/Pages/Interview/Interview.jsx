@@ -59,13 +59,13 @@ const Interview = () => {
         console.log('Profile data in Interview:', profileData);
         if (!response.ok || !profileData.is_complete) {
           console.log('Profile incomplete, redirecting to /setup');
-          navigate('/setup', { state: { role: localStorage.getItem('userRole') } });
+          navigate('/profile_setup', { state: { role: localStorage.getItem('userRole') } });
           return;
         }
       } catch (error) {
         console.error('Error checking profile:', error);
         setSocketError('Failed to verify profile. Redirecting to setup.');
-        navigate('/setup', { state: { role: localStorage.getItem('userRole') } });
+        navigate('/profile_setup', { state: { role: localStorage.getItem('userRole') } });
         return;
       }
 
@@ -207,7 +207,7 @@ const Interview = () => {
   };
 
   const handleContinueToDashboard = () => {
-    navigate('/tasks');
+    navigate('/task');
   };
 
   if (socketError) {
@@ -223,7 +223,7 @@ const Interview = () => {
           Go to Sign In
         </button>
         <button
-          onClick={() => navigate('/setup')}
+          onClick={() => navigate('/profile_setup')}
           className="mt-4 py-2 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow-md transition-all"
         >
           Go to Profile Setup
