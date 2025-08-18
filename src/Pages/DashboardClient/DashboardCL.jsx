@@ -1,59 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Sidebar, Bell, User, Settings, Home, 
-       FileText,  MessageCircle, 
-       
+       FileText,  MessageCircle, ChevronDown, ChevronRight,
        Download, X, LogOut, MessageSquare, HelpCircle, Building2, Send} from 'lucide-react'
 
+import ProjectManagement from '../../Sections/Client Side/Project Manager/ProjectManager'
+import AIAssistantChat from '../../Sections/Client Side/Dashboard-Client/DashboardClient'
 // Mock components - replace with your actual components
 const DashboardView = () => <div className="flex flex-col h-full basic-font">
-  {/* Chat Header */}
-  <div className="flex items-center gap-3 p-4 border-b border-gray-200 bg-white">
-    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-      <span className="text-white font-semibold text-sm">LA</span>
-    </div>
-    <div>
-      <h3 className="font-semibold text-gray-900">Lancer AI</h3>
-      <p className="text-xs text-gray-500">03:49 AM</p>
-    </div>
-  </div>
+  {/* AI chat assistant to be imported here*/}
+  <AIAssistantChat
+   //socket={yourSocketInstance}
+   //userId="user-123"
+   //assistantName="Lancer AI"
+  // onMessageSent={() => {
+        // Handle message analytics, logging, etc.
+    //  }}
+  />
 
-  {/* Chat Messages */}
-  <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-    <div className="space-y-4">
-      {/* AI Message */}
-      <div className="flex gap-3">
-        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-semibold text-xs">LA</span>
-        </div>
-        <div className="flex-1">
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <p className="text-gray-800">Welcome to Lancer AI! I'm your personal assistant to help you find the perfect freelancers for your projects. What do you want to get done today?</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  {/* Chat Input */}
-  <div className="p-4 bg-white border-t border-gray-200">
-    <div className="flex gap-2">
-      <input
-        type="text"
-        placeholder="What do you want to get done?"
-        className="flex-1 px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      />
-      <button className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors">
-        <Send size={20} className="text-white" />
-      </button>
-    </div>
-  </div>
 </div>
 
-const TaskManagement = () => <div className="p-6 bg-gray-50 min-h-full">
-  <div className="bg-white rounded-lg p-8 shadow-sm">
-    <h3 className="text-xl font-semibold mb-4">Projects</h3>
-    <p className="text-gray-600">Manage your ongoing projects here.</p>
-  </div>
+const ProjectManager = () => <div className="p-6 bg-gray-50 min-h-full">
+<ProjectManagement/>
+</div>
+
+const ProjectAnalytics = () => <div className="p-6 bg-gray-50 min-h-full">
 </div>
 
 const MessagesView = () => <div className="p-6 bg-gray-50 min-h-full">
@@ -91,6 +61,7 @@ const DashboardCl = () => {
   // Add state to track screen size
   const [isMobile, setIsMobile] = useState(false)
   const [userRole, setUserRole] = useState('client') // Changed default to client
+  const [isProjectsDropdownOpen, setIsProjectsDropdownOpen] = useState(false)
   
   // Check if screen is mobile on mount and resize
   useEffect(() => {
@@ -128,6 +99,10 @@ const DashboardCl = () => {
     setIsSidebarOpen(!isSidebarOpen)
   }
 
+  const toggleProjectsDropdown = () => {
+    setIsProjectsDropdownOpen(!isProjectsDropdownOpen)
+  }
+
   // Handle menu item clicks
   const handleMenuClick = (view) => {
     setActiveView(view)
@@ -149,8 +124,10 @@ const DashboardCl = () => {
     switch(activeView) {
       case 'dashboard':
         return <DashboardView />;
-      case 'task': 
-        return <TaskManagement />;
+      case 'project-manager': 
+        return <ProjectManager />;
+      case 'project-analytics':
+        return <ProjectAnalytics />;
       case 'messages':
         return <MessagesView />;
       case 'wallets':
@@ -161,6 +138,19 @@ const DashboardCl = () => {
         return <HelpView />;
       default:
         return <DashboardView />;
+    }
+  }
+
+  const getPageTitle = () => {
+    switch(activeView) {
+      case 'messages': return 'Messages';
+      case 'dashboard': return 'AI Assistant';
+      case 'wallets': return 'Freelancers';
+      case 'project-manager': return 'Project Manager';
+      case 'project-analytics': return 'Project Analytics';
+      case 'settings': return 'Settings';
+      case 'help': return 'Help Center';
+      default: return 'AI Assistant';
     }
   }
 
@@ -243,22 +233,61 @@ const DashboardCl = () => {
             <span>Messages</span>
           </a>
 
-          {/* Projects link */}
-          <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleMenuClick('task');
-            }}
-            className={`flex items-center px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-              activeView === 'task' 
-                ? 'bg-blue-50 text-blue-700' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Building2 size={18} className="mr-3" />
-            <span>Projects</span>
-          </a>
+          {/* Projects dropdown */}
+          <div className="space-y-1">
+            <button
+              onClick={toggleProjectsDropdown}
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                (activeView === 'project-manager' || activeView === 'project-analytics') 
+                  ? 'bg-blue-50 text-blue-700' 
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center">
+                <Building2 size={18} className="mr-3" />
+                <span>Projects</span>
+              </div>
+              {isProjectsDropdownOpen ? (
+                <ChevronDown size={16} />
+              ) : (
+                <ChevronRight size={16} />
+              )}
+            </button>
+
+            {/* Dropdown content */}
+            {isProjectsDropdownOpen && (
+              <div className="ml-6 space-y-1">
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleMenuClick('project-manager');
+                  }}
+                  className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
+                    activeView === 'project-manager'
+                      ? 'bg-green-50 text-green-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Project Manager
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleMenuClick('project-analytics');
+                  }}
+                  className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
+                    activeView === 'project-analytics'
+                      ? 'bg-orange-50 text-orange-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Project Analytics
+                </a>
+              </div>
+            )}
+          </div>
 
           {/* Freelancers link */}
           <a 
@@ -348,12 +377,7 @@ const DashboardCl = () => {
           {/* Center - Current view title */}
           <div className="flex-1 text-center">
             <h2 className='text-gray-900 font-semibold text-lg'>
-              {activeView === 'messages' ? 'Messages' : 
-              activeView === 'dashboard' ? 'AI Assistant' : 
-              activeView === 'wallets' ? 'Freelancers' : 
-              activeView === 'task' ? 'Projects' : 
-              activeView === 'settings' ? 'Settings' : 
-              activeView === 'help' ? 'Help Center' : 'AI Assistant'}
+              {getPageTitle()}
             </h2>
           </div>
 

@@ -131,19 +131,55 @@ const SkillsInput = ({ skills, onAddSkill, onRemoveSkill, error }) => {
 const Setup = () => {
   const location = useLocation(); // Access navigation state
   const navigate = useNavigate(); // Add navigation hook
+  
   // Initialize selectedRole based on the role from Signup (convert to lowercase to match expected values)
   const initialRole = location.state?.role?.toLowerCase() === 'client' ? 'client' : 'freelancer';
   const [selectedRole] = useState(initialRole); // Remove setSelectedRole since we don't want to change it
-  const [formData, setFormData] = useState({
-    firstname: '',
-    lastname: '',
-    country: '',
-    state: '',
-    skills: [],
-    // Client-specific fields
-    companyName: '',
-    industry: '',
-  });
+  
+  // State persistence key - unique for each role to avoid conflicts
+  const FORM_STORAGE_KEY = `setup_form_data_${initialRole}`;
+  
+  // Helper function to load persisted form data
+  const loadPersistedFormData = () => {
+    try {
+      const savedData = localStorage.getItem(FORM_STORAGE_KEY);
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        // Ensure skills array exists for freelancers
+        if (initialRole === 'freelancer' && !Array.isArray(parsedData.skills)) {
+          parsedData.skills = [];
+        }
+        console.log('Loaded persisted form data:', parsedData);
+        return parsedData;
+      }
+    } catch (error) {
+      console.error('Error loading persisted form data:', error);
+      // Clear corrupted data
+      localStorage.removeItem(FORM_STORAGE_KEY);
+    }
+    return null;
+  };
+
+  // Initialize form data with persisted data or defaults
+  const getInitialFormData = () => {
+    const persistedData = loadPersistedFormData();
+    if (persistedData) {
+      return persistedData;
+    }
+    
+    return {
+      firstname: '',
+      lastname: '',
+      country: '',
+      state: '',
+      skills: [],
+      // Client-specific fields
+      companyName: '',
+      industry: '',
+    };
+  };
+
+  const [formData, setFormData] = useState(getInitialFormData);
   const [countryData, setCountryData] = useState({});
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState('');
@@ -151,7 +187,8 @@ const Setup = () => {
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
-  const [signupSuccess, setSignupSuccess] = useState(location.state?.showSuccessAlert || false); // Use showSuccessAlert from state
+  const [signupSuccess, setSignupSuccess] = useState(location.state?.showSuccessAlert || false);
+  const [showDataRestored, setShowDataRestored] = useState(false);
 
   const isFreelancer = selectedRole === 'freelancer';
   const countries = Object.keys(countryData);
@@ -180,6 +217,48 @@ const Setup = () => {
     "Other"
   ];
 
+  // Function to save form data to localStorage
+  const saveFormDataToStorage = (data) => {
+    try {
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving form data to localStorage:', error);
+    }
+  };
+
+  // Function to clear persisted form data
+  const clearPersistedFormData = () => {
+    try {
+      localStorage.removeItem(FORM_STORAGE_KEY);
+      console.log('Cleared persisted form data');
+    } catch (error) {
+      console.error('Error clearing persisted form data:', error);
+    }
+  };
+
+  // Check if there's persisted data and show notification
+  useEffect(() => {
+    const persistedData = loadPersistedFormData();
+    if (persistedData && !location.state?.showSuccessAlert) {
+      // Check if the persisted data has meaningful content
+      const hasContent = persistedData.firstname?.trim() || 
+                        persistedData.lastname?.trim() || 
+                        persistedData.country?.trim() || 
+                        persistedData.state?.trim() ||
+                        (persistedData.skills && persistedData.skills.length > 0) ||
+                        persistedData.companyName?.trim() ||
+                        persistedData.industry?.trim();
+      
+      if (hasContent) {
+        setShowDataRestored(true);
+        // Auto-hide the notification after 5 seconds
+        setTimeout(() => {
+          setShowDataRestored(false);
+        }, 5000);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const fetchCountryData = async () => {
       try {
@@ -202,9 +281,13 @@ const Setup = () => {
     fetchCountryData();
   }, []);
 
+  // Save form data to localStorage whenever it changes
   useEffect(() => {
+    if (!profileSaved) { // Only persist if profile hasn't been saved yet
+      saveFormDataToStorage(formData);
+    }
     console.log('Saving form data:', formData, 'Role:', selectedRole);
-  }, [formData, selectedRole]);
+  }, [formData, selectedRole, profileSaved]);
 
   useEffect(() => {
     if (formData.country && !availableStates.includes(formData.state)) {
@@ -221,97 +304,133 @@ const Setup = () => {
     }
   }, [signupSuccess]);
 
-// 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setApiError('');
-  setErrors({});
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setApiError('');
+    setErrors({});
 
-  const newErrors = {};
-  if (!formData.firstname.trim()) newErrors.firstname = 'First name is required';
-  if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
-  if (!formData.country.trim()) newErrors.country = 'Country is required';
-  if (!formData.state.trim()) newErrors.state = 'State/Province is required';
-  if (isFreelancer && formData.skills.length === 0) newErrors.skills = 'At least one skill is required';
-  if (!isFreelancer && !formData.industry.trim()) newErrors.industry = 'Industry is required';
+    const newErrors = {};
+    if (!formData.firstname.trim()) newErrors.firstname = 'First name is required';
+    if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
+    if (!formData.country.trim()) newErrors.country = 'Country is required';
+    if (!formData.state.trim()) newErrors.state = 'State/Province is required';
+    if (isFreelancer && formData.skills.length === 0) newErrors.skills = 'At least one skill is required';
+    if (!isFreelancer && !formData.industry.trim()) newErrors.industry = 'Industry is required';
 
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    // Get the access token from localStorage
-    const accessToken = localStorage.getItem('access_token');
-    if (!accessToken) {
-      setApiError('Authentication token not found. Please sign in again.');
-      navigate('/signin');
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
-    // Prepare the request body according to API specification
-    const requestBody = {
-      firstname: formData.firstname.trim(),
-      lastname: formData.lastname.trim(),
-      country: formData.country,
-      state: formData.state,
-      // Convert skills array to comma-separated string for API
-      skill: isFreelancer ? formData.skills.join(', ') : formData.industry
-    };
+    setIsLoading(true);
 
-    // API call to the backend profile setup endpoint
-    const response = await fetch('https://lancer-web-service.onrender.com/api/profile_setup', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}` // Include JWT token
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      // Handle error response (likely 401 for invalid token or 400 for validation)
-      setApiError(data.error_message || 'Profile setup failed. Please try again.');
-      
-      // If token is invalid, redirect to signin
-      if (response.status === 401) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('userRole');
+    try {
+      // Get the access token from localStorage (using the correct key from signup)
+      const accessToken = localStorage.getItem('access_token');
+      if (!accessToken) {
+        setApiError('Authentication token not found. Please sign in again.');
         navigate('/signin');
+        return;
       }
-      return;
-    }
 
-    // If profile setup is successful (200 OK)
-    console.log('Profile setup successful:', data);
-    
-    // Store profile completion status
-    localStorage.setItem('profileCompleted', 'true');
-    
-    if (selectedRole === 'freelancer') {
-      setProfileSaved(true);
-    } else {
-      // Navigate directly to dashboard for clients
-      navigate('/client-dashboard', { 
-        state: { 
-          profileCompleted: true,
-          userRole: 'client',
-          userName: `${formData.firstname} ${formData.lastname}`
-        }
+      // Prepare the request body according to API specification
+      const requestBody = {
+        firstname: formData.firstname.trim(),
+        lastname: formData.lastname.trim(),
+        country: formData.country,
+        state: formData.state,
+        // Convert skills array to comma-separated string for API
+        skill: isFreelancer ? formData.skills.join(', ') : formData.industry
+      };
+
+      const API_URL = import.meta.env.VITE_API_URL
+
+      // API call to the backend profile setup endpoint
+      const response = await fetch(`${API_URL}/api/profile_setup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}` // Include JWT token
+        },
+        body: JSON.stringify(requestBody)
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle error response (likely 401 for invalid token or 400 for validation)
+        setApiError(data.error_message || 'Profile setup failed. Please try again.');
+        
+        // If token is invalid, redirect to signin
+        if (response.status === 401) {
+          // Clear all stored data including persisted form data
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('user_id');
+          clearPersistedFormData();
+          navigate('/signin');
+        }
+        return;
+      }
+
+      // If profile setup is successful (200 OK)
+      console.log('Profile setup successful:', data);
+      
+      // CRITICAL FIX: Store/preserve all necessary data for Interview component
+      if (data.profile_data && data.profile_data.user_id) {
+        // Store user_id from the response
+        localStorage.setItem('user_id', data.profile_data.user_id.toString());
+      }
+
+      // Store tokens if returned (preserve existing ones if not)
+      if (data.access_jwt) {
+        localStorage.setItem('access_token', data.access_jwt);
+        localStorage.setItem('access_jwt', data.access_jwt); // Also store with the key Interview expects
+      } else {
+        // Preserve existing token with both keys for compatibility
+        const existingToken = localStorage.getItem('access_token');
+        if (existingToken) {
+          localStorage.setItem('access_jwt', existingToken);
+        }
+      }
+
+      if (data.refresh_jwt) {
+        localStorage.setItem('refresh_token', data.refresh_jwt);
+        localStorage.setItem('refresh_jwt', data.refresh_jwt);
+      } else {
+        // Preserve existing refresh token
+        const existingRefreshToken = localStorage.getItem('refresh_token');
+        if (existingRefreshToken) {
+          localStorage.setItem('refresh_jwt', existingRefreshToken);
+        }
+      }
+      
+      // Store profile completion status
+      localStorage.setItem('profileCompleted', 'true');
+      
+      // Clear the persisted form data since profile is now saved
+      clearPersistedFormData();
+      
+      if (selectedRole === 'freelancer') {
+        setProfileSaved(true);
+      } else {
+        // Navigate directly to dashboard for clients
+        navigate('/client-dashboard', { 
+          state: { 
+            profileCompleted: true,
+            userRole: 'client',
+            userName: `${formData.firstname} ${formData.lastname}`
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Network or unexpected error during profile setup:', error);
+      setApiError('An unexpected error occurred. Please check your internet connection.');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Network or unexpected error during profile setup:', error);
-    setApiError('An unexpected error occurred. Please check your internet connection.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -361,6 +480,23 @@ const handleSubmit = async (e) => {
     });
   };
 
+  // Function to manually clear saved data (optional utility)
+  const handleClearSavedData = () => {
+    if (window.confirm('Are you sure you want to clear all saved form data?')) {
+      clearPersistedFormData();
+      setFormData({
+        firstname: '',
+        lastname: '',
+        country: '',
+        state: '',
+        skills: [],
+        companyName: '',
+        industry: '',
+      });
+      setShowDataRestored(false);
+    }
+  };
+
   return (
     <div className="w-full min-h-screen bg-gray-50 flex justify-center items-center py-6 px-4 sm:py-12 sm:px-6 basic-font">
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -374,17 +510,19 @@ const handleSubmit = async (e) => {
           </p>
         </div>
 
-        {/* Role indicator - shows current role but doesn't allow switching */}
+        {/* Role indicator - which can either be Freelancer or Client*/}
         <div className="px-8 py-4 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center">
-            <span className="text-sm font-medium text-gray-600 mr-3">Setting up profile as:</span>
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-              isFreelancer 
-                ? 'bg-blue-100 text-blue-800' 
-                : 'bg-green-100 text-green-800'
-            }`}>
-              {isFreelancer ? 'Freelancer' : 'Client'}
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span className="text-sm font-medium text-gray-600 mr-3">Setting up profile as:</span>
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                isFreelancer 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {isFreelancer ? 'Freelancer' : 'Client'}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -396,6 +534,18 @@ const handleSubmit = async (e) => {
                 <div>
                   <strong className="font-semibold">Success!</strong>
                   <span className="block sm:inline"> Your account has been created. Now, let's set up your profile.</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showDataRestored && (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg relative mb-6" role="alert">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 mr-2" />
+                <div>
+                  <strong className="font-semibold">Data Restored!</strong>
+                  <span className="block sm:inline"> Your previously entered information has been restored. Continue where you left off.</span>
                 </div>
               </div>
             </div>

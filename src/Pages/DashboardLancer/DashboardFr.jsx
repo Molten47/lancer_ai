@@ -4,10 +4,10 @@ import { Sidebar, Bell, User, Settings, Home,
        
        Download, X, LogOut, MessageSquare, HelpCircle, Building2} from 'lucide-react'
        
-import DashboardViews from '../../Sections/DashboardView/DashboardView'
+import DashboardViews from '../../Sections/Freelancer Side/DashboardView/DashboardView'
 import TaskManagements from '../../Sections/Task/Task'
 import WalletViews from '../../Sections/Wallet/Wallet'
-import MessagesFrs from '../../Sections/MessageFL/MessageFr'
+import MessagesFrs from '../../Sections/Freelancer Side/MessageFL/MessageFr'
 import Prosettingss from '../../Sections/Prosetting/Prosettings'
 import GetHelps from '../../Sections/Gethelp/Help'
 

@@ -19,7 +19,7 @@ const Hero = ({ onExplore }) => {
 
   return (
     <div 
-      className='hero-container w-full min-h-[80vh] flex flex-col md:flex-row justify-center items-center z-1 p-4 sm:p-8 md:p-12 relative' 
+      className='hero-container w-full min-h-[80vh] flex flex-col md:flex-row justify-center items-center z-1 p-5 sm:p-8 md:p-12 relative' 
       style={imageDisplay}
     >
       <div 

@@ -62,7 +62,8 @@ const handleSubmit = async (e) => {
   setIsLoading(true);
 
   try {
-    const response = await fetch('https://lancer-backend-y9bv.onrender.com/api/login', {
+    const API_URL = import.meta.env.VITE_API_URL
+    const response = await fetch(`${API_URL}/api/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -74,10 +75,6 @@ const handleSubmit = async (e) => {
     });
 
     console.log('Signin: Response status:', response.status);
-    console.log('Signin: Request payload sent:', {
-      email: formData.email,
-      password: '[REDACTED]', // Avoid logging passwords
-    });
 
     let data;
     try {
@@ -85,44 +82,53 @@ const handleSubmit = async (e) => {
       console.log('Signin: Response data:', data);
     } catch (jsonError) {
       console.error('Signin: Failed to parse JSON response:', jsonError);
-      const textResponse = await response.text();
-      console.log('Signin: Raw response text:', textResponse);
       setApiError('Server returned invalid response format');
       return;
     }
 
+    // Handle API responses based on your documentation
     if (!response.ok) {
       console.error('Signin: API Error:', data);
-      setApiError(data.description || data.message || 'Sign-in failed. Please check your credentials.');
+      
+      // Handle 401 error as per API documentation
+      if (response.status === 401) {
+        setApiError(data.error_message || 'Invalid email or password');
+      } else {
+        setApiError(data.error_message || 'Sign-in failed. Please try again.');
+      }
       return;
     }
 
-    console.log('Signin: Sign-in successful:', {
-      well_received: data.well_received,
-      role: data.role,
-      user_id: data.user_id,
-      access_jwt: '[REDACTED]',
-      refresh_jwt: '[REDACTED]',
-    });
+    // Success response - check if well_received is true
+    if (!data.well_received) {
+      console.error('Signin: API returned well_received: false');
+      setApiError(data.error_message || 'Sign-in failed. Please try again.');
+      return;
+    }
 
-    // Store JWT tokens, user_id, and role
+    console.log('Signin: Sign-in successful');
+
+    // Store JWT tokens and profile data as per API documentation
     try {
-      localStorage.setItem('access_jwt', data.access_jwt);
-      localStorage.setItem('refresh_jwt', data.refresh_jwt);
-      localStorage.setItem('userRole', data.role);
-      if (data.user_id) {
-        localStorage.setItem('user_id', data.user_id.toString());
-      } else {
-        console.warn('Signin: user_id not found in /api/login response');
-        setApiError('User ID not provided by server. Please try again.');
-        return;
+      if (data.access_jwt) {
+        localStorage.setItem('access_jwt', data.access_jwt);
       }
-      console.log('Signin: localStorage after storing:', {
-        access_jwt: '[REDACTED]',
-        refresh_jwt: '[REDACTED]',
-        userRole: localStorage.getItem('userRole'),
-        user_id: localStorage.getItem('user_id'),
-      });
+      if (data.refresh_jwt) {
+        localStorage.setItem('refresh_jwt', data.refresh_jwt);
+      }
+      
+      // Store profile data if provided
+      if (data.profile_data) {
+        localStorage.setItem('profile_data', JSON.stringify(data.profile_data));
+        
+        // Extract user role and ID from profile_data if available
+        if (data.profile_data.role) {
+          localStorage.setItem('userRole', data.profile_data.role);
+        }
+        if (data.profile_data.user_id) {
+          localStorage.setItem('user_id', data.profile_data.user_id.toString());
+        }
+      }
     } catch (e) {
       console.error('Signin: Failed to save to localStorage:', e);
       setApiError('Failed to save authentication data.');
@@ -131,44 +137,34 @@ const handleSubmit = async (e) => {
 
     setSubmitted(true);
 
-    // Check profile completion for freelancers
-    if (data.role === 'freelancer') {
-      try {
-        const profileResponse = await fetch('https://lancer-backend-y9bv.onrender.com/api/profile', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${data.access_jwt}`,
-            'Content-Type': 'application/json',
-          },
-        });
-        const profileData = await profileResponse.json();
-        console.log('Signin: Profile data:', profileData);
-        if (!profileResponse.ok) {
-          console.error('Signin: Profile fetch failed:', profileData);
-          navigate('/profile_setup', { state: { role: data.role } });
-          return;
+    // Navigation logic based on stored user role
+    const userRole = localStorage.getItem('userRole');
+    const profileData = localStorage.getItem('profile_data');
+    
+    if (userRole === 'freelancer') {
+      // Check if profile is complete from stored profile_data
+      let isProfileComplete = false;
+      if (profileData) {
+        try {
+          const parsedProfile = JSON.parse(profileData);
+          isProfileComplete = parsedProfile.is_complete === true;
+        } catch (e) {
+          console.error('Signin: Error parsing profile data:', e);
         }
-        if (!profileData.is_complete) {
-          console.log('Signin: Profile incomplete, redirecting to /setup');
-          navigate('/profile_setup', { state: { role: data.role } });
-        } else {
-          console.log('Signin: Profile complete, redirecting to /interview');
-          console.log('Signin: Before redirect to /interview, localStorage:', {
-            user_id: localStorage.getItem('user_id'),
-            userRole: localStorage.getItem('userRole'),
-            access_jwt: '[REDACTED]',
-            refresh_jwt: '[REDACTED]',
-          });
-          navigate('/interview');
-        }
-      } catch (error) {
-        console.error('Signin: Error checking profile:', error);
-        navigate('/profile_setup', { state: { role: data.role } });
+      }
+
+      if (!isProfileComplete) {
+        console.log('Signin: Profile incomplete, redirecting to /profile_setup');
+        navigate('/profile_setup', { state: { role: userRole } });
+      } else {
+        console.log('Signin: Profile complete, redirecting to /interview');
+        navigate('/interview');
       }
     } else {
-      console.log('Signin: Navigating to /dashboardcl');
+      console.log('Signin: Navigating to /client-dashboard');
       navigate('/client-dashboard');
     }
+
   } catch (error) {
     console.error('Signin: Network or unexpected error during sign-in:', error);
     setApiError('An unexpected error occurred. Please check your internet connection.');

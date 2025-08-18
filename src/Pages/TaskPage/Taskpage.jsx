@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { FileText, Upload, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 
-const PlatformTask = ({ taskType = 'platform_interview' }) => {
+const PlatformTask = ({ task_type = 'platform_interview' }) => {
   const [taskState, setTaskState] = useState('initial'); // initial, loading, started, submitting, submitted, error
   const [taskData, setTaskData] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -46,41 +47,86 @@ const PlatformTask = ({ taskType = 'platform_interview' }) => {
     setError(null);
 
     try {
-      const start_time = new Date().toISOString();
+      const start_time = new Date().toISOString().replace('Z', '+01:00'); // WAT, e.g., 2025-08-16T11:49:00.000+01:00
       setStartTime(start_time);
 
-      // INITIATION REQUEST - sends status, start_time, job_id
-      const response = await fetch(`https://lancer-web-service.onrender.com/api/task`, {
+      const token = localStorage.getItem('access_token');
+      console.log('Token:', token ? `${token.slice(0, 10)}...${token.slice(-10)}` : 'NO_TOKEN');
+      if (!token) {
+        throw new Error('No token found. Please log in again.');
+      }
+
+      // Decode JWT for debugging
+      let user_id = null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Token payload:', {
+          exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'No expiry',
+          iss: payload.iss || 'No issuer',
+          sub: payload.sub || 'No subject',
+          scope: payload.scope || 'No scope'
+        });
+        user_id = payload.sub || payload.user_id;
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          throw new Error('Token is expired. Please log in again.');
+        }
+      } catch (e) {
+        console.error('Failed to decode token:', e.message);
+      }
+
+      const API_URL = import.meta.env.VITE_API_URL ;
+      console.log('API_URL:', API_URL);
+
+      const formData = new FormData();
+      formData.append('status', 'initiation');
+      formData.append('start_time', start_time);
+
+      console.log('Sending initiation request (POST) to:', `${API_URL}/api/task/${task_type}`);
+      console.log('FormData fields:', { status: 'initiation', start_time });
+
+      const response = await fetch(`${API_URL}/api/task/${task_type}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          status: 'initiation',
-          start_time,
-          job_id: null
-        })
+        body: formData
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage;
+        let errorData;
+        const responseText = await response.text();
+        try {
+          errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorData.error || errorData.detail || `HTTP error! status: ${response.status}`;
+          console.error('Detailed error response:', errorData);
+        } catch (e) {
+          errorMessage = responseText || `HTTP error! status: ${response.status}`;
+          console.error('Error response text:', responseText);
+        }
+        
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 400) {
+          throw new Error(`Bad request: ${errorMessage}`);
+        } else if (response.status === 422) {
+          throw new Error(`Validation failed: ${errorMessage}`);
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
+      console.log('Initiation response:', data);
       
-      // Server responds with: instruction, completion_time, 200
       setTaskData({
-        instruction: data.instruction,
-        completion_time: data.completion_time // assuming this is in minutes
+        instruction: data.instruction || data.Instruction,
+        completion_time: data.completion_time
       });
-      
-      // Set timer (convert minutes to seconds)
       setTimeRemaining(data.completion_time * 60);
       setTaskState('started');
-
     } catch (err) {
       console.error('Error starting task:', err);
-      setError('Failed to start task. Please try again.');
+      setError(err.message || 'Failed to start task. Please try again.');
       setTaskState('error');
     }
   };
@@ -96,46 +142,81 @@ const PlatformTask = ({ taskType = 'platform_interview' }) => {
     setError(null);
 
     try {
-      const submission_time = new Date().toISOString();
-      const elapsed_time = Math.floor(((taskData.completion_time * 60) - timeRemaining) / 60); // in minutes
+      const submission_time = new Date().toISOString().replace('Z', '+01:00'); // WAT
+      const elapsed_time = Math.floor(((taskData.completion_time * 60) - timeRemaining) / 60);
 
-      // SUBMISSION REQUEST - sends title, submission_time, elapsed_time, file
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No token found. Please log in again.');
+      }
+
       const formData = new FormData();
+      formData.append('status', 'submission'); // Added status field
       formData.append('title', title.trim());
       formData.append('submission_time', submission_time);
       formData.append('elapsed_time', elapsed_time.toString());
       formData.append('file', uploadedFile);
 
-      const response = await fetch(`https://lancer-web-service.onrender.com/task`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'https://lancer-web-service.onrender.com';
+      console.log('Sending submission request to:', `${API_URL}/api/task/${task_type}`);
+      console.log('Submission FormData fields:', { 
+        status: 'submission',
+        title: title, 
+        submission_time, 
+        elapsed_time, 
+        file: uploadedFile.name 
+      });
+
+      const response = await fetch(`${API_URL}/api/task/${task_type}`, {
         method: 'POST',
-        body: formData // No Content-Type header - let browser set it for FormData
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage;
+        let errorData;
+        const responseText = await response.text();
+        try {
+          errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorData.error || errorData.detail || `HTTP error! status: ${response.status}`;
+          console.error('Detailed error response:', errorData);
+        } catch (e) {
+          errorMessage = responseText || `HTTP error! status: ${response.status}`;
+          console.error('Error response text:', responseText);
+        }
+        
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 400) {
+          throw new Error(`Bad request: ${errorMessage}`);
+        } else if (response.status === 422) {
+          throw new Error(`Validation failed: ${errorMessage}`);
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
+      console.log('Submission response:', result);
       
-      // Server responds with: well_received, review, 200
       setSubmissionResult({
-        message: result.well_received,
+        message: result.well_received || result.Well_received,
         review: result.review,
         elapsed_time: elapsed_time
       });
       setTaskState('submitted');
-
     } catch (err) {
       console.error('Error submitting task:', err);
-      setError('Failed to submit task. Please try again.');
-      setTaskState('started'); // Return to started state to allow retry
+      setError(err.message || 'Failed to submit task. Please try again.');
+      setTaskState('started');
     }
   };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      // Check file size (10MB limit)
       if (file.size > 10 * 1024 * 1024) {
         setError('File size must be less than 10MB');
         return;
@@ -279,7 +360,7 @@ const PlatformTask = ({ taskType = 'platform_interview' }) => {
 
   // Task in progress screen
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col justify-center items-center">
+    <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col justify-center items-center basic-font">
       <div className='w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl'>
         <div className="bg-blue-600 text-white px-8 py-6">
           <h1 className="text-2xl font-semibold">Platform Interview Task</h1>

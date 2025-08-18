@@ -1,20 +1,66 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Signup = () => {
+  // State persistence key for this form
+  const FORM_STORAGE_KEY = 'signup_form_data';
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirm_password: '',
     role: ''
   });
 
   const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState(''); // New state for API-specific errors
-  const [isLoading, setIsLoading] = useState(false); // New state for loading indicator
+  const [apiError, setApiError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Load persisted form data on component mount
+  useEffect(() => {
+    const savedFormData = sessionStorage.getItem(FORM_STORAGE_KEY);
+    if (savedFormData) {
+      try {
+        const parsedData = JSON.parse(savedFormData);
+        // Don't restore passwords for security reasons
+        setFormData(prev => ({
+          ...prev,
+          email: parsedData.email || '',
+          role: parsedData.role || ''
+          // Intentionally not restoring password fields
+        }));
+      } catch (error) {
+        console.error('Error loading saved form data:', error);
+        // Clear corrupted data
+        sessionStorage.removeItem(FORM_STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // Save form data to sessionStorage whenever it changes
+  useEffect(() => {
+    // Only save non-sensitive data
+    const dataToSave = {
+      email: formData.email,
+      role: formData.role,
+      // Don't save password fields for security
+      timestamp: new Date().toISOString()
+    };
+    
+    // Only save if there's actual data to save
+    if (formData.email || formData.role) {
+      sessionStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(dataToSave));
+    }
+  }, [formData.email, formData.role]);
+
+  // Clear persisted data when form is successfully submitted
+  const clearPersistedData = () => {
+    sessionStorage.removeItem(FORM_STORAGE_KEY);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,9 +110,9 @@ const Signup = () => {
     return newErrors;
   };
 
-  const handleSubmit = async (e) => { // Make handleSubmit async
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setApiError(''); // Clear any previous API errors
+    setApiError('');
     const validationErrors = validate();
 
     if (Object.keys(validationErrors).length > 0) {
@@ -74,16 +120,15 @@ const Signup = () => {
       return;
     }
 
-    setIsLoading(true); // Set loading to true when starting API call
+    setIsLoading(true);
 
     try {
-      // API call to the backend signup endpoint
-      const response = await fetch('https://lancer-web-service.onrender.com/api/signup', {
+      const API_URL = import.meta.env.VITE_API_URL
+      const response = await fetch(`${API_URL}/api/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // Send email, password, AND role to the backend
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -93,35 +138,38 @@ const Signup = () => {
 
       const data = await response.json();
 
-    if (!response.ok) {
-  // For 401 errors (email already exists)
-  setApiError(data.error_message || 'Signup failed. Please try again.');
-  return;
-}
+      if (!response.ok) {
+        setApiError(data.error_message || 'Signup failed. Please try again.');
+        return;
+      }
 
-// If signup is successful (200 OK)
-console.log('Signup successful:', data);
-
-// Store JWT tokens and user data
-   localStorage.setItem('access_token', data.access_jwt);
-   localStorage.setItem('refresh_token', data.refresh_jwt);
-   localStorage.setItem('userRole', data.role); // Use the role from server response
-   localStorage.setItem('showSignupSuccess', 'true');
-
-      // If signup is successful (200 OK)
       console.log('Signup successful:', data);
 
-      // Store role in localStorage for persistence
-      try {
-        localStorage.setItem('userRole', formData.role);
-        localStorage.setItem('showSignupSuccess', 'true');
-      } catch (e) {
-        console.error('Failed to save to localStorage:', e);
+      // Store JWT tokens with BOTH keys for compatibility
+      if (data.access_jwt) {
+        localStorage.setItem('access_token', data.access_jwt);
+        localStorage.setItem('access_jwt', data.access_jwt);
       }
-      // Navigate directly to the setup page with state
+      
+      if (data.refresh_jwt) {
+        localStorage.setItem('refresh_token', data.refresh_jwt);
+        localStorage.setItem('refresh_jwt', data.refresh_jwt);
+      }
+
+      if (data.user_id) {
+        localStorage.setItem('user_id', data.user_id.toString());
+      }
+      
+      localStorage.setItem('userRole', data.role || formData.role);
+      localStorage.setItem('showSignupSuccess', 'true');
+
+      // Clear persisted form data on successful submission
+      clearPersistedData();
+
+      // Navigate to setup page
       navigate('/profile_setup', {
         state: {
-          role: formData.role,
+          role: data.role || formData.role,
           showSuccessAlert: true
         }
       });
@@ -130,14 +178,18 @@ console.log('Signup successful:', data);
       console.error('Network or unexpected error during signup:', error);
       setApiError('An unexpected error occurred. Please check your internet connection.');
     } finally {
-      setIsLoading(false); // Set loading to false after API call completes
+      setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
     console.log('Google sign-in initiated');
-    // This would typically involve redirecting to a Google OAuth flow
+    // Clear persisted data when switching to OAuth
+    clearPersistedData();
   };
+
+  // Show indicator if data was restored
+  const hasRestoredData = sessionStorage.getItem(FORM_STORAGE_KEY) !== null;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
@@ -184,84 +236,72 @@ console.log('Signup successful:', data);
           </div>
 
           {/* Password Field */}
-       <div>
-  <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">Password</label>
-  <div className="mt-1 relative rounded-md shadow-sm">
-    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-      <Lock className="h-5 w-5 text-dark" />
-    </div>
-    <input
-      type={showPassword ? "text" : "password"}
-      name="password"
-      id="password"
-      value={formData.password}
-      onChange={handleChange}
-      className={`block w-full pl-10 pr-10 py-2 border ${errors.password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-      placeholder="••••••••"
-    />
-    {/* Password Toggle Button */}
-    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-      <button
-        type="button"
-        onClick={() => setShowPassword(!showPassword)}
-        className="text-gray-400 hover:text-gray-600 focus:outline-none"
-      >
-        {showPassword ? (
-          <EyeOff className="h-5 w-5" />
-        ) : (
-          <Eye className="h-5 w-5" />
-        )}
-      </button>
-    </div>
-    {/* Error Icon - adjust position when toggle is present */}
-    {errors.password && (
-      <div className="absolute inset-y-0 right-8 pr-3 flex items-center pointer-events-none">
-        <AlertCircle className="h-5 w-5 text-red-500" />
-      </div>
-    )}
-  </div>
-  {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
-</div>
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">Password</label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-dark" />
+              </div>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                id="password"
+                value={formData.password}
+                onChange={handleChange}
+                className={`block w-full pl-10 pr-10 py-2 border ${errors.password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                placeholder="••••••••"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              {errors.password && (
+                <div className="absolute inset-y-0 right-8 pr-3 flex items-center pointer-events-none">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                </div>
+              )}
+            </div>
+            {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
+          </div>
 
-{/* Confirm Password Field with Toggle */}
-<div>
-  <label htmlFor="confirm_password" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
-  <div className="mt-1 relative rounded-md shadow-sm">
-    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-      <Lock className="h-5 w-5 text-dark" />
-    </div>
-    <input
-      type={showConfirmPassword ? "text" : "password"}
-      name="confirm_password"
-      id="confirm_password"
-      value={formData.confirm_password}
-      onChange={handleChange}
-      className={`block w-full pl-10 pr-10 py-2 border ${errors.confirm_password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
-      placeholder="••••••••"
-    />
-    {/* Password Toggle Button */}
-    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-      <button
-        type="button"
-        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-        className="text-gray-400 hover:text-gray-600 focus:outline-none"
-      >
-        {showConfirmPassword ? (
-          <EyeOff className="h-5 w-5" />
-        ) : (
-          <Eye className="h-5 w-5" />
-        )}
-      </button>
-    </div>
-    {/* Error Icon - adjust position when toggle is present */}
-    {errors.confirm_password && (
-      <div className="absolute inset-y-0 right-8 pr-3 flex items-center pointer-events-none">
-        <AlertCircle className="h-5 w-5 text-red-500" />
-      </div>
-    )}
-  </div>
-  {errors.confirm_password && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
-</div>
+          {/* Confirm Password Field */}
+          <div>
+            <label htmlFor="confirm_password" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
+            <div className="mt-1 relative rounded-md shadow-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Lock className="h-5 w-5 text-dark" />
+              </div>
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirm_password"
+                id="confirm_password"
+                value={formData.confirm_password}
+                onChange={handleChange}
+                className={`block w-full pl-10 pr-10 py-2 border ${errors.confirm_password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                placeholder="••••••••"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              {errors.confirm_password && (
+                <div className="absolute inset-y-0 right-8 pr-3 flex items-center pointer-events-none">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                </div>
+              )}
+            </div>
+            {errors.confirm_password && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
+          </div>
 
           {/* Role Selection */}
           <div>
@@ -287,7 +327,7 @@ console.log('Signup successful:', data);
             <button
               type="submit"
               className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#00b5b5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
-              disabled={isLoading} // Disable button while loading
+              disabled={isLoading}
             >
               {isLoading ? 'Signing Up...' : 'Sign Up'}
             </button>
@@ -309,7 +349,7 @@ console.log('Signup successful:', data);
           <button
             onClick={handleGoogleSignIn}
             className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
-            disabled={isLoading} // Disable Google button while loading
+            disabled={isLoading}
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
               <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
