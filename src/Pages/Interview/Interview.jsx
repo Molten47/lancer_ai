@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Loader2, MessageSquare, Send, XCircle } from 'lucide-react';
+import { Loader2, MessageSquare, Send, XCircle, ArrowRight, Clock, CheckCircle, Brain, User, FileText } from 'lucide-react';
 import socket from '../../Components/socket';
 
 const Interview = ({ chat_type = 'platform_interviewer'}) => {
@@ -18,16 +18,205 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [interviewId, setInterviewId] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [showRedirectPrompt, setShowRedirectPrompt] = useState(false);
+  const [awaitingAck, setAwaitingAck] = useState(false);
   
-  // NEW: Add state for message deduplication and flow control
-  const [lastMessageId, setLastMessageId] = useState(null);
-  const [currentQuestionNumber, setCurrentQuestionNumber] = useState(0);
-  const [isTypingIndicatorVisible, setIsTypingIndicatorVisible] = useState(false);
-  const [typingMessage, setTypingMessage] = useState('');
+  // New states for streamlined profile creation flow
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
+  const [profileCreationStage, setProfileCreationStage] = useState(''); // 'username', 'bio', 'finalizing'
+  const [hasTriggeredProfileCreation, setHasTriggeredProfileCreation] = useState(false);
+  
+  // Status state - simplified for the new flow
+  const [interviewStatus, setInterviewStatus] = useState('connecting');
+  
+  // NEW: Timer-based header message states
+  const [headerMessage, setHeaderMessage] = useState('');
+  const [headerMessageType, setHeaderMessageType] = useState(''); // 'processing', 'success', 'info'
+  const [messageTimer, setMessageTimer] = useState(null);
+  const [headerProgress, setHeaderProgress] = useState(0);
   
   const messagesEndRef = useRef(null);
 
-  // Socket connection management
+  // NEW: Header message progression after user sends message
+  const headerMessageSequence = [
+    { message: "Your answer has been received", type: "success", duration: 2000, progress: 20 },
+    { message: "AI is analyzing your response", type: "processing", duration: 3000, progress: 40 },
+    { message: "Creating your profile bio", type: "processing", duration: 4000, progress: 60 },
+    { message: "AI is saving your data", type: "processing", duration: 3000, progress: 80 },
+    { message: "You will soon be directed to carry out your first task", type: "info", duration: 2000, progress: 100 },
+    { message: "Profile creation complete!", type: "success", duration: 1500, progress: 100 }
+  ];
+
+  // NEW: Function to start header message progression
+  const startHeaderMessageProgression = () => {
+    let currentIndex = 0;
+    setHeaderProgress(0);
+    
+    const showNextMessage = () => {
+      if (currentIndex < headerMessageSequence.length) {
+        const currentMsg = headerMessageSequence[currentIndex];
+        setHeaderMessage(currentMsg.message);
+        setHeaderMessageType(currentMsg.type);
+        setHeaderProgress(currentMsg.progress);
+        
+        const timer = setTimeout(() => {
+          currentIndex++;
+          showNextMessage();
+        }, currentMsg.duration);
+        
+        setMessageTimer(timer);
+        
+        // If this is the last message, trigger profile creation completion
+        if (currentIndex === headerMessageSequence.length - 1) {
+          setTimeout(() => {
+            setInterviewComplete(true);
+            setShowRedirectPrompt(true);
+            setInterviewStatus('completed');
+            setIsCreatingProfile(false);
+            setHeaderMessage('');
+          }, currentMsg.duration);
+        }
+      }
+    };
+    
+    showNextMessage();
+  };
+
+  // NEW: Clear header message timer
+  const clearHeaderMessageTimer = () => {
+    if (messageTimer) {
+      clearTimeout(messageTimer);
+      setMessageTimer(null);
+    }
+  };
+
+  // Function to get status display info - updated for streamlined flow
+  const getStatusInfo = () => {
+    // NEW: Show header message if active
+    if (headerMessage) {
+      const icons = {
+        processing: <Brain className="h-4 w-4 animate-pulse" />,
+        success: <CheckCircle className="h-4 w-4" />,
+        info: <Clock className="h-4 w-4" />
+      };
+      
+      const colors = {
+        processing: 'text-yellow-200',
+        success: 'text-green-200',
+        info: 'text-blue-200'
+      };
+      
+      return {
+        icon: icons[headerMessageType] || <Brain className="h-4 w-4" />,
+        text: headerMessage,
+        color: colors[headerMessageType] || 'text-white'
+      };
+    }
+
+    if (isCreatingProfile) {
+      switch (profileCreationStage) {
+        case 'username':
+          return {
+            icon: <User className="h-4 w-4 animate-pulse" />,
+            text: 'AI is creating your username...',
+            color: 'text-blue-200'
+          };
+        case 'bio':
+          return {
+            icon: <FileText className="h-4 w-4 animate-pulse" />,
+            text: 'AI is generating your bio...',
+            color: 'text-purple-200'
+          };
+        case 'finalizing':
+          return {
+            icon: <CheckCircle className="h-4 w-4 animate-pulse" />,
+            text: 'Finalizing your profile...',
+            color: 'text-green-200'
+          };
+        default:
+          return {
+            icon: <Brain className="h-4 w-4 animate-pulse" />,
+            text: 'AI is creating your profile...',
+            color: 'text-yellow-200'
+          };
+      }
+    }
+
+    switch (interviewStatus) {
+      case 'connecting':
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          text: 'Connecting to interview server...',
+          color: 'text-blue-200'
+        };
+      case 'preparing_question':
+        return {
+          icon: <Brain className="h-4 w-4 animate-pulse" />,
+          text: 'AI is preparing your question...',
+          color: 'text-yellow-200'
+        };
+      case 'waiting_response':
+        return {
+          icon: <Clock className="h-4 w-4" />,
+          text: 'Waiting for your response...',
+          color: 'text-green-200'
+        };
+      case 'completed':
+        return {
+          icon: <CheckCircle className="h-4 w-4" />,
+          text: 'Interview completed successfully!',
+          color: 'text-green-300'
+        };
+      default:
+        return {
+          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          text: 'Processing...',
+          color: 'text-white'
+        };
+    }
+  };
+
+  // Function to simulate profile creation stages
+  const simulateProfileCreation = async () => {
+    setIsCreatingProfile(true);
+    
+    // Stage 1: Creating username
+    setProfileCreationStage('username');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Stage 2: Generating bio
+    setProfileCreationStage('bio');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Stage 3: Finalizing
+    setProfileCreationStage('finalizing');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Complete profile creation
+    setIsCreatingProfile(false);
+    setProfileCreationStage('');
+    setInterviewComplete(true);
+    setShowRedirectPrompt(true);
+    setInterviewStatus('completed');
+  };
+
+  // Check if message is a trigger message (auto-generated message that signals profile creation)
+  const isTriggerMessage = (messageContent) => {
+    // You can customize this logic based on your trigger message format
+    const triggerKeywords = [
+      'start profile creation',
+      'begin interview',
+      'create my profile',
+      'proceed with setup'
+    ];
+    
+    return triggerKeywords.some(keyword => 
+      messageContent.toLowerCase().includes(keyword.toLowerCase())
+    );
+  };
+
+  // Socket connection management (same as before but with profile creation trigger)
   useEffect(() => {
     console.log('Interview component mounted, localStorage:', {
       user_id: localStorage.getItem('user_id'),
@@ -38,7 +227,7 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
       refresh_token: localStorage.getItem('refresh_token'),
     });
 
-    // Authentication check
+    // Authentication check (same as before)
     const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
     const userId = localStorage.getItem('user_id');
     const userRole = localStorage.getItem('userRole');
@@ -80,26 +269,22 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
 
     setIsLoadingAuth(false);
 
-    // Initialize chat and setup socket
+    // Initialize chat (same as before)
     const initializeChat = async () => {
       try {
         setIsLoadingQuestion(true);
-        setTypingMessage('Initializing interview...');
-        setIsTypingIndicatorVisible(true);
+        setInterviewStatus('preparing_question');
         
-        // Use the same API URL as socket.js
-        const API_URL = import.meta.env.VITE_API_URL || 'https://lancer-web-service.onrender.com';
+        const API_URL = import.meta.env.VITE_API_URL;
         
         console.log('Initializing chat with API_URL:', API_URL);
         
         const queryParams = new URLSearchParams({
           chat_type: chat_type,
           own_id: own_id || localStorage.getItem('user_id') || 'temp_user',
-          recipient_id: 'platform_interviewer'
+          recipient_id: 'platform_interviewer' 
         });
-
-        console.log('Making API request to:', `${API_URL}/api/chat?${queryParams}`);
-
+        
         const headers = {
           'Content-Type': 'application/json',
         };
@@ -116,8 +301,6 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
           credentials: 'include'
         });
 
-        console.log('API Response status:', response.status);
-
         let chatData;
         try {
           chatData = await response.json();
@@ -133,9 +316,10 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
           throw new Error('Invalid response format from server');
         }
 
-        console.log('Chat API response:', chatData);
-
         if (!response.ok) {
+          const errorText = await response.text()
+          console.error('Server error text:' , errorText);
+          
           if (response.status === 401) {
             if (!authToken) {
               setSocketError('Please complete the signup process to start the interview.');
@@ -149,6 +333,8 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
               }, 1000);
             }
             return;
+          } else if (response.status === 500) {
+            console.error('500 SERVER ERROR - error cause:', errorText);
           }
           throw new Error(chatData.error_message || `HTTP ${response.status}: Failed to initialize chat`);
         }
@@ -160,9 +346,6 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
           console.log('Platform interview initialized successfully');
         }
         
-        // Connect to socket after successful API call
-        console.log('Connecting to socket...');
-        setTypingMessage('Connecting to interview server...');
         if (!socket.connected) {
           socket.connect();
         }
@@ -200,7 +383,6 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
         
         setSocketError(errorMessage);
         setIsLoadingQuestion(false);
-        setIsTypingIndicatorVisible(false);
         
         if (errorMessage.includes('sign in') || errorMessage.includes('Authentication')) {
           setTimeout(() => {
@@ -213,16 +395,14 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
 
     initializeChat();
 
-    // ENHANCED: Setup socket event listeners with flow control
+    // Setup socket event listeners - UPDATED FOR STREAMLINED FLOW
     const setupSocketListeners = () => {
-      // Connection events
       socket.on('connect', () => {
         console.log('Socket connected');
         setIsConnected(true);
         setSocketError('');
-        setTypingMessage('Preparing first question...');
+        setIsLoadingQuestion(false);
         
-        // Join room as per documentation
         const userId = own_id || localStorage.getItem('user_id');
         socket.emit('join', {
           room_name: String(userId),
@@ -238,7 +418,10 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
       socket.on('disconnect', () => {
         console.log('Socket disconnected');
         setIsConnected(false);
-        setIsTypingIndicatorVisible(false);
+        setInterviewStatus('connecting');
+        // NEW: Clear header messages on disconnect
+        clearHeaderMessageTimer();
+        setHeaderMessage('');
       });
 
       socket.on('connect_error', (error) => {
@@ -246,97 +429,105 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
         setSocketError('Failed to connect to interview server');
         setIsConnected(false);
         setIsLoadingQuestion(false);
-        setIsTypingIndicatorVisible(false);
+        // NEW: Clear header messages on error
+        clearHeaderMessageTimer();
+        setHeaderMessage('');
       });
 
-      // ENHANCED: Message listener with deduplication
+      // UPDATED: Message listener with trigger detection
       socket.on('new_message', (data) => {
         console.log('Received new message:', data);
         
         const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
         
-        // Create unique message ID based on content and timestamp
-        const messageId = `${senderOwnId}-${message_content.slice(0, 20)}-${Date.now()}`;
+        const messageId = `${senderOwnId}_${Date.now()}_${message_content.slice(0, 20)}`;
         
-        // Prevent duplicate messages
-        if (lastMessageId === messageId) {
-          console.log('Duplicate message detected, ignoring');
-          return;
-        }
-        
-        setLastMessageId(messageId);
-        
-        const newMessage = {
-          id: messageId,
-          sender_id: senderOwnId || 'ai',
-          message_content: message_content,
-          sender_tag: sender_tag || 'ai',
-          recipient_id: recipient_id,
-          timestamp: new Date().toISOString(),
-          questionNumber: data.questionNumber,
-          totalQuestions: data.totalQuestions
-        };
-        
-        // Update question number if present
-        if (data.questionNumber) {
-          setCurrentQuestionNumber(data.questionNumber);
-        }
-        
-        setMessages(prev => [...prev, newMessage]);
-        
-        // Hide typing indicator and enable response
-        setIsTypingIndicatorVisible(false);
-        setIsLoadingQuestion(false);
-        setIsWaitingForResponse(true);
-      });
-
-      // ENHANCED: Status update listener for typing indicators
-      socket.on('status_update', (data) => {
-        console.log('Received status update:', data);
-        
-        if (data.update) {
-          // Show custom typing messages based on status
-          if (data.update.includes('thinking') || data.update.includes('processing')) {
-            setTypingMessage('AI is analyzing your response...');
-            setIsTypingIndicatorVisible(true);
-          } else if (data.update.includes('generating') || data.update.includes('preparing')) {
-            const questionNum = currentQuestionNumber + 1;
-            setTypingMessage(`Preparing question ${questionNum}...`);
-            setIsTypingIndicatorVisible(true);
-          } else {
-            setTypingMessage(data.update);
-            setIsTypingIndicatorVisible(true);
+        setMessages(prev => {
+          const isDuplicate = prev.some(msg => 
+            msg.sender_id === senderOwnId && 
+            msg.message_content === message_content && 
+            Math.abs(new Date(msg.timestamp).getTime() - Date.now()) < 5000
+          );
+          
+          if (isDuplicate) {
+            console.log('Duplicate message detected, skipping');
+            return prev;
           }
+          
+          const newMessage = {
+            id: messageId,
+            sender_id: senderOwnId || 'ai',
+            message_content: message_content,
+            sender_tag: sender_tag || 'ai',
+            recipient_id: recipient_id,
+            timestamp: new Date().toISOString(),
+            questionNumber: data.questionNumber,
+            totalQuestions: data.totalQuestions
+          };
+          
+          return [...prev, newMessage];
+        });
+        
+        setIsWaitingForResponse(true);
+        setIsLoadingQuestion(false);
+        setAwaitingAck(false);
+        
+        if (sender_tag === 'ai' || senderOwnId === 'platform_interviewer') {
+          setInterviewStatus('waiting_response');
         }
       });
 
-      // Control instruction listener
+      // UPDATED: Control instruction listener for profile creation trigger
       socket.on('control_instruction', (data) => {
         console.log('Received control instruction:', data);
         
         const { command, data: instructionData } = data;
         
         switch(command) {
+          case 'start_profile_creation':
+            console.log('Profile creation triggered by server');
+            if (!hasTriggeredProfileCreation) {
+              setHasTriggeredProfileCreation(true);
+              // NEW: Start header message progression instead of profile creation simulation
+              startHeaderMessageProgression();
+            }
+            break;
+          case 'start_header_progression':
+            console.log('Header message progression triggered by server');
+            startHeaderMessageProgression();
+            break;
           case 'interview_complete':
             setInterviewComplete(true);
             setIsWaitingForResponse(false);
-            setIsTypingIndicatorVisible(false);
+            setShowRedirectPrompt(true);
+            setInterviewStatus('completed');
+            clearHeaderMessageTimer();
+            setHeaderMessage('');
             break;
-          case 'next_question':
-            setTypingMessage(`Preparing next question...`);
-            setIsTypingIndicatorVisible(true);
-            setIsWaitingForResponse(false);
+          case 'redirect':
+            console.log('Interview redirect triggered');
+            setShowRedirectPrompt(true);
+            setInterviewStatus('completed');
+            clearHeaderMessageTimer();
+            setHeaderMessage('');
             break;
           case 'error':
             setSocketError(instructionData?.message || 'An error occurred');
-            setIsTypingIndicatorVisible(false);
+            clearHeaderMessageTimer();
+            setHeaderMessage('');
             break;
           default:
             console.log('Unknown command:', command);
         }
       });
 
-      // Notification listener
+      socket.on('status_update', (data) => {
+        console.log('Received status update:', data);
+        if (data.update) {
+          console.log('Status:', data.update);
+        }
+      });
+
       socket.on('notification', (data) => {
         console.log('Received notification:', data);
         
@@ -344,7 +535,8 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
         
         if (type === 'error') {
           setSocketError(message);
-          setIsTypingIndicatorVisible(false);
+          clearHeaderMessageTimer();
+          setHeaderMessage('');
         } else if (type === 'warning') {
           console.warn('Notification warning:', message);
         } else if (type === 'info') {
@@ -355,11 +547,17 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
           console.log('Additional notification context:', anc);
         }
       });
+
+      socket.on('message_acknowledged', (data) => {
+        console.log('Message acknowledged:', data);
+        setAwaitingAck(false);
+        setIsSending(false);
+      });
     };
 
     setupSocketListeners();
 
-    // Cleanup function
+    // NEW: Cleanup function to clear timers
     return () => {
       socket.off('connect');
       socket.off('disconnect');
@@ -368,12 +566,14 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
       socket.off('control_instruction');
       socket.off('status_update');
       socket.off('notification');
+      socket.off('message_acknowledged');
+      clearHeaderMessageTimer();
     };
   }, [navigate, own_id, chat_type, location.state]);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTypingIndicatorVisible]);
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -383,15 +583,19 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
     setCurrentInput(e.target.value);
   };
 
+  // UPDATED: Handle submit with trigger detection and header message progression
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (currentInput.trim() === '' || !isWaitingForResponse || !isConnected) {
+    if (currentInput.trim() === '' || !isWaitingForResponse || !isConnected || isSending || awaitingAck) {
       return;
     }
 
+    setIsSending(true);
+    setAwaitingAck(true);
+
     const userMessage = {
-      id: `user-${Date.now()}`,
+      id: `user_${Date.now()}`,
       sender_id: parseInt(own_id),
       message_content: currentInput.trim(),
       sender_tag: 'user',
@@ -400,25 +604,38 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
 
     setMessages(prev => [...prev, userMessage]);
     
-    // Send message to socket
+    // NEW: Start header message progression after user sends ANY message
+    // This gives immediate feedback regardless of message content
+    setTimeout(() => {
+      startHeaderMessageProgression();
+    }, 1000); // Small delay to show the user message first
+    
+    // Send message to server
     socket.emit('send_message', {
       message_content: currentInput.trim(),
       own_id: parseInt(own_id || localStorage.getItem('user_id')),
       recipient_id: 'platform_interviewer'
+    }, (acknowledgment) => {
+      if (acknowledgment === "Acknowledged" || acknowledgment?.status === 'success') {
+        setAwaitingAck(false);
+        setIsSending(false);
+        console.log('Message successfully acknowledged');
+      }
     });
 
-    // Reset state for next question flow
     setCurrentInput('');
     setIsWaitingForResponse(false);
     setIsLoadingQuestion(true);
-    
-    // Show immediate typing indicator
-    setTypingMessage('AI is analyzing your response...');
-    setIsTypingIndicatorVisible(true);
   };
 
   const handleContinueToDashboard = () => {
-    navigate('/task');
+    clearHeaderMessageTimer();
+    setShowRedirectPrompt(false);
+    navigate('/task', { replace: true });
+  };
+
+  const handleDismissRedirect = () => {
+    setShowRedirectPrompt(false);
   };
 
   // Show loading while checking authentication
@@ -432,7 +649,7 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
     );
   }
 
-  // Error state
+  // Error state (same as before)
   if (socketError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
@@ -467,12 +684,14 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
               Try Again
             </button>
           )}
+          
           <button
             onClick={() => navigate('/signin', { replace: true })}
             className="py-2 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow-md transition-all"
           >
             Go to Sign In
           </button>
+          
           {localStorage.getItem('userRole') && (
             <button
               onClick={() => navigate('/profile_setup', { replace: true })}
@@ -480,59 +699,157 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
             >
               Go to Profile Setup
             </button>
-        )}
+          )}
         </div>
       </div>
     );
   }
 
+  const statusInfo = getStatusInfo();
+
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex justify-center py-12">
-      <div className="w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl">
-        {/* Header */}
-        <div className="bg-blue-600 text-white rounded-t-xl px-8 py-6 border-b border-gray-200">
-          <h2 className="text-3xl text-white font-bold flex items-center">
-            <MessageSquare className="mr-3" />
-            AI Interview
+    <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex justify-center py-4 md:py-12 px-2 md:px-0">
+      <div className="w-full max-w-6xl flex flex-col rounded-none md:rounded-xl overflow-hidden shadow-none md:shadow-xl">
+        {/* Header - UPDATED with enhanced header message display */}
+        <div className="bg-blue-600 text-white rounded-none md:rounded-t-xl px-4 md:px-8 py-4 md:py-6 border-b border-gray-200">
+          <h2 className="text-xl md:text-3xl text-white font-bold flex items-center">
+            <MessageSquare className="mr-2 md:mr-3 h-5 w-5 md:h-6 md:w-6" />
+            {headerMessage ? 'AI Processing' : isCreatingProfile ? 'AI Profile Creation' : 'AI Interview'}
           </h2>
-          <p className="mt-2 text-lg opacity-90">
-            {!interviewComplete
-              ? "Our AI will ask you questions to understand your skills better"
-              : 'Interview complete! Your profile is ready.'}
+          <p className="mt-1 md:mt-2 text-sm md:text-lg opacity-90">
+            {headerMessage 
+              ? "AI is working on your profile in the background"
+              : isCreatingProfile 
+                ? "AI is setting up your personalized profile"
+                : !interviewComplete
+                  ? "Our AI will ask you questions to understand your skills better"
+                  : 'Interview complete! Your profile is ready.'}
           </p>
           
-          {/* Connection status */}
-          <div className="mt-2 flex items-center">
-            <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
-            <span className="text-sm opacity-75">
-              {isConnected ? 'Connected' : 'Connecting...'}
-            </span>
+          {/* Status indicators - UPDATED for header messages */}
+          <div className="mt-3 md:mt-4 space-y-1 md:space-y-2">
+            <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-1 md:space-y-0">
+              {/* Connection status */}
+              <div className="flex items-center">
+                <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                <span className="text-xs md:text-sm opacity-75">
+                  {isConnected ? 'Connected' : 'Connecting...'}
+                </span>
+                {awaitingAck && (
+                  <span className="text-xs ml-2 opacity-60">
+                    • Sending...
+                  </span>
+                )}
+              </div>
+              
+              {/* Header Message/Profile Creation/Interview Status Indicator */}
+              <div className={`flex items-center ${statusInfo.color}`}>
+                <span className="flex items-center">
+                  {statusInfo.icon}
+                </span>
+                <span className="text-xs md:text-sm ml-2 font-medium">
+                  {statusInfo.text}
+                </span>
+              </div>
+            </div>
           </div>
 
-          {/* Enhanced Progress bar */}
-          {(messages.some(m => m.questionNumber) || currentQuestionNumber > 0) && (
-            <div className="mt-4">
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
+          {/* NEW: Header message progress bar */}
+          {headerMessage && (
+            <div className="mt-3 md:mt-4">
+              <div className="w-full bg-gray-200 rounded-full h-2 md:h-2.5">
                 <div
-                  className="bg-white h-2.5 rounded-full transition-all duration-500 ease-out"
+                  className="bg-white h-2 md:h-2.5 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${headerProgress}%` }}
+                ></div>
+              </div>
+              <div className="mt-2 flex justify-between text-xs text-white opacity-75">
+                <span>Analyzing</span>
+                <span>Creating Bio</span>
+                <span>Saving Data</span>
+                <span>Complete</span>
+              </div>
+            </div>
+          )}
+
+          {/* Profile Creation Progress - only show if not using header messages */}
+          {isCreatingProfile && !headerMessage && (
+            <div className="mt-3 md:mt-4">
+              <div className="w-full bg-gray-200 rounded-full h-2 md:h-2.5">
+                <div
+                  className="bg-white h-2 md:h-2.5 rounded-full transition-all duration-1000 ease-out"
                   style={{ 
-                    width: `${Math.max(0, currentQuestionNumber / 
+                    width: profileCreationStage === 'username' ? '33%' : 
+                           profileCreationStage === 'bio' ? '66%' : 
+                           profileCreationStage === 'finalizing' ? '100%' : '10%'
+                  }}
+                ></div>
+              </div>
+              <div className="mt-2 flex justify-between text-xs text-white opacity-75">
+                <span className={profileCreationStage === 'username' ? 'font-semibold' : ''}>Username</span>
+                <span className={profileCreationStage === 'bio' ? 'font-semibold' : ''}>Bio</span>
+                <span className={profileCreationStage === 'finalizing' ? 'font-semibold' : ''}>Complete</span>
+              </div>
+            </div>
+          )}
+
+          {/* Original progress bar for regular interview - only show if no header messages */}
+          {!isCreatingProfile && !headerMessage && messages.some(m => m.questionNumber) && (
+            <div className="mt-3 md:mt-4">
+              <div className="w-full bg-gray-200 rounded-full h-2 md:h-2.5">
+                <div
+                  className="bg-white h-2 md:h-2.5 rounded-full transition-all duration-500 ease-out"
+                  style={{ 
+                    width: `${Math.max(0, messages.filter(m => m.questionNumber).length / 
                       (messages.find(m => m.totalQuestions)?.totalQuestions || 6) * 100)}%` 
                   }}
                 ></div>
               </div>
-              <p className="mt-1 text-sm text-white">
-                {currentQuestionNumber > 0 ? `Question ${currentQuestionNumber}` : 'Starting interview...'}
-                {messages.find(m => m.totalQuestions) && ` of ${messages.find(m => m.totalQuestions).totalQuestions}`}
+              <p className="mt-1 text-xs md:text-sm text-white">
+                {messages.filter(m => m.questionNumber).length} questions answered
               </p>
             </div>
           )}
         </div>
 
-        {/* Messages */}
+        {/* Redirect Prompt Modal - UPDATED messaging */}
+        {showRedirectPrompt && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 md:p-8 max-w-md w-full mx-4 shadow-2xl">
+              <div className="text-center">
+                <div className="w-12 h-12 md:w-16 md:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 md:w-8 md:h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                </div>
+                <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2">Profile Created!</h3>
+                <p className="text-sm md:text-base text-gray-600 mb-6">
+                  Congratulations! AI has successfully created your personalized profile with username and bio. You're now ready to explore available tasks.
+                </p>
+                <div className="flex flex-col gap-3">
+                  <button
+                    onClick={handleContinueToDashboard}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 font-medium"
+                  >
+                    Continue to Tasks
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleDismissRedirect}
+                    className="w-full bg-gray-300 hover:bg-gray-400 text-gray-700 py-3 px-6 rounded-lg transition-colors duration-200"
+                  >
+                    Stay Here
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Messages - SAME AS BEFORE */}
         <div className="flex-1 bg-gray-50 overflow-hidden flex flex-col">
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-            {!isConnected && !socketError && (
+            {!isConnected && (
               <div className="text-center text-blue-600 p-2 bg-blue-100 rounded-md">
                 <Loader2 className="inline-block h-4 w-4 animate-spin mr-1" /> 
                 Connecting to interview server...
@@ -561,89 +878,116 @@ const Interview = ({ chat_type = 'platform_interviewer'}) => {
               </div>
             ))}
 
-            {/* Enhanced typing indicator */}
-            {isTypingIndicatorVisible && (
+            {/* Profile Creation Status Message - only show if not using header messages */}
+            {isCreatingProfile && !headerMessage && (
+              <div className="flex justify-center">
+                <div className="max-w-[75%] p-4 rounded-xl shadow-sm bg-gradient-to-r from-blue-100 to-purple-100 text-gray-800 border border-blue-200">
+                  <div className="flex items-center justify-center">
+                    {statusInfo.icon}
+                    <p className="text-sm md:text-base ml-2 font-medium">{statusInfo.text}</p>
+                  </div>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
+                    <div
+                      className="bg-blue-500 h-1 rounded-full transition-all duration-1000 ease-out"
+                      style={{ 
+                        width: profileCreationStage === 'username' ? '33%' : 
+                               profileCreationStage === 'bio' ? '66%' : 
+                               profileCreationStage === 'finalizing' ? '100%' : '10%'
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* NEW: Header message status display in chat area */}
+            {headerMessage && (
+              <div className="flex justify-center">
+                <div className="max-w-[75%] p-4 rounded-xl shadow-sm bg-gradient-to-r from-green-100 to-blue-100 text-gray-800 border border-green-200">
+                  <div className="flex items-center justify-center">
+                    {statusInfo.icon}
+                    <p className="text-sm md:text-base ml-2 font-medium">{headerMessage}</p>
+                  </div>
+                  <div className="mt-2 w-full bg-gray-200 rounded-full h-1">
+                    <div
+                      className="bg-green-500 h-1 rounded-full transition-all duration-1000 ease-out"
+                      style={{ width: `${headerProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isLoadingQuestion && !isCreatingProfile && !headerMessage && (
               <div className="flex justify-start">
                 <div className="max-w-[75%] p-4 rounded-xl shadow-sm bg-white text-gray-800 rounded-bl-none border border-gray-200">
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                    </div>
-                    <p className="text-sm md:text-base italic text-gray-600">
-                      {typingMessage || 'AI is preparing next question...'}
-                    </p>
-                  </div>
+                  <p className="text-sm md:text-base animate-pulse">AI is thinking...</p>
                 </div>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Enhanced Input area */}
-          {!interviewComplete ? (
+          {/* Input area - UPDATED to disable during header message progression */}
+          {!interviewComplete && !isCreatingProfile && !headerMessage ? (
             <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 bg-white">
               <div className="flex items-center">
                 <textarea
                   value={currentInput}
                   onChange={handleInputChange}
-                  disabled={!isConnected || !isWaitingForResponse || isLoadingQuestion}
+                  disabled={!isConnected || !isWaitingForResponse || isLoadingQuestion || awaitingAck}
                   className="flex-1 resize-none border border-gray-300 rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 h-12 overflow-hidden"
                   placeholder={
                     !isConnected
                       ? 'Connecting...'
-                      : isTypingIndicatorVisible
-                        ? 'Please wait for the question...'
-                        : isWaitingForResponse
-                          ? 'Type your response...'
-                          : 'Please wait...'
+                      : awaitingAck
+                        ? 'Sending message...'
+                        : isLoadingQuestion
+                          ? 'AI is thinking...'
+                          : isWaitingForResponse
+                            ? 'Type your response...'
+                            : 'Please wait...'
                   }
                   rows={1}
                 />
                 <button
                   type="submit"
-                  disabled={!isConnected || !isWaitingForResponse || currentInput.trim() === '' || isLoadingQuestion || isTypingIndicatorVisible}
-                  className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 m-4 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!isConnected || !isWaitingForResponse || currentInput.trim() === '' || isLoadingQuestion || isSending || awaitingAck}
+                  className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 m-4 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                 >
-                  <Send className="h-5 w-5" />
+                  {(isSending || awaitingAck) ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Send className="h-5 w-5" />
+                  )}
                 </button>
               </div>
-              
-              {/* Status message */}
-              {isConnected && (
-                <div className="mt-2 text-xs text-gray-500 text-center">
-                  {isTypingIndicatorVisible 
-                    ? 'Please wait for the AI to finish preparing the question'
-                    : isWaitingForResponse 
-                      ? 'You can now respond to the question'
-                      : 'Waiting for next question...'
-                  }
-                </div>
-              )}
             </form>
+          ) : (isCreatingProfile || headerMessage) ? (
+            <div className="border-t border-gray-200 p-6 flex flex-col items-center bg-white">
+              <div className="flex items-center mb-4">
+                {statusInfo.icon}
+                <p className="text-center text-gray-700 ml-2 font-medium">
+                  {headerMessage || statusInfo.text}
+                </p>
+              </div>
+              <p className="text-center text-gray-500 text-sm">
+                {headerMessage 
+                  ? "AI is processing your information and creating your profile..."
+                  : "Please wait while AI creates your personalized profile..."}
+              </p>
+            </div>
           ) : (
             <div className="border-t border-gray-200 p-6 flex flex-col items-center bg-white">
               <p className="text-center text-gray-700 mb-4">
-                You've successfully completed the interview! Your profile is now ready.
+                Your AI-generated profile is now ready!
               </p>
               <button
                 onClick={handleContinueToDashboard}
                 className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-8 rounded-lg transition-colors duration-200 flex items-center gap-2 font-medium"
               >
                 Continue to Tasks
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <ArrowRight className="h-5 w-5" />
               </button>
             </div>
           )}

@@ -1,8 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
-import { FileText, Upload, Clock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { FileText, Upload, Clock, CheckCircle, AlertCircle, Loader, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // Add this import
 
-const PlatformTask = ({ task_type = 'platform_interview' }) => {
+// Main component for the Platform Task.
+// Manages task flow from initiation to submission.
+const PlatformTask = ({ task_type = 'platform_interviewer' }) => {
+  const navigate = useNavigate(); // Add navigation hook
+  
+  // State variables to manage the component's UI and data
   const [taskState, setTaskState] = useState('initial'); // initial, loading, started, submitting, submitted, error
   const [taskData, setTaskData] = useState(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -10,9 +15,8 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [submissionResult, setSubmissionResult] = useState(null);
   const [error, setError] = useState(null);
-  const [title, setTitle] = useState('');
 
-  // Timer effect
+  // Timer effect to count down the remaining time
   useEffect(() => {
     if (taskState !== 'started' || timeRemaining <= 0) return;
 
@@ -29,7 +33,7 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
     return () => clearInterval(timer);
   }, [taskState, timeRemaining]);
 
-  // Format time as MM:SS or HH:MM:SS
+  // Helper function to format seconds into a readable time string
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -41,17 +45,23 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
     return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // API call to start task (initiation)
+  // Function to navigate to dashboard
+  const goToDashboard = () => {
+    navigate('/freelancer-dashboard');
+  };
+
+  // API call to start the task (initiation stage)
   const startTask = async () => {
     setTaskState('loading');
     setError(null);
 
     try {
-      const start_time = new Date().toISOString().replace('Z', '+01:00'); // WAT, e.g., 2025-08-16T11:49:00.000+01:00
+      const start_time = new Date().toISOString();
       setStartTime(start_time);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
       console.log('Token:', token ? `${token.slice(0, 10)}...${token.slice(-10)}` : 'NO_TOKEN');
+      
       if (!token) {
         throw new Error('No token found. Please log in again.');
       }
@@ -74,28 +84,38 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
         console.error('Failed to decode token:', e.message);
       }
 
-      const API_URL = import.meta.env.VITE_API_URL ;
+      const API_URL = import.meta.env.VITE_API_URL;
       console.log('API_URL:', API_URL);
 
+      // INITIATION REQUEST: Send status and start_time
       const formData = new FormData();
       formData.append('status', 'initiation');
       formData.append('start_time', start_time);
 
       console.log('Sending initiation request (POST) to:', `${API_URL}/api/task/${task_type}`);
-      console.log('FormData fields:', { status: 'initiation', start_time });
+      console.log('FormData fields:', { 
+        status: 'initiation', 
+        start_time: start_time
+      });
 
       const response = await fetch(`${API_URL}/api/task/${task_type}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
-        body: formData
+        body: formData,
+        mode: 'cors',
+        credentials: 'include'
       });
+
+      console.log('API Response status:', response.status);
 
       if (!response.ok) {
         let errorMessage;
         let errorData;
         const responseText = await response.text();
+        console.error('Full error response text:', responseText);
+        
         try {
           errorData = JSON.parse(responseText);
           errorMessage = errorData.message || errorData.error || errorData.detail || `HTTP error! status: ${response.status}`;
@@ -111,6 +131,8 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
           throw new Error(`Bad request: ${errorMessage}`);
         } else if (response.status === 422) {
           throw new Error(`Validation failed: ${errorMessage}`);
+        } else if (response.status === 500) {
+          throw new Error(`Server error: ${errorMessage}. Please contact support if this persists.`);
         }
         throw new Error(errorMessage);
       }
@@ -119,7 +141,7 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
       console.log('Initiation response:', data);
       
       setTaskData({
-        instruction: data.instruction || data.Instruction,
+        instruction: data.Instruction || data.instruction,
         completion_time: data.completion_time
       });
       setTimeRemaining(data.completion_time * 60);
@@ -131,10 +153,11 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
     }
   };
 
-  // API call to submit task (submission)
+  // API call to submit the task (submission stage)
   const submitTask = async () => {
-    if (!uploadedFile || !title.trim()) {
-      setError('Please provide a title and upload a file.');
+    // Basic validation
+    if (!uploadedFile) {
+      setError('Please upload a file to submit.');
       return;
     }
 
@@ -142,29 +165,28 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
     setError(null);
 
     try {
-      const submission_time = new Date().toISOString().replace('Z', '+01:00'); // WAT
+      const submission_time = new Date().toISOString();
       const elapsed_time = Math.floor(((taskData.completion_time * 60) - timeRemaining) / 60);
 
-      const token = localStorage.getItem('access_token');
+      const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
       if (!token) {
         throw new Error('No token found. Please log in again.');
       }
 
+      // SUBMISSION REQUEST: Correctly format the FormData based on API documentation
       const formData = new FormData();
-      formData.append('status', 'submission'); // Added status field
-      formData.append('title', title.trim());
+      formData.append('status', 'submission'); 
       formData.append('submission_time', submission_time);
       formData.append('elapsed_time', elapsed_time.toString());
-      formData.append('file', uploadedFile);
+      formData.append('file', uploadedFile, uploadedFile.name); // Correct way to append a file
 
-      const API_URL = import.meta.env.VITE_API_URL || 'https://lancer-web-service.onrender.com';
+      const API_URL = import.meta.env.VITE_API_URL;
       console.log('Sending submission request to:', `${API_URL}/api/task/${task_type}`);
       console.log('Submission FormData fields:', { 
         status: 'submission',
-        title: title, 
         submission_time, 
         elapsed_time, 
-        file: uploadedFile.name 
+        file: `${uploadedFile.name} (${uploadedFile.size} bytes)`
       });
 
       const response = await fetch(`${API_URL}/api/task/${task_type}`, {
@@ -172,13 +194,19 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
-        body: formData
+        body: formData,
+        mode: 'cors',
+        credentials: 'include'
       });
+
+      console.log('Submission API Response status:', response.status);
 
       if (!response.ok) {
         let errorMessage;
         let errorData;
         const responseText = await response.text();
+        console.error('Full submission error response text:', responseText);
+        
         try {
           errorData = JSON.parse(responseText);
           errorMessage = errorData.message || errorData.error || errorData.detail || `HTTP error! status: ${response.status}`;
@@ -194,6 +222,8 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
           throw new Error(`Bad request: ${errorMessage}`);
         } else if (response.status === 422) {
           throw new Error(`Validation failed: ${errorMessage}`);
+        } else if (response.status === 500) {
+          throw new Error(`Server error: ${errorMessage}. Please contact support if this persists.`);
         }
         throw new Error(errorMessage);
       }
@@ -202,7 +232,7 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
       console.log('Submission response:', result);
       
       setSubmissionResult({
-        message: result.well_received || result.Well_received,
+        message: result.well_received || result.message,
         review: result.review,
         elapsed_time: elapsed_time
       });
@@ -214,6 +244,7 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
     }
   };
 
+  // Handler for file input change
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -226,10 +257,12 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
     }
   };
 
+  // Handler for drag-and-drop file
   const handleDragOver = (event) => {
     event.preventDefault();
   };
 
+  // Handler for file drop
   const handleDrop = (event) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
@@ -243,22 +276,23 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
     }
   };
 
+  // Function to clear the uploaded file
   const removeFile = () => {
     setUploadedFile(null);
   };
 
+  // UI rendering based on taskState
   // Success screen
   if (taskState === 'submitted') {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col items-center justify-center">
-        <div className="text-center space-y-6 max-w-md">
+      <div className="w-full basic-font min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col items-center justify-center">
+        <div className="text-center space-y-6 max-w-2xl px-4">
           <div className="flex justify-center">
             <div className="bg-green-100 rounded-full p-6">
               <CheckCircle className="w-16 h-16 text-green-600" />
             </div>
           </div>
-
-          <div className="space-y-3">
+          <div className="space-y-4">
             <h1 className="text-2xl font-semibold text-gray-900">
               Task Submitted Successfully!
             </h1>
@@ -269,12 +303,22 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
               Completed in {submissionResult?.elapsed_time} minutes
             </p>
             {submissionResult?.review && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Review:</strong> {submissionResult.review}
+              <div className="mt-6 p-6 bg-blue-50 rounded-lg text-left max-w-md mx-auto">
+                <h3 className="text-lg font-medium text-blue-900 mb-3">Review Feedback</h3>
+                <p className="text-blue-800 whitespace-pre-wrap">
+                  {submissionResult.review}
                 </p>
               </div>
             )}
+            <div className="mt-8">
+              <button
+                onClick={goToDashboard}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2 mx-auto"
+              >
+                <span>Continue to Dashboard</span>
+                <ArrowRight className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -284,14 +328,13 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
   // Error screen
   if (taskState === 'error') {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-b from-red-50 to-white flex flex-col items-center justify-center">
+      <div className="w-full min-h-screen basic-font bg-gradient-to-b from-red-50 to-white flex flex-col items-center justify-center">
         <div className="text-center space-y-6 max-w-md">
           <div className="flex justify-center">
             <div className="bg-red-100 rounded-full p-6">
               <AlertCircle className="w-16 h-16 text-red-600" />
             </div>
           </div>
-
           <div className="space-y-3">
             <h1 className="text-2xl font-semibold text-gray-900">
               Something went wrong
@@ -326,7 +369,7 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
   // Initial screen - Ready to begin
   if (taskState === 'initial') {
     return (
-      <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col items-center justify-center">
+      <div className="w-full min-h-screen bg-gradient-to-b new-font from-blue-50 to-white flex flex-col items-center justify-center">
         <div className='w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl'>
           <div className="bg-blue-600 text-white px-8 py-6">
             <h1 className="text-2xl font-semibold">Platform Interview Task</h1>
@@ -360,7 +403,7 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
 
   // Task in progress screen
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col justify-center items-center basic-font">
+    <div className="w-full min-h-screen new-font bg-gradient-to-b from-blue-50 to-white flex flex-col justify-center items-center basic-font">
       <div className='w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl'>
         <div className="bg-blue-600 text-white px-8 py-6">
           <h1 className="text-2xl font-semibold">Platform Interview Task</h1>
@@ -389,22 +432,6 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
                 <strong>Time limit:</strong> {taskData?.completion_time} minutes
               </div>
             </div>
-          </div>
-
-          {/* Title input */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-8">
-            <h3 className="text-xl font-semibold text-gray-800 mb-6">Task Title</h3>
-            <input
-              type="text"
-              placeholder="Enter a descriptive title for your submission"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-              maxLength={100}
-            />
-            <p className="text-sm text-gray-500 mt-2">
-              {title.length}/100 characters
-            </p>
           </div>
         
           {/* File upload section */}
@@ -465,9 +492,9 @@ const PlatformTask = ({ task_type = 'platform_interview' }) => {
             <div className="mt-8 flex justify-end">
               <button
                 onClick={submitTask}
-                disabled={!uploadedFile || !title.trim() || taskState === 'submitting'}
+                disabled={!uploadedFile || taskState === 'submitting'}
                 className={`px-8 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2 ${
-                  uploadedFile && title.trim() && taskState !== 'submitting'
+                  uploadedFile && taskState !== 'submitting'
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 }`}

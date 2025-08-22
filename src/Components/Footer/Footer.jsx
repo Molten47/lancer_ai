@@ -1,92 +1,96 @@
-import React from 'react';
-import { Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import React, { useState } from 'react';
+import { Twitter, Linkedin, Phone, Mail } from 'lucide-react';
 
 const Footer = () => {
+  const [email, setEmail] = useState('');
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    // Handle email subscription logic here
+    console.log('Subscribing email:', email);
+    setEmail('');
+  };
+
   return (
     <footer className="bg-primary text-white py-10 sm:py-12 md:py-16 w-full">
       <div className="container max-w-[90%] mx-auto px-4 sm:px-6">
         {/* Main Footer Content */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 md:gap-8 mb-8 md:mb-12">
-          {/* Brand Column */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 md:gap-12 mb-8 md:mb-12">
+          
+          {/* Brand & Contact Column */}
           <div className="lg:col-span-1">
             <h2 className="text-[28px] sm:text-[32px] font-extrabold basic-font mb-4 sm:mb-6">LANCER</h2>
-            <p className="text-white text-medium text-[12px] basic-font mb-4 sm:mb-6">
-              Lancer is where AI meets human creativity. Whether you're building your first product or scaling a global campaign.
+            <p className="text-white text-medium text-[14px] basic-font mb-6">
+              Lancer is where AI meets human creativity. Building your business, simplified.
             </p>
-            <div className="flex flex-col space-x-4">
-                <h2 className='text-white basic-font font-extrabold'>Social Links</h2>
-                <div className='flex flex-row gap-3 sm:gap-4 mt-3 sm:mt-4'>
-                    <div className='bg-cta h-8 w-8 p-4 sm:p-5 flex justify-center items-center rounded-full'>
-                    <a href="#" className="text-white hover:text-white transition-colors">
-                      <Facebook size={18} />
-                    </a>
-                   </div>
-                    <div className='bg-cta h-8 w-8 p-4 sm:p-5 flex justify-center items-center rounded-full'>
-                    <a href="#" className="text-white hover:text-white transition-colors">
-                        <Twitter size={18} />
-                      </a>
-                    </div>
-                
-                    <div className='bg-cta h-8 w-8 p-4 sm:p-5 flex justify-center items-center rounded-full'>
-                      <a href="#" className="text-white hover:text-white transition-colors">
-                        <Instagram size={18} />
-                      </a>
-                    </div>
-                  
-                    <div className='bg-cta h-8 w-8 p-4 sm:p-5 flex justify-center items-center rounded-full'>
-                      <a href="#" className="text-white hover:text-white transition-colors">
-                        <Linkedin size={18} />
-                      </a>
-                    </div>
-                </div>
+            
+            {/* Contact Info */}
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center space-x-3">
+                <Mail className="w-4 h-4 text-cta" />
+                <a href="mailto:hello@lancer.com" className="text-white basic-font text-sm hover:text-cta transition-colors">
+                  hello@lancer.com
+                </a>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Phone className="w-4 h-4 text-cta" />
+                <a href="tel:+1234567890" className="text-white basic-font text-sm hover:text-cta transition-colors">
+                  +1 (234) 567-8900
+                </a>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className="flex items-center space-x-4">
+              <a href="#" className="bg-cta h-10 w-10 flex justify-center items-center rounded-full hover:bg-opacity-80 transition-all">
+                <Linkedin size={18} className="text-white" />
+              </a>
+              <a href="#" className="bg-cta h-10 w-10 flex justify-center items-center rounded-full hover:bg-opacity-80 transition-all">
+                <Twitter size={18} className="text-white" />
+              </a>
             </div>
           </div>
 
-          {/* For Clients */}
-          <div className="mt-6 sm:mt-0">
-            <h3 className="font-extrabold text-cta basic-font text-[1rem] sm:text-[1.2rem] mb-8 sm:mb-8">For Clients</h3>
-            <ul className="space-y-1">
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">How to Hire</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Talent Marketplace</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Hire an Agency</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Direct Contracts</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Enterprises</a></li>
+          {/* Quick Links */}
+          <div className="lg:col-span-1">
+            <h3 className="font-extrabold text-cta basic-font text-[1.2rem] mb-6">Quick Links</h3>
+            <ul className="space-y-3">
+              <li>
+                <a href="#" className="text-white basic-font hover:text-cta transition-colors">
+                  Career
+                </a>
+              </li>
+              <li>
+                <a href="#" className="text-white basic-font hover:text-cta transition-colors">
+                  Team
+                </a>
+              </li>
             </ul>
           </div>
 
-          {/* For Creatives */}
-          <div className="mt-6 sm:mt-0">
-            <h3 className="font-extrabold text-cta basic-font text-[1rem] sm:text-[1.2rem] mb-4 sm:mb-8">For Creatives</h3>
-            <ul className="space-y-1 sm:space-y-2">
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">How to Find Work</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Resources</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Help & Support</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Success Stories</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Business Structure</a></li>
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div className="mt-6 sm:mt-0 ">
-            <h3 className="font-extrabold text-cta basic-font text-[1rem] sm:text-[1.2rem] mb-4 sm:mb-8">Resources</h3>
-            <ul className="space-y-1 sm:space-y-2 pt-6">
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Blogs</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Community</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">How we Work</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Free Business Tools</a></li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div className="mt-6 sm:mt-0">
-            <h3 className="font-extrabold text-cta basic-font text-[1rem] sm:text-[1.2rem] mb-4 sm:mb-8">Company</h3>
-            <ul className="space-y-1 sm:space-y-2">
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">About Us</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Leadership</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Careers</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Press</a></li>
-              <li><a href="#" className="text-white basic-font text-medium hover:text-[#cccccc] transition-colors">Contact Us</a></li>
-            </ul>
+          {/* Email Subscribe */}
+          <div className="lg:col-span-1">
+            <h3 className="font-extrabold text-cta basic-font text-[1.2rem] mb-6">Stay Updated</h3>
+            <p className="text-white basic-font text-sm mb-4">
+              Subscribe to get the latest updates from Lancer.
+            </p>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-cta transition-colors basic-font"
+                />
+                <button
+                  onClick={handleSubscribe}
+                  className="bg-cta hover:bg-opacity-80 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-300 hover:shadow-lg basic-font whitespace-nowrap"
+                >
+                  Subscribe
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -94,15 +98,14 @@ const Footer = () => {
         <hr className="border-gray-800 my-6 sm:my-8" />
 
         {/* Bottom Footer */}
-        <div className="flex flex-row sm:flex-row sm:justify-center lg:justify-between items-center gap-4 mt-8">
-        <div className="text-center md:text-left">
-          <p className="text-white basic-font text-xs sm:text-sm">© 2025 LANCER. All rights reserved.</p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-4 text-xs sm:text-sm">
-          <a href="#" className="text-white basic-font hover:text-gray-300 transition-colors">Privacy Policy</a>
-          <a href="#" className="text-white basic-font hover:text-gray-300 transition-colors">Terms of Service</a>
-          <a href="#" className="text-white basic-font hover:text-gray-300 transition-colors">Sitemap</a>
-        </div>
+        <div className="flex flex-col sm:flex-row sm:justify-center lg:justify-between items-center gap-4">
+          <div className="text-center lg:text-left">
+            <p className="text-white basic-font text-xs sm:text-sm">© 2025 LANCER. All rights reserved.</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-4 text-xs sm:text-sm">
+            <a href="#" className="text-white basic-font hover:text-cta transition-colors">Privacy Policy</a>
+            <a href="#" className="text-white basic-font hover:text-cta transition-colors">Terms of Service</a>
+          </div>
         </div>
       </div>
     </footer>

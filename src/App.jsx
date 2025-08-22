@@ -10,6 +10,7 @@ import DashboardFr from './Pages/DashboardLancer/DashboardFr';
 import LancerTaskPage from './Pages/TaskPage/Taskpage'
 
 
+
 const App = () => {
  
 
@@ -26,6 +27,8 @@ const App = () => {
                     <Route path="/task" element={<LancerTaskPage/>}/>
                     <Route path="/client-dashboard" element={<DashboardCl/>}/>
                     <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
+                    
+                   
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </div>

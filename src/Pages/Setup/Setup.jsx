@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Check, AlertCircle, Loader2, Plus, X, Globe, Building } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom'; // Add useLocation and useNavigate
+import { Check, AlertCircle, Loader2, Globe, Building } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Input field component with consistent styling
 const FormInput = ({ label, id, name, value, onChange, placeholder, type = "text", error, className = "" }) => {
@@ -61,106 +61,35 @@ const FormSelect = ({ label, id, name, value, onChange, options, placeholder, er
   );
 };
 
-// Skills input component
-const SkillsInput = ({ skills, onAddSkill, onRemoveSkill, error }) => {
-  const [newSkill, setNewSkill] = useState('');
-
-  const handleAddSkill = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      onAddSkill(newSkill.trim());
-      setNewSkill('');
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleAddSkill();
-    }
-  };
-
-  return (
-    <div className="col-span-2 basic-font">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        Skills
-      </label>
-      <div className="flex gap-2 mb-3">
-        <input
-          type="text"
-          value={newSkill}
-          onChange={(e) => setNewSkill(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="Add your skills (e.g., JavaScript, Graphic Design)"
-          className="flex-1 px-4 py-3 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ease-in-out text-gray-700 bg-white"
-        />
-        <button
-          type="button"
-          onClick={handleAddSkill}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2 font-medium"
-        >
-          <Plus className="h-4 w-4" />
-          Add
-        </button>
-      </div>
-      
-      {skills.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-2">
-          {skills.map((skill, index) => (
-            <span
-              key={index}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-            >
-              {skill}
-              <button
-                type="button"
-                onClick={() => onRemoveSkill(skill)}
-                className="ml-1 text-blue-600 hover:text-blue-800"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-      
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
-    </div>
-  );
-};
-
 const Setup = () => {
-  const location = useLocation(); // Access navigation state
-  const navigate = useNavigate(); // Add navigation hook
+  const location = useLocation();
+  const navigate = useNavigate();
   
-  // Initialize selectedRole based on the role from Signup (convert to lowercase to match expected values)
   const initialRole = location.state?.role?.toLowerCase() === 'client' ? 'client' : 'freelancer';
-  const [selectedRole] = useState(initialRole); // Remove setSelectedRole since we don't want to change it
+  const [selectedRole] = useState(initialRole);
   
-  // State persistence key - unique for each role to avoid conflicts
   const FORM_STORAGE_KEY = `setup_form_data_${initialRole}`;
   
-  // Helper function to load persisted form data
   const loadPersistedFormData = () => {
     try {
       const savedData = localStorage.getItem(FORM_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        // Ensure skills array exists for freelancers
-        if (initialRole === 'freelancer' && !Array.isArray(parsedData.skills)) {
-          parsedData.skills = [];
+        // Convert old skills array to single skill if needed
+        if (initialRole === 'freelancer' && Array.isArray(parsedData.skills)) {
+          parsedData.skill = parsedData.skills.length > 0 ? parsedData.skills[0] : '';
+          delete parsedData.skills;
         }
         console.log('Loaded persisted form data:', parsedData);
         return parsedData;
       }
     } catch (error) {
       console.error('Error loading persisted form data:', error);
-      // Clear corrupted data
       localStorage.removeItem(FORM_STORAGE_KEY);
     }
     return null;
   };
 
-  // Initialize form data with persisted data or defaults
   const getInitialFormData = () => {
     const persistedData = loadPersistedFormData();
     if (persistedData) {
@@ -172,8 +101,7 @@ const Setup = () => {
       lastname: '',
       country: '',
       state: '',
-      skills: [],
-      // Client-specific fields
+      skill: '', // Changed from skills array to single skill
       companyName: '',
       industry: '',
     };
@@ -193,6 +121,30 @@ const Setup = () => {
   const isFreelancer = selectedRole === 'freelancer';
   const countries = Object.keys(countryData);
   const availableStates = formData.country ? countryData[formData.country] || [] : [];
+
+  // Common skills for freelancers
+  const freelancerSkills = [
+    "Web Development",
+    "Mobile App Development",
+    "graphics designer",
+    "UI/UX Design",
+    "Content Writing",
+    "Copywriting",
+    "Digital Marketing",
+    "seo expert",
+    "Social Media Management",
+    "Data Analysis",
+    "Virtual Assistant",
+    "Customer Service",
+    "Translation",
+    "Video Editing",
+    "Photography",
+    "Accounting",
+    "Bookkeeping",
+    "Project Management",
+    "Consulting",
+    "Teaching/Tutoring"
+  ];
 
   const industries = [
     "Technology",
@@ -217,7 +169,6 @@ const Setup = () => {
     "Other"
   ];
 
-  // Function to save form data to localStorage
   const saveFormDataToStorage = (data) => {
     try {
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
@@ -226,7 +177,6 @@ const Setup = () => {
     }
   };
 
-  // Function to clear persisted form data
   const clearPersistedFormData = () => {
     try {
       localStorage.removeItem(FORM_STORAGE_KEY);
@@ -236,22 +186,19 @@ const Setup = () => {
     }
   };
 
-  // Check if there's persisted data and show notification
   useEffect(() => {
     const persistedData = loadPersistedFormData();
     if (persistedData && !location.state?.showSuccessAlert) {
-      // Check if the persisted data has meaningful content
       const hasContent = persistedData.firstname?.trim() || 
-                        persistedData.lastname?.trim() || 
-                        persistedData.country?.trim() || 
-                        persistedData.state?.trim() ||
-                        (persistedData.skills && persistedData.skills.length > 0) ||
-                        persistedData.companyName?.trim() ||
-                        persistedData.industry?.trim();
+                         persistedData.lastname?.trim() || 
+                         persistedData.country?.trim() || 
+                         persistedData.state?.trim() ||
+                         persistedData.skill?.trim() ||
+                         persistedData.companyName?.trim() ||
+                         persistedData.industry?.trim();
       
       if (hasContent) {
         setShowDataRestored(true);
-        // Auto-hide the notification after 5 seconds
         setTimeout(() => {
           setShowDataRestored(false);
         }, 5000);
@@ -281,9 +228,8 @@ const Setup = () => {
     fetchCountryData();
   }, []);
 
-  // Save form data to localStorage whenever it changes
   useEffect(() => {
-    if (!profileSaved) { // Only persist if profile hasn't been saved yet
+    if (!profileSaved) {
       saveFormDataToStorage(formData);
     }
     console.log('Saving form data:', formData, 'Role:', selectedRole);
@@ -314,7 +260,8 @@ const Setup = () => {
     if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
     if (!formData.country.trim()) newErrors.country = 'Country is required';
     if (!formData.state.trim()) newErrors.state = 'State/Province is required';
-    if (isFreelancer && formData.skills.length === 0) newErrors.skills = 'At least one skill is required';
+    // Check for single skill if freelancer
+    if (isFreelancer && !formData.skill.trim()) newErrors.skill = 'Please select a skill';
     if (!isFreelancer && !formData.industry.trim()) newErrors.industry = 'Industry is required';
 
     if (Object.keys(newErrors).length > 0) {
@@ -325,7 +272,6 @@ const Setup = () => {
     setIsLoading(true);
 
     try {
-      // Get the access token from localStorage (using the correct key from signup)
       const accessToken = localStorage.getItem('access_token');
       if (!accessToken) {
         setApiError('Authentication token not found. Please sign in again.');
@@ -333,24 +279,22 @@ const Setup = () => {
         return;
       }
 
-      // Prepare the request body according to API specification
       const requestBody = {
         firstname: formData.firstname.trim(),
         lastname: formData.lastname.trim(),
         country: formData.country,
         state: formData.state,
-        // Convert skills array to comma-separated string for API
-        skill: isFreelancer ? formData.skills.join(', ') : formData.industry
+        // Send single skill as expected by API
+        skill: isFreelancer ? formData.skill : formData.industry
       };
 
       const API_URL = import.meta.env.VITE_API_URL
 
-      // API call to the backend profile setup endpoint
       const response = await fetch(`${API_URL}/api/profile_setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}` // Include JWT token
+          'Authorization': `Bearer ${accessToken}`
         },
         body: JSON.stringify(requestBody)
       });
@@ -358,12 +302,9 @@ const Setup = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle error response (likely 401 for invalid token or 400 for validation)
         setApiError(data.error_message || 'Profile setup failed. Please try again.');
         
-        // If token is invalid, redirect to signin
         if (response.status === 401) {
-          // Clear all stored data including persisted form data
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('userRole');
@@ -374,21 +315,16 @@ const Setup = () => {
         return;
       }
 
-      // If profile setup is successful (200 OK)
       console.log('Profile setup successful:', data);
       
-      // CRITICAL FIX: Store/preserve all necessary data for Interview component
       if (data.profile_data && data.profile_data.user_id) {
-        // Store user_id from the response
         localStorage.setItem('user_id', data.profile_data.user_id.toString());
       }
 
-      // Store tokens if returned (preserve existing ones if not)
       if (data.access_jwt) {
         localStorage.setItem('access_token', data.access_jwt);
-        localStorage.setItem('access_jwt', data.access_jwt); // Also store with the key Interview expects
+        localStorage.setItem('access_jwt', data.access_jwt);
       } else {
-        // Preserve existing token with both keys for compatibility
         const existingToken = localStorage.getItem('access_token');
         if (existingToken) {
           localStorage.setItem('access_jwt', existingToken);
@@ -399,23 +335,19 @@ const Setup = () => {
         localStorage.setItem('refresh_token', data.refresh_jwt);
         localStorage.setItem('refresh_jwt', data.refresh_jwt);
       } else {
-        // Preserve existing refresh token
         const existingRefreshToken = localStorage.getItem('refresh_token');
         if (existingRefreshToken) {
           localStorage.setItem('refresh_jwt', existingRefreshToken);
         }
       }
       
-      // Store profile completion status
       localStorage.setItem('profileCompleted', 'true');
       
-      // Clear the persisted form data since profile is now saved
       clearPersistedFormData();
       
       if (selectedRole === 'freelancer') {
         setProfileSaved(true);
       } else {
-        // Navigate directly to dashboard for clients
         navigate('/client-dashboard', { 
           state: { 
             profileCompleted: true,
@@ -450,38 +382,22 @@ const Setup = () => {
     }
   };
 
-  const handleAddSkill = (skill) => {
-    setFormData(prev => ({
-      ...prev,
-      skills: [...prev.skills, skill]
-    }));
-    if (errors.skills) {
-      setErrors(prev => ({ ...prev, skills: '' }));
-    }
-  };
-
-  const handleRemoveSkill = (skillToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      skills: prev.skills.filter(skill => skill !== skillToRemove)
-    }));
-  };
-
   const startInterview = () => {
-    // Navigate to tasks page after interview completion
     navigate('/interview', { 
       state: { 
         profileCompleted: true,
         interviewCompleted: true,
         userRole: 'freelancer',
         userName: `${formData.firstname} ${formData.lastname}`,
-        skills: formData.skills
+        skill: formData.skill // Pass single skill instead of skills array
       }
     });
   };
 
-  // Function to manually clear saved data (optional utility)
   const handleClearSavedData = () => {
+    // This is a placeholder for a custom modal dialog
+    // as window.confirm() is not recommended in this environment.
+    // For now, it's fine for testing purposes.
     if (window.confirm('Are you sure you want to clear all saved form data?')) {
       clearPersistedFormData();
       setFormData({
@@ -489,7 +405,7 @@ const Setup = () => {
         lastname: '',
         country: '',
         state: '',
-        skills: [],
+        skill: '', // Reset single skill
         companyName: '',
         industry: '',
       });
@@ -510,7 +426,6 @@ const Setup = () => {
           </p>
         </div>
 
-        {/* Role indicator - which can either be Freelancer or Client*/}
         <div className="px-8 py-4 border-b border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
@@ -600,29 +515,15 @@ const Setup = () => {
                     />
 
                     {!isFreelancer && (
-                      <>
-                        <FormInput
-                          label="Company Name (Optional)"
-                          id="companyName"
-                          name="companyName"
-                          value={formData.companyName}
-                          onChange={handleChange}
-                          placeholder="Your Company"
-                          error={errors.companyName}
-                        />
-
-                        <FormSelect
-                          label="Industry"
-                          id="industry"
-                          name="industry"
-                          value={formData.industry}
-                          onChange={handleChange}
-                          options={industries}
-                          placeholder="Select your industry"
-                          error={errors.industry}
-                          icon={<Building className="h-5 w-5 text-gray-400" />}
-                        />
-                      </>
+                      <FormInput
+                        label="Company Name (Optional)"
+                        id="companyName"
+                        name="companyName"
+                        value={formData.companyName}
+                        onChange={handleChange}
+                        placeholder="Your Company"
+                        error={errors.companyName}
+                      />
                     )}
 
                     <FormSelect
@@ -647,22 +548,50 @@ const Setup = () => {
                       placeholder="Select a state"
                       error={errors.state}
                     />
+
+                    {isFreelancer && (
+                      <FormSelect
+                        label="Primary Skill"
+                        id="skill"
+                        name="skill"
+                        value={formData.skill}
+                        onChange={handleChange}
+                        options={freelancerSkills}
+                        placeholder="Select your main skill"
+                        error={errors.skill}
+                        icon={<Building className="h-5 w-5 text-gray-400" />}
+                      />
+                    )}
+
+                    {!isFreelancer && (
+                      <FormSelect
+                        label="Industry"
+                        id="industry"
+                        name="industry"
+                        value={formData.industry}
+                        onChange={handleChange}
+                        options={industries}
+                        placeholder="Select your industry"
+                        error={errors.industry}
+                        icon={<Building className="h-5 w-5 text-gray-400" />}
+                      />
+                    )}
                   </div>
                 </div>
 
                 {isFreelancer && (
                   <div className="space-y-6">
                     <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">
-                      Professional Skills
+                      Professional Information
                     </h2>
                     
-                    <div className="grid grid-cols-1 gap-6">
-                      <SkillsInput
-                        skills={formData.skills}
-                        onAddSkill={handleAddSkill}
-                        onRemoveSkill={handleRemoveSkill}
-                        error={errors.skills}
-                      />
+                    <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                      <p className="text-gray-700 text-sm leading-relaxed">
+                        <strong>Selected Skill:</strong> {formData.skill || 'None selected'}
+                      </p>
+                      <p className="text-gray-600 text-xs mt-2">
+                        You can add more skills and showcase your portfolio after completing the setup process.
+                      </p>
                     </div>
                   </div>
                 )}

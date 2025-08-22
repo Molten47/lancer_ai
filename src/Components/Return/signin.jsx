@@ -1,31 +1,35 @@
 import React, { useState } from 'react';
-import { Mail, Lock, AlertCircle, Check } from 'lucide-react';
+import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import useAuthService from '../../Components/auth'; // Adjust path as needed
 
 const Signin = () => {
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
+    password: ''
   });
+
   const [errors, setErrors] = useState({});
-  const [apiError, setApiError] = useState(''); // Added for API error handling
-  const [isLoading, setIsLoading] = useState(false); // Added for loading state
-  const [submitted, setSubmitted] = useState(false);
-  const navigate = useNavigate(); // Added for navigation
+  const [apiError, setApiError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const { setTokens } = useAuthService();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: value,
+      [name]: value
     });
 
+    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
-        [name]: '',
+        [name]: ''
       });
     }
+    // Clear API error when user starts typing
     if (apiError) {
       setApiError('');
     }
@@ -34,7 +38,7 @@ const Signin = () => {
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.email.trim()) {
+    if (!formData.email || !formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = 'Email is invalid';
@@ -42,169 +46,108 @@ const Signin = () => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
     }
 
     return newErrors;
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setApiError('');
-  const validationErrors = validate();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setApiError('');
+    const validationErrors = validate();
 
-  if (Object.keys(validationErrors).length > 0) {
-    setErrors(validationErrors);
-    return;
-  }
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  try {
-    const API_URL = import.meta.env.VITE_API_URL
-    const response = await fetch(`${API_URL}/api/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        email: formData.email,
-        password: formData.password,
-      }),
-    });
-
-    console.log('Signin: Response status:', response.status);
-
-    let data;
     try {
-      data = await response.json();
-      console.log('Signin: Response data:', data);
-    } catch (jsonError) {
-      console.error('Signin: Failed to parse JSON response:', jsonError);
-      setApiError('Server returned invalid response format');
-      return;
-    }
+      const API_URL = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${API_URL}/api/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
 
-    // Handle API responses based on your documentation
-    if (!response.ok) {
-      console.error('Signin: API Error:', data);
-      
-      // Handle 401 error as per API documentation
-      if (response.status === 401) {
-        setApiError(data.error_message || 'Invalid email or password');
-      } else {
-        setApiError(data.error_message || 'Sign-in failed. Please try again.');
+      const data = await response.json();
+
+      if (!response.ok || !data.well_received) {
+        // Handle login failure (401 or other errors)
+        setApiError(data.error_message || 'Login failed. Please check your credentials.');
+        return;
       }
-      return;
-    }
 
-    // Success response - check if well_received is true
-    if (!data.well_received) {
-      console.error('Signin: API returned well_received: false');
-      setApiError(data.error_message || 'Sign-in failed. Please try again.');
-      return;
-    }
+      // Login successful - store tokens and profile data
+      const accessJwt = data.access_jwt;
+      const refreshJwt = data.refresh_jwt;
+      const profileData = data.profile_data;
 
-    console.log('Signin: Sign-in successful');
+      // Store tokens using the auth service
+      setTokens(accessJwt, refreshJwt);
 
-    // Store JWT tokens and profile data as per API documentation
-    try {
-      if (data.access_jwt) {
-        localStorage.setItem('access_jwt', data.access_jwt);
-      }
-      if (data.refresh_jwt) {
-        localStorage.setItem('refresh_jwt', data.refresh_jwt);
-      }
-      
-      // Store profile data if provided
-      if (data.profile_data) {
-        localStorage.setItem('profile_data', JSON.stringify(data.profile_data));
+      // Store profile data in localStorage
+      try {
+        localStorage.setItem('profile_data', JSON.stringify(profileData));
         
-        // Extract user role and ID from profile_data if available
-        if (data.profile_data.role) {
-          localStorage.setItem('userRole', data.profile_data.role);
+        // You might want to store additional user info based on profile_data
+        if (profileData.role) {
+          localStorage.setItem('userRole', profileData.role);
         }
-        if (data.profile_data.user_id) {
-          localStorage.setItem('user_id', data.profile_data.user_id.toString());
+        if (profileData.user_id) {
+          localStorage.setItem('user_id', profileData.user_id);
         }
-      }
-    } catch (e) {
-      console.error('Signin: Failed to save to localStorage:', e);
-      setApiError('Failed to save authentication data.');
-      return;
-    }
-
-    setSubmitted(true);
-
-    // Navigation logic based on stored user role
-    const userRole = localStorage.getItem('userRole');
-    const profileData = localStorage.getItem('profile_data');
-    
-    if (userRole === 'freelancer') {
-      // Check if profile is complete from stored profile_data
-      let isProfileComplete = false;
-      if (profileData) {
-        try {
-          const parsedProfile = JSON.parse(profileData);
-          isProfileComplete = parsedProfile.is_complete === true;
-        } catch (e) {
-          console.error('Signin: Error parsing profile data:', e);
-        }
+      } catch (e) {
+        console.error('Failed to save profile data to localStorage:', e);
       }
 
-      if (!isProfileComplete) {
-        console.log('Signin: Profile incomplete, redirecting to /profile_setup');
-        navigate('/profile_setup', { state: { role: userRole } });
+      console.log('Login successful:', data);
+
+      // Navigate to dashboard or appropriate page based on user role/profile
+      // You can customize this logic based on your app's requirements
+      if (profileData.role) {
+        // Navigate to role-specific dashboard
+        switch (profileData.role.toLowerCase()) {
+          case 'freelancer':
+            navigate('/freelancer-dashboard', { replace: true });
+            break;
+          case 'client':
+            navigate('/client-dashboard', { replace: true });
+            break;
+           default:
+            navigate('/freelancer-dashboard', { replace: true });
+        }
       } else {
-        console.log('Signin: Profile complete, redirecting to /interview');
-        navigate('/interview');
+        // Default dashboard if no specific role
+        navigate('/dashboard', { replace: true });
       }
-    } else {
-      console.log('Signin: Navigating to /client-dashboard');
-      navigate('/client-dashboard');
-    }
 
-  } catch (error) {
-    console.error('Signin: Network or unexpected error during sign-in:', error);
-    setApiError('An unexpected error occurred. Please check your internet connection.');
-  } finally {
-    setIsLoading(false);
-  }
-};
+    } catch (error) {
+      console.error('Network or unexpected error during login:', error);
+      setApiError('An unexpected error occurred. Please check your internet connection and try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleGoogleSignIn = () => {
     console.log('Google sign-in initiated');
-    // Implement Google OAuth flow here
+    // This would typically involve redirecting to a Google OAuth flow
   };
-
-  if (submitted) {
-    return (
-      <div className="flex flex-col items-center justify-center basic-font min-h-screen bg-light p-4">
-        <div className="bg-white rounded-lg shadow-lg p-6 md:p-8 w-full max-w-md text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-            <Check className="h-6 w-6 text-green-600" />
-          </div>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 new-font">Sign In Successful!</h2>
-          <p className="text-gray-600 mb-4 md:mb-6 new-font">You have successfully signed in.</p>
-          <button
-            onClick={() => setSubmitted(false)}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 new-font"
-          >
-            Return to Sign In
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg p-6 md:p-8 w-full max-w-md">
+      <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
         {/* Welcome Message */}
-        <div className="text-center mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary basic-font">Welcome Back!</h1>
-          <p className="mt-1 md:mt-2 text-[#6B7280] basic-font text-sm">Let's get back to work</p>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome Back!</h1>
+          <p className="mt-2 text-[#6B7280] basic-font">Sign in to access your dashboard</p>
         </div>
 
         {/* API Error Display */}
@@ -215,13 +158,11 @@ const handleSubmit = async (e) => {
           </div>
         )}
 
-        {/* Log in Form */}
-        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-          {/* User Email */}
+        {/* Sign in Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email Field */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-dark basic-font">
-              Email Address
-            </label>
+            <label htmlFor="email" className="block text-sm font-medium text-dark basic-font">Email Address</label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Mail className="h-5 w-5 text-dark" />
@@ -232,11 +173,8 @@ const handleSubmit = async (e) => {
                 id="email"
                 value={formData.email}
                 onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${
-                  errors.email || apiError ? 'border-red-300' : 'border-gray-300'
-                } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm new-font`}
-                placeholder="you@example.com"
-                disabled={isLoading}
+                className={`block w-full pl-10 pr-3 py-2 border ${errors.email || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+                placeholder="user@example.com"
               />
               {errors.email && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -247,11 +185,9 @@ const handleSubmit = async (e) => {
             {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
           </div>
 
-          {/* Password */}
+          {/* Password Field */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">
-              Password
-            </label>
+            <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">Password</label>
             <div className="mt-1 relative rounded-md shadow-sm">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Lock className="h-5 w-5 text-dark" />
@@ -262,11 +198,8 @@ const handleSubmit = async (e) => {
                 id="password"
                 value={formData.password}
                 onChange={handleChange}
-                className={`block w-full pl-10 pr-3 py-2 border ${
-                  errors.password || apiError ? 'border-red-300' : 'border-gray-300'
-                } rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm new-font`}
+                className={`block w-full pl-10 pr-3 py-2 border ${errors.password || apiError ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
-                disabled={isLoading}
               />
               {errors.password && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
@@ -281,29 +214,29 @@ const handleSubmit = async (e) => {
           <div>
             <button
               type="submit"
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#00b5b5] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#1447e6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
-              {isLoading ? 'Signing In...' : 'Sign In'}
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </div>
         </form>
 
-        {/* Or continue with */}
-        <div className="mt-4 md:mt-6 relative">
+        {/* Divider */}
+        <div className="mt-6 relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-[#6B7280] basic-font">Or continue with</span>
+            <span className="px-2 bg-white basic-font text-[#6B7280]">Or continue with</span>
           </div>
         </div>
 
-        {/* Google Sign In option */}
-        <div className="mt-4 md:mt-6">
+        {/* Google Sign In Button */}
+        <div className="mt-6">
           <button
             onClick={handleGoogleSignIn}
-            className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font"
+            className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 basic-font disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading}
           >
             <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
@@ -314,18 +247,13 @@ const handleSubmit = async (e) => {
                 <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
               </g>
             </svg>
-            Sign in with Google
+            Continue with Google
           </button>
         </div>
 
-        {/* Don't have account link */}
-        <div className="mt-4 md:mt-6 text-center">
-          <p className="text-sm text-dark basic-font">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-cta hover:text-[#00b5b5] basic-font">
-              Sign Up
-            </Link>
-          </p>
+        {/* Sign Up Link */}
+        <div className="mt-6 text-center text-sm">
+          <p className="text-dark basic-font">Don't have an account? <Link to="/signup" className="font-medium text-cta basic-font">Sign Up</Link></p>
         </div>
       </div>
     </div>

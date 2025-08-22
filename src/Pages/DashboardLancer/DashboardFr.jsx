@@ -10,6 +10,7 @@ import WalletViews from '../../Sections/Wallet/Wallet'
 import MessagesFrs from '../../Sections/Freelancer Side/MessageFL/MessageFr'
 import Prosettingss from '../../Sections/Prosetting/Prosettings'
 import GetHelps from '../../Sections/Gethelp/Help'
+import LogoutButton from '../../Components/Return/Logout'
 
 
 // Mock components - replace with your actual components
@@ -323,17 +324,11 @@ const DashboardFr = () => {
             </a>
 
             {/* Log Out link */}
-            <a 
-              href="#" 
-              onClick={(e) => {
-                e.preventDefault();
-                // Handle logout
-              }}
-              className="flex items-center px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-all duration-200"
-            >
-              <LogOut size={20} className="mr-3" />
-              <span>Log Out</span>
-            </a>
+            <LogoutButton 
+            className="w-full justify-start px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-all duration-200"
+             text="Log Out"
+            showIcon={true}
+  />
           </div>
         </aside>
 
