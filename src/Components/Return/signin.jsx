@@ -125,7 +125,7 @@ const Signin = () => {
         }
       } else {
         // Default dashboard if no specific role
-        navigate('/dashboard', { replace: true });
+        navigate('/freelancer-dashboard', { replace: true });
       }
 
     } catch (error) {
