@@ -2,15 +2,17 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Sidebar, Bell, User, Settings, Home, 
        FileText,  MessageCircle, 
        
-       Download, X, LogOut, MessageSquare, HelpCircle, Building2} from 'lucide-react'
+       Download, X, LogOut, MessageSquare, HelpCircle, Building2,
+       ChevronRight, TrendingUp} from 'lucide-react'
        
 import DashboardViews from '../../Sections/Freelancer Side/DashboardView/DashboardView'
-import TaskManagements from '../../Sections/Task/Task'
-import WalletViews from '../../Sections/Wallet/Wallet'
+import TaskManagements from '../../Sections/Jobs/Task'
+import WalletViews from '../../Sections/Freelancer Tools/Tools'
 import MessagesFrs from '../../Sections/Freelancer Side/MessageFL/MessageFr'
-import Prosettingss from '../../Sections/Prosetting/Prosettings'
+import Prosettingss from '../../Sections/Profile Settings/Prosettings'
 import GetHelps from '../../Sections/Gethelp/Help'
-import LogoutButton from '../../Components/Return/Logout'
+import LogoutButton from '../../Components/Platform Users/Logout'
+import Analytics from '../../Sections/Analysis/Analytics'
 
 
 // Mock components - replace with your actual components
@@ -42,6 +44,12 @@ const SettingsView = () => <div className="p-6 bg-gray-50 min-h-full">
   </div>
 </div>
 
+const AnalyticalView = () => <div className="p-6 bg-gray-50 min-h-full">
+  <div className="bg-white rounded-lg p-8 shadow-sm">
+  <Analytics/>
+  </div>
+</div>
+
 const HelpView = () => <div className="p-6 bg-gray-50 min-h-full">
   <div className="bg-white rounded-lg p-8 shadow-sm">
     <GetHelps/>
@@ -55,6 +63,12 @@ const DashboardFr = () => {
   // Add state to track screen size
   const [isMobile, setIsMobile] = useState(false)
   const [userRole, setUserRole] = useState('freelancer') // New state for role switching
+// Add these separate state variables for independent dropdown control
+  const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
+  const [isMetricsDropdownOpen, setIsMetricsDropdownOpen] = useState(false);
+  // Determine if the main "Jobs" link or its children are active
+ 
+
   
   // Check if screen is mobile on mount and resize
   useEffect(() => {
@@ -107,6 +121,18 @@ const DashboardFr = () => {
       setIsSidebarOpen(false)
     }
   }
+const toggleJobsDropdown = () => {
+  setIsJobsDropdownOpen(!isJobsDropdownOpen);
+};
+
+const toggleMetricsDropdown = () => {
+  setIsMetricsDropdownOpen(!isMetricsDropdownOpen); 
+};
+
+
+  
+const isJobsActive = activeView === 'task';
+const isMetricsActive = activeView === 'analytics' || activeView === 'wallets';
 
   // Function to render the appropriate view based on the active state
   const renderView = () => {
@@ -123,6 +149,8 @@ const DashboardFr = () => {
         return <SettingsView />;
       case 'help':
         return <HelpView />;
+      case 'analytics':
+        return <AnalyticalView/>
       default:
         return <DashboardView />;
     }
@@ -189,103 +217,150 @@ const DashboardFr = () => {
                 <p className="text-sm text-gray-500">@codecraft_alex</p>
               </div>
             </div>
-
-            {/* Role Switcher - Simplified */}
-            <div className="bg-gray-50 rounded-lg p-1 flex">
-              <button
-                onClick={() => setUserRole('client')}
-                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  userRole === 'client'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Client
-              </button>
-              <button
-                onClick={() => setUserRole('freelancer')}
-                className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
-                  userRole === 'freelancer'
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Freelancer
-              </button>
-            </div>
           </div>
           
           {/* Navigation - Clean and Simple */}
-          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-            {/* Dashboard link */}
-            <a 
-              href="#" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleMenuClick('dashboard');
-              }}
-              className={`flex items-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                activeView === 'dashboard' 
-                  ? 'bg-blue-50 text-blue-700' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <Home size={20} className="mr-3" />
-              <span>Dashboard</span>
-            </a>
-             
-            {/* Messages link */}
-            <a 
-              href="#" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleMenuClick('messages');
-              }}
-              className={`flex items-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                activeView === 'messages' 
-                  ? 'bg-blue-50 text-blue-700' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <MessageCircle size={20} className="mr-3" />
-              <span>Messages</span>
-              <span className="ml-auto flex items-center justify-center w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full">2</span>
-            </a>
+       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
+         {/* Dashboard link */}
+          <a 
+           href="#" 
+           onClick={(e) => {
+           e.preventDefault();
+           handleMenuClick('dashboard');
+         }}
+         className={`flex items-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+         activeView === 'dashboard' 
+        ? 'bg-blue-50 text-blue-700' 
+        : 'text-gray-700 hover:bg-gray-50'
+    }`}
+  >
+    <Home size={20} className="mr-3" />
+    <span>Dashboard</span>
+        </a>
 
-            {/* Jobs link */}
-            <a 
-              href="#" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleMenuClick('task');
-              }}
-              className={`flex items-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                activeView === 'task' 
-                  ? 'bg-blue-50 text-blue-700' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <Building2 size={20} className="mr-3" />
-              <span>Jobs</span>
-            </a>
+  {/* Jobs Section - Blue Theme */}
+   <div>
+    {/* Main Jobs Button */}
+    <button
+      onClick={toggleJobsDropdown}
+      className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+        isJobsActive
+          ? 'bg-blue-50 text-[#2563EB] border border-blue-200'
+          : 'text-gray-700 hover:bg-blue-25 hover:text-[#1447e6] border border-transparent'
+      }`}
+    >
+      <Building2 size={20} className="mr-3" />
+      <span className="flex-grow text-left">History</span>
+      <ChevronRight
+        size={16}
+        className={`transition-transform duration-200 ${
+          isJobsDropdownOpen ? 'rotate-90 text-blue-600' : ''
+        }`}
+      />
+    </button>
 
-            {/* Learning link */}
-            <a 
-              href="#" 
-              onClick={(e) => {
-                e.preventDefault();
-                handleMenuClick('wallets');
-              }}
-              className={`flex items-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                activeView === 'wallets' 
-                  ? 'bg-blue-50 text-blue-700' 
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <FileText size={20} className="mr-3" />
-              <span>Learning</span>
-            </a>
-          </nav>
+    {/* Jobs Dropdown Menu - Blue Theme */}
+    {isJobsDropdownOpen && (
+      <div className="mt-2 pl-7 space-y-1 border-l-2 border-blue-200 ml-6">
+        {/* Jobs History Link */}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            handleMenuClick('task');
+          }}
+          className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
+            activeView === 'task'
+              ? 'bg-blue-100 text-cta font-semibold shadow-sm'
+              : 'text-gray-600 hover:bg-blue-50 hover:text-[#1447e6]'
+          }`}
+        >
+          <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
+          Jobs 
+        </a>
+
+        {/* Workspace History Link */}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            handleMenuClick('task'); // You might want to create a separate 'workspace' view
+          }}
+          className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
+            activeView === 'task' // Change this if you create a separate workspace view
+              ? 'bg-blue-100 text-cta font-semibold shadow-sm'
+              : 'text-gray-600 hover:bg-blue-50 hover:text-[#1447e6]'
+          }`}
+        >
+          <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
+          Workspaces
+        </a>
+      </div>
+    )}
+  </div>
+
+  {/* Metrics Section - Purple Theme */}
+  <div>
+    {/* Main Metrics Button */}
+    <button
+      onClick={toggleMetricsDropdown}
+      className={`w-full flex items-center px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+        isMetricsActive
+          ? 'bg-purple-50 text-primary border border-purple-200'
+          : 'text-gray-700 hover:bg-blue-50 hover:text-[#1447e6] border border-transparent'
+      }`}
+    >
+      <TrendingUp size={20} className="mr-3" />
+      <span className="flex-grow text-left">Metrics</span>
+      <ChevronRight
+        size={16}
+        className={`transition-transform duration-200 ${
+          isMetricsDropdownOpen ? 'rotate-90 text-[#1447e6]' : ''
+        }`}
+      />
+    </button>
+
+    {/* Metrics Dropdown Menu - Purple Theme */}
+    {isMetricsDropdownOpen && (
+      <div className="mt-2 pl-7 space-y-1 border-l-2 border-blue-500 ml-6">
+        {/* Analytics Link */}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            handleMenuClick('analytics');
+          }}
+          className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
+            activeView === 'analytics'
+              ? 'bg-purple-100 text-primary font-semibold shadow-sm'
+              : 'text-gray-600 hover:bg-blue-50 hover:text-[#1447e6]'
+          }`}
+        >
+          <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
+          Analytics 
+        </a>
+
+        {/* Earnings Link */}
+        <a
+          href="#"
+          onClick={(e) => {
+            e.preventDefault();
+            handleMenuClick('wallets');
+          }}
+          className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
+            activeView === 'wallets'
+              ? 'bg-purple-100 text-purple-800 font-semibold shadow-sm'
+              : 'text-gray-600 hover:bg-purple-50 hover:text-[#1447e6]'
+          }`}
+        >
+          <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
+          Earnings
+        </a>
+      </div>
+    )}
+  </div>
+</nav>
+
           
           {/* Bottom section */}
           <div className="p-4 border-t border-gray-100 flex-shrink-0">
@@ -341,7 +416,7 @@ const DashboardFr = () => {
                 <h2 className='text-gray-900 font-bold text-2xl mb-1'>
                   {activeView === 'messages' ? 'Messages' : 
                   activeView === 'dashboard' ? 'Dashboard' : 
-                  activeView === 'wallets' ? 'Learning' : 
+                  activeView === 'wallets' ? 'Your Tools' : 
                   activeView === 'task' ? 'Jobs' : 
                   activeView === 'settings' ? 'Settings' : 
                   activeView === 'help' ? 'Help Center' : 'Dashboard'}
@@ -350,7 +425,7 @@ const DashboardFr = () => {
                   {activeView === 'dashboard' && 'Welcome back! Here\'s your overview for today.'}
                   {activeView === 'messages' && 'Manage your conversations and collaborations.'}
                   {activeView === 'task' && 'Track and manage your ongoing projects.'}
-                  {activeView === 'wallets' && 'Expand your skills with our learning resources.'}
+                  {activeView === 'wallets' && 'These tools are available to aid your workflow'}
                   {activeView === 'settings' && 'Customize your account and preferences.'}
                   {activeView === 'help' && 'Get support and find answers to your questions.'}
                 </p>

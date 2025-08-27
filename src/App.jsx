@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import Signup from './Components/Users/Signup';
-import Signin from './Components/Return/signin';
-import Landhome from './Components/LandHome/home';
+import Signup from './Components/New users/Signup';
+import Signin from './Components/Platform Users/signin';
+import Landhome from './Components/Landing Page/home';
 import Setup from './Pages/Setup/Setup';
 import Interview from './Pages/Interview/Interview';
 import DashboardCl from './Pages/DashboardClient/DashboardCL';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import useAuthService from '../../Components/auth'; // Adjust path as needed
+import useAuthService from '../auth'; // Adjust path as needed
 
 const Signin = () => {
   const [formData, setFormData] = useState({

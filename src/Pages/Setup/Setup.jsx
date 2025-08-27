@@ -102,8 +102,7 @@ const Setup = () => {
       country: '',
       state: '',
       skill: '', // Changed from skills array to single skill
-      companyName: '',
-      industry: '',
+     
     };
   };
 
@@ -117,7 +116,6 @@ const Setup = () => {
   const [profileSaved, setProfileSaved] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(location.state?.showSuccessAlert || false);
   const [showDataRestored, setShowDataRestored] = useState(false);
-
   const isFreelancer = selectedRole === 'freelancer';
   const countries = Object.keys(countryData);
   const availableStates = formData.country ? countryData[formData.country] || [] : [];
@@ -146,29 +144,7 @@ const Setup = () => {
     "Teaching/Tutoring"
   ];
 
-  const industries = [
-    "Technology",
-    "Healthcare",
-    "Finance",
-    "Education",
-    "Marketing & Advertising",
-    "E-commerce",
-    "Manufacturing",
-    "Real Estate",
-    "Consulting",
-    "Media & Entertainment",
-    "Non-profit",
-    "Government",
-    "Automotive",
-    "Food & Beverage",
-    "Travel & Tourism",
-    "Energy",
-    "Construction",
-    "Fashion",
-    "Sports & Recreation",
-    "Other"
-  ];
-
+ 
   const saveFormDataToStorage = (data) => {
     try {
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
@@ -193,9 +169,8 @@ const Setup = () => {
                          persistedData.lastname?.trim() || 
                          persistedData.country?.trim() || 
                          persistedData.state?.trim() ||
-                         persistedData.skill?.trim() ||
-                         persistedData.companyName?.trim() ||
-                         persistedData.industry?.trim();
+                         persistedData.skill?.trim() 
+                        
       
       if (hasContent) {
         setShowDataRestored(true);
@@ -262,7 +237,7 @@ const Setup = () => {
     if (!formData.state.trim()) newErrors.state = 'State/Province is required';
     // Check for single skill if freelancer
     if (isFreelancer && !formData.skill.trim()) newErrors.skill = 'Please select a skill';
-    if (!isFreelancer && !formData.industry.trim()) newErrors.industry = 'Industry is required';
+    
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -285,7 +260,7 @@ const Setup = () => {
         country: formData.country,
         state: formData.state,
         // Send single skill as expected by API
-        skill: isFreelancer ? formData.skill : formData.industry
+        skill: isFreelancer ? formData.skill : null
       };
 
       const API_URL = import.meta.env.VITE_API_URL
@@ -395,22 +370,17 @@ const Setup = () => {
   };
 
   const handleClearSavedData = () => {
-    // This is a placeholder for a custom modal dialog
-    // as window.confirm() is not recommended in this environment.
-    // For now, it's fine for testing purposes.
-    if (window.confirm('Are you sure you want to clear all saved form data?')) {
+    // 
       clearPersistedFormData();
       setFormData({
         firstname: '',
         lastname: '',
         country: '',
         state: '',
-        skill: '', // Reset single skill
-        companyName: '',
-        industry: '',
+        skill: '' // Reset single skill
+        
       });
       setShowDataRestored(false);
-    }
   };
 
   return (
@@ -514,18 +484,6 @@ const Setup = () => {
                       error={errors.lastname}
                     />
 
-                    {!isFreelancer && (
-                      <FormInput
-                        label="Company Name (Optional)"
-                        id="companyName"
-                        name="companyName"
-                        value={formData.companyName}
-                        onChange={handleChange}
-                        placeholder="Your Company"
-                        error={errors.companyName}
-                      />
-                    )}
-
                     <FormSelect
                       label="Country"
                       id="country"
@@ -563,19 +521,6 @@ const Setup = () => {
                       />
                     )}
 
-                    {!isFreelancer && (
-                      <FormSelect
-                        label="Industry"
-                        id="industry"
-                        name="industry"
-                        value={formData.industry}
-                        onChange={handleChange}
-                        options={industries}
-                        placeholder="Select your industry"
-                        error={errors.industry}
-                        icon={<Building className="h-5 w-5 text-gray-400" />}
-                      />
-                    )}
                   </div>
                 </div>
 

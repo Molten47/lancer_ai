@@ -11,56 +11,38 @@ import {
   XCircle // Added for error messages
 } from 'lucide-react';
 
-const TaskManagement = () => {
-  const [activeTab, setActiveTab] = useState('ongoing');
+const TaskManagement = ({task_type = 'platform_task'}) => {
+  const [taskState, setTaskState] = useState('initial');
+  const [activeTab, setActiveTab] = useState('solo');
   const [clientTasks, setClientTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [startTime, setStartTime] = useState(null);
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [submissionResult, setSubmissionResult] = useState(null);
+  const dueDate = (startTime - timeRemaining)
   // --- MOCK DATA FOR FRONTEND DEVELOPMENT ---
-  const mockOngoingTasks = [
+  const soloWorkSpace = [
     {
-      id: 'task-1',
+      job_id: 'task-1',
       title: 'Design Marketing Website Homepage',
       assignee: 'Alice Johnson',
       progress: 75,
-      dueDate: '2025-06-15',
-      daysLeft: 9,
+      dueDate: dueDate,
+      daysLeft: timeRemaining,
       budget: '$1200',
       status: 'Ongoing',
       avatar: 'AJ',
       completedDate: null,
-    },
-    {
-      id: 'task-2',
-      title: 'Develop Mobile App Prototype',
-      assignee: 'Bob Williams',
-      progress: 40,
-      dueDate: '2025-07-01',
-      daysLeft: 25,
-      budget: '$3000',
-      status: 'Ongoing',
-      avatar: 'BW',
-      completedDate: null,
-    },
-    {
-      id: 'task-3',
-      title: 'Create Social Media Content Calendar',
-      assignee: 'Charlie Davis',
-      progress: 90,
-      dueDate: '2025-06-08',
-      daysLeft: 2,
-      budget: '$500',
-      status: 'Ongoing',
-      avatar: 'CD',
-      completedDate: null,
-    },
+    }
+  
   ];
 
-  const mockCompletedTasks = [
+  const projectWorkSpace = [
     {
       id: 'task-c1',
-      title: 'Brand Logo Redesign',
+      title: 'Online Magazine Project',
       assignee: 'Alice Johnson',
       progress: 100,
       dueDate: '2025-05-20',
@@ -69,22 +51,55 @@ const TaskManagement = () => {
       status: 'Completed',
       avatar: 'AJ',
       completedDate: '2025-05-18',
-    },
-    {
-      id: 'task-c2',
-      title: 'SEO Keyword Research',
-      assignee: 'Charlie Davis',
-      progress: 100,
-      dueDate: '2025-05-25',
-      daysLeft: 0,
-      budget: '$350',
-      status: 'Completed',
-      avatar: 'CD',
-      completedDate: '2025-05-24',
-    },
+    }
+ 
   ];
-  // --- END MOCK DATA ---
+// Timer to countdown job delivery period 
+useEffect(() => {
+  if (taskState !== 'started' || timeRemaining <= 0 ) return;
+  const timer = setInterval(() => {
+    setTimeRemaining((prev) => {
+      if (prev <= 1){
+        clearInterval(timer);
+        return 0;
+      }
+      return prev -1;
+    });
+  }, 1000);
 
+  return () => clearInterval(timer);
+}, [taskState, timeRemaining]);
+/**
+ * Formats the current date and time using a preferred list of locales.
+ * @param {string|string[]} locales - A single locale string or an array of locale strings.
+ */
+const formatModernDateTime = (locales = ['en-NG', 'en-US']) => { // Default to an array
+  const now = new Date();
+  const options = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  };
+  
+
+  return new Intl.DateTimeFormat(locales, options).format(now);
+};
+
+// 1. Using the default fallbacks ('en-NG' then 'en-US')
+console.log('Default:', formatModernDateTime()); 
+// Output in Nigeria: Default: 25/08/2025, 19:55:29
+
+// 2. Providing a different preferred locale (e.g., German)
+console.log('German:', formatModernDateTime('de-DE')); 
+// Output: German: 25.08.2025, 19:55:29
+
+// 3. Providing a custom fallback list
+console.log('Custom List:', formatModernDateTime(['fr-FR', 'en-GB']));
+// Output: Custom List: 25/08/2025 19:55:29
 
   // Function to simulate fetching tasks (frontend only)
   const simulateFetchTasks = useCallback((status) => {
@@ -93,10 +108,10 @@ const TaskManagement = () => {
     setClientTasks([]); // Clear previous tasks
 
     setTimeout(() => {
-      if (status === 'ongoing') {
-        setClientTasks(mockOngoingTasks);
-      } else if (status === 'completed') {
-        setClientTasks(mockCompletedTasks);
+      if (status === 'solo') {
+        setClientTasks(soloWorkSpace);
+      } else if (status === 'group') {
+        setClientTasks(projectWorkSpace);
       }
       setLoading(false);
     }, 800); // Simulate network delay
@@ -106,6 +121,109 @@ const TaskManagement = () => {
   useEffect(() => {
     simulateFetchTasks(activeTab);
   }, [activeTab, simulateFetchTasks]);
+  //API call to start the task or jib for freelancer
+ const startTask = async () => {
+    setTaskState('loading');
+    setError(null);
+
+    try {
+      const start_time = new Date().toISOString();
+      setStartTime(start_time);
+
+      const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+      console.log('Token:', token ? `${token.slice(0, 10)}...${token.slice(-10)}` : 'NO_TOKEN');
+      
+      if (!token) {
+        throw new Error('No token found. Please log in again.');
+      }
+
+      // Decode JWT for debugging
+      let user_id = null;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        console.log('Token payload:', {
+          exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'No expiry',
+          iss: payload.iss || 'No issuer',
+          sub: payload.sub || 'No subject',
+          scope: payload.scope || 'No scope'
+        });
+        user_id = payload.sub || payload.user_id;
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          throw new Error('Token is expired. Please log in again.');
+        }
+      } catch (e) {
+        console.error('Failed to decode token:', e.message);
+      }
+
+      const API_URL = import.meta.env.VITE_API_URL;
+      console.log('API_URL:', API_URL);
+
+      // INITIATION REQUEST: Send status and start_time
+      const formData = new FormData();
+      formData.append('status', 'initiation');
+      formData.append('start_time', start_time);
+
+      console.log('Sending initiation request (POST) to:', `${API_URL}/api/task/${task_type}`);
+      console.log('FormData fields:', { 
+        status: 'initiation', 
+        start_time: start_time
+      });
+
+      const response = await fetch(`${API_URL}/api/task/${task_type}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+        mode: 'cors',
+        credentials: 'include'
+      });
+
+      console.log('API Response status:', response.status);
+
+      if (!response.ok) {
+        let errorMessage;
+        let errorData;
+        const responseText = await response.text();
+        console.error('Full error response text:', responseText);
+        
+        try {
+          errorData = JSON.parse(responseText);
+          errorMessage = errorData.message || errorData.error || errorData.detail || `HTTP error! status: ${response.status}`;
+          console.error('Detailed error response:', errorData);
+        } catch (e) {
+          errorMessage = responseText || `HTTP error! status: ${response.status}`;
+          console.error('Error response text:', responseText);
+        }
+        
+        if (response.status === 401) {
+          throw new Error('Authentication failed. Please log in again.');
+        } else if (response.status === 400) {
+          throw new Error(`Bad request: ${errorMessage}`);
+        } else if (response.status === 422) {
+          throw new Error(`Validation failed: ${errorMessage}`);
+        } else if (response.status === 500) {
+          throw new Error(`Server error: ${errorMessage}. Please contact support if this persists.`);
+        }
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      console.log('Initiation response:', data);
+      
+      setTaskData({
+        instruction: data.Instruction || data.instruction,
+        completion_time: data.completion_time
+      });
+      setTimeRemaining(data.completion_time * 60);
+      setTaskState('started');
+    } catch (err) {
+      console.error('Error starting task:', err);
+      setError(err.message || 'Failed to start task. Please try again.');
+      setTaskState('error');
+    }
+  };
+
 
   return (
     <div className="p-7 min-h-full">
@@ -113,7 +231,7 @@ const TaskManagement = () => {
       <div className="flex flex-col lg:flex-row gap-2 items-center justify-between mb-6">
         <div className="flex bg-white rounded-lg p-1 border border-gray-200 shadow-sm basic-font">
           <button
-            onClick={() => setActiveTab('ongoing')}
+            onClick={() => setActiveTab('solo')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'ongoing'
                 ? 'bg-blue-100 text-blue-600 shadow-sm'
@@ -121,10 +239,10 @@ const TaskManagement = () => {
             }`}
           >
             <Clock size={16} />
-            Ongoing Tasks
+            Job
           </button>
           <button
-            onClick={() => setActiveTab('completed')}
+            onClick={() => setActiveTab('group')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'completed'
                 ? 'bg-[#DBEAFE] text-[#2561E8] basic-font shadow-sm'
@@ -132,7 +250,7 @@ const TaskManagement = () => {
             }`}
           >
             <CheckCircle size={16} />
-            Completed Tasks
+              Project Workspace
           </button>
         </div>
 
@@ -152,7 +270,7 @@ const TaskManagement = () => {
       {/* Loading and Error States */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="animate-spin text-blue-500 w-8 h-8 mr-3" />
+          <Loader2 className="animate-spin text-primary w-8 h-8 mr-3" />
           <p className="text-lg text-gray-700">Loading tasks...</p>
         </div>
       )}

@@ -4,7 +4,7 @@ import { Sidebar, Bell, User, Settings, Home,
        Download, X, LogOut, MessageSquare, HelpCircle, Building2, Send} from 'lucide-react'
 
 import ProjectManagement from '../../Sections/Client Side/Project Manager/ProjectManager'
-import AIAssistantChat from '../../Sections/Client Side/Dashboard-Client/DashboardClient'
+import AIAssistantChat from '../../Sections/Client Side/Client Assistant/DashboardClient'
 // Mock components - replace with your actual components
 const DashboardView = () => <div className="flex flex-col h-full basic-font">
   {/* AI chat assistant to be imported here*/}
@@ -215,23 +215,6 @@ const DashboardCl = () => {
             <Home size={18} className="mr-3" />
             <span>Assistant</span>
           </a>
-           
-          {/* Messages link */}
-          <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleMenuClick('messages');
-            }}
-            className={`flex items-center px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-              activeView === 'messages' 
-                ? 'bg-blue-50 text-blue-700' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <MessageCircle size={18} className="mr-3" />
-            <span>Messages</span>
-          </a>
 
           {/* Projects dropdown */}
           <div className="space-y-1">
@@ -288,23 +271,6 @@ const DashboardCl = () => {
               </div>
             )}
           </div>
-
-          {/* Freelancers link */}
-          <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleMenuClick('wallets');
-            }}
-            className={`flex items-center px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-              activeView === 'wallets' 
-                ? 'bg-blue-50 text-blue-700' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <FileText size={18} className="mr-3" />
-            <span>Freelancers</span>
-          </a>
         </nav>
         
         {/* Bottom section */}
