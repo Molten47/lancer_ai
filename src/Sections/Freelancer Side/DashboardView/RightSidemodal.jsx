@@ -101,21 +101,22 @@ const RightSideModal = ({ isOpen, onClose, job }) => {
           </div>
 
           {/* AI Assistant Icon */}
-      <div className="absolute bottom-6 right-6 group">
-       <div className='absolute bottom-full right-0 mb-3 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none transform translate-y-1 group-hover:translate-y-0'>
-    <div className='bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg relative whitespace-nowrap'>
-      <p className='text-sm font-medium'>Hey! I'm your AI assistant</p>
-      {/* Speech bubble tail */}
-      <div className='absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-indigo-600'></div>
-    </div>
-      </div>
-      <button
-    className="p-3 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-transform hover:transform-gpu hover:scale-115"
-    aria-label="Open AI Assistant"
-  >
-       <Bot size={24} />
-     </button>
-       </div>
+     {/* AI Assistant Icon */}
+      <div className="absolute bottom-6 right-6 group">
+       <div className='absolute bottom-full right-0 mb-3 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none transform translate-y-1 group-hover:translate-y-0'>
+    <div className='bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg relative whitespace-nowrap'>
+      <p className='text-sm font-medium'>Hey! I'm your AI assistant</p>
+      {/* Speech bubble tail */}
+      <div className='absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-indigo-600'></div>
+    </div>
+      </div>
+      <button
+    className="p-3 bg-indigo-600 rounded-full text-white shadow-lg hover:bg-indigo-700 transition-transform hover:transform-gpu hover:scale-115"
+    aria-label="Open AI Assistant"
+  >
+       <Bot size={24} />
+     </button>
+      </div>
         </div>
       </div>
     </div>

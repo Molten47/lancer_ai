@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Star, Calendar, Clock, DollarSign, User, MapPin, Edit3, Eye } from 'lucide-react';
+import { Star, Calendar, Clock, DollarSign, User, MapPin, Edit3, Eye, Bot } from 'lucide-react';
 import RightSideModal from './RightSidemodal';
-import GroupSideModal from './GroupSideModal';
+//import GroupSideModal from './GroupSideModal';
+import AIAssistantModal from '../AIAssistantModal'; // Import the new modal component
 
 const DashboardView = () => {
   const [isRightModalOpen, setIsRightModalOpen] = useState(false);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+  const [isAIAssistantModalOpen, setIsAIAssistantModalOpen] = useState(false); // New state for AI modal
   const [selectedJob, setSelectedJob] = useState(null);
 
   // Function to open the RightSideModal with specific job data
@@ -14,16 +16,16 @@ const DashboardView = () => {
     setIsRightModalOpen(true);
   };
 
-  // Function to open the GroupSideModal with specific job data
-  const handleOpenGroupModal = (job) => {
-    setSelectedJob(job);
-    setIsGroupModalOpen(true);
+  
+  // New function to open the AI Assistant modal
+  const handleOpenAIAssistantModal = () => {
+    setIsAIAssistantModalOpen(true);
   };
 
-  // Function to close the modals
+  // Function to close all modals
   const handleCloseModals = () => {
     setIsRightModalOpen(false);
-    setIsGroupModalOpen(false);
+    setIsAIAssistantModalOpen(false); // Close AI modal
     setSelectedJob(null);
   };
 
@@ -36,17 +38,6 @@ const DashboardView = () => {
       dueDate: "Nov 15, 2024",
       statusColor: "bg-yellow-100 text-yellow-800",
       description: "Complete redesign of an existing e-commerce site to improve user experience and conversion rates. The project involves new wireframes, a modern visual design, and a responsive layout for mobile and desktop."
-    }
-  ];
-
-  const groupJobs = [
-    {
-      id: 1,
-      title: "Magazine for Fashion Blog",
-      description: "Creating cool graphics for the online fashion blog",
-      budget: "",
-      members: 5,
-      membersColor: "text-green-600"
     }
   ];
 
@@ -133,57 +124,30 @@ const DashboardView = () => {
                 </table>
               </div>
             </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Your group project</h2>
-                <button className="text-blue-600 text-sm font-medium hover:text-blue-700">
-                  Get back in your workspace
-                </button>
-              </div>
-              <div className="p-6">
-                <div className="grid gap-4">
-                  {groupJobs.map((job) => (
-                    <div key={job.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleOpenGroupModal(job)}>
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 mb-1">{job.title}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{job.description}</p>
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center text-gray-600">
-                              <DollarSign size={14} className="mr-1" />
-                              {job.budget}
-                            </div>
-                            <div className={`font-medium ${job.membersColor}`}>
-                              {job.members} Members
-                            </div>
-                          </div>
-                        </div>
-                        <button className="text-blue-600 text-sm font-medium hover:text-blue-700 flex items-center gap-1">
-                          <Eye size={14} />
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
-
       <RightSideModal
         isOpen={isRightModalOpen}
         onClose={handleCloseModals}
         job={selectedJob}
-      />
-
-      <GroupSideModal
-        isOpen={isGroupModalOpen}
+      />      
+      {/* New AI Assistant Modal */}
+      <AIAssistantModal
+        isOpen={isAIAssistantModalOpen}
         onClose={handleCloseModals}
-        job={selectedJob}
       />
+      {/* AI Assistant Icon - now outside the modal to be a global button */}
+      <div className="absolute bottom-6 right-6 group">
+        <div className='absolute bottom-full right-0 mb-3 opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none transform translate-y-1 group-hover:translate-y-0'>
+          <div className='bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg relative whitespace-nowrap'>
+            <p className='text-sm font-medium'>Hey! I'm your AI assistant</p>
+            {/* Speech bubble tail */}
+            <div className='absolute top-full right-4 w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-indigo-600'></div>
+          </div>
+        </div>
+     
+      </div>
     </div>
   );
 };

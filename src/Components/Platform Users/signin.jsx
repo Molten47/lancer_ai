@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import useAuthService from '../auth'; // Adjust path as needed
+import {useDispatch} from 'react-redux'
+import { setUserData } from '../../store/userSlice';
+import useAuthService from '../auth'
 
 const Signin = () => {
   const [formData, setFormData] = useState({
@@ -14,6 +16,7 @@ const Signin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { setTokens } = useAuthService();
+  const dispatch = useDispatch()
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -78,54 +81,76 @@ const Signin = () => {
 
       const data = await response.json();
 
-      if (!response.ok || !data.well_received) {
+      // Add debugging to see the actual response structure
+      console.log('Login response:', data);
+
+      if (!response.ok || !data?.well_received) {
         // Handle login failure (401 or other errors)
-        setApiError(data.error_message || 'Login failed. Please check your credentials.');
+        setApiError(data?.error_message || 'Login failed. Please check your credentials.');
         return;
       }
 
-      // Login successful - store tokens and profile data
-      const accessJwt = data.access_jwt;
-      const refreshJwt = data.refresh_jwt;
-      const profileData = data.profile_data;
+      // Dispatch user data to Redux store
+      dispatch(setUserData(data));
+           
+      // Login successful - store tokens and user info with safe access
+      const accessJwt = data?.access_jwt;
+      const refreshJwt = data?.refresh_jwt;
+      const userId = data?.user_id; 
+      const role = data?.role; // Safely access role
+      const firstname = data?.firstname;
+      const lastname = data?.lastname;
+      const username = data?.username;
+
+      // Validate required fields
+      if (!accessJwt || !refreshJwt || !userId) {
+        setApiError('Invalid response from server. Missing required authentication data.');
+        return;
+      }
 
       // Store tokens using the auth service
       setTokens(accessJwt, refreshJwt);
 
-      // Store profile data in localStorage
+      // Store user data in localStorage with error handling
       try {
-        localStorage.setItem('profile_data', JSON.stringify(profileData));
+        localStorage.setItem('user_id', String(userId));
         
-        // You might want to store additional user info based on profile_data
-        if (profileData.role) {
-          localStorage.setItem('userRole', profileData.role);
+        // Store additional user info if available
+        if (role) {
+          localStorage.setItem('user_role', role);
         }
-        if (profileData.user_id) {
-          localStorage.setItem('user_id', profileData.user_id);
+        if (firstname) {
+          localStorage.setItem('user_firstname', firstname);
+        }
+        if (lastname) {
+          localStorage.setItem('user_lastname', lastname);
+        }
+        if (username) {
+          localStorage.setItem('user_username', username);
         }
       } catch (e) {
-        console.error('Failed to save profile data to localStorage:', e);
+        console.error('Failed to save user data to localStorage:', e);
       }
 
       console.log('Login successful:', data);
 
-      // Navigate to dashboard or appropriate page based on user role/profile
-      // You can customize this logic based on your app's requirements
-      if (profileData.role) {
-        // Navigate to role-specific dashboard
-        switch (profileData.role.toLowerCase()) {
-          case 'freelancer':
-            navigate('/freelancer-dashboard', { replace: true });
-            break;
-          case 'client':
-            navigate('/client-dashboard', { replace: true });
-            break;
-           default:
-            navigate('/freelancer-dashboard', { replace: true });
-        }
-      } else {
-        // Default dashboard if no specific role
+      // Navigate based on the user's role
+      if (role === 'freelancer') {
         navigate('/freelancer-dashboard', { replace: true });
+      } else if (role === 'client') {
+        navigate('/client-dashboard', { replace: true });
+      } else if (role) {
+        // Handle any other roles
+        console.warn('Unknown role:', role);
+        navigate('/default-dashboard', { replace: true });
+      } else {
+        // If no role is provided, you might need to fetch it separately
+        console.warn('No role provided in login response');
+        // You could either:
+        // 1. Navigate to a default page
+        navigate('/dashboard', { replace: true });
+        // 2. Or fetch user profile to get the role
+        // fetchUserProfile();
       }
 
     } catch (error) {

@@ -1,26 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useSelector } from 'react-redux'
 import { Sidebar, Bell, User, Settings, Home, 
        FileText,  MessageCircle, ChevronDown, ChevronRight,
        Download, X, LogOut, MessageSquare, HelpCircle, Building2, Send} from 'lucide-react'
 
-import ProjectManagement from '../../Sections/Client Side/Project Manager/ProjectManager'
+//import ProjectManagement from '../../Sections/Client Side/Projects/Projects'
+import ProjectManagers from '../../Sections/Client Side/Projects/ProjectManager'
 import AIAssistantChat from '../../Sections/Client Side/Client Assistant/DashboardClient'
-// Mock components - replace with your actual components
-const DashboardView = () => <div className="flex flex-col h-full basic-font">
-  {/* AI chat assistant to be imported here*/}
-  <AIAssistantChat
-   //socket={yourSocketInstance}
-   //userId="user-123"
-   //assistantName="Lancer AI"
-  // onMessageSent={() => {
-        // Handle message analytics, logging, etc.
-    //  }}
-  />
+import Notifications from '../Notifications/Notifications'
+//import GroupChatSpace from '../../Sections/Client Side/Projects/Groupchat'
+//import AssociatedJobs from '../../Sections/Client Side/Projects/AssociatedJob'
+import Analytics from '../../Sections/Client Side/Projects/Analytics'
 
+const DashboardView = () => <div className="flex flex-col h-full basic-font">
+  {/* AI chat assisant to be imported here*/}
+  <AIAssistantChat/>
 </div>
 
 const ProjectManager = () => <div className="p-6 bg-gray-50 min-h-full">
-<ProjectManagement/>
+{/*<AssociatedJobs/>*/}
+{/*<GroupChatSpace/>*/}
+{/*<ProjectManagers/>*/}
+<Analytics/>
+
+
 </div>
 
 const ProjectAnalytics = () => <div className="p-6 bg-gray-50 min-h-full">
@@ -54,14 +57,66 @@ const HelpView = () => <div className="p-6 bg-gray-50 min-h-full">
   </div>
 </div>
 
+const NotificationsView = () => <div className="p-6 bg-gray-50 min-h-full">
+  <div className="bg-white rounded-lg p-8 shadow-sm">
+    <Notifications />
+  </div>
+</div>
+
 const DashboardCl = () => {
-  // State to track the active view
-  const [activeView, setActiveView] = useState('dashboard')
+  // Function to get saved view from localStorage or return default
+  const getSavedView = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dashboardActiveView');
+      return saved || 'dashboard';
+    }
+    return 'dashboard';
+  };
+
+  // Function to get saved dropdown state from localStorage
+  const getSavedDropdownState = () => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dashboardProjectsDropdown');
+      return saved === 'true';
+    }
+    return false;
+  };
+
+  // State to track the active view - now initialized from localStorage
+  const [activeView, setActiveView] = useState(getSavedView)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Default closed
   // Add state to track screen size
   const [isMobile, setIsMobile] = useState(false)
   const [userRole, setUserRole] = useState('client') // Changed default to client
-  const [isProjectsDropdownOpen, setIsProjectsDropdownOpen] = useState(false)
+  const [isProjectsDropdownOpen, setIsProjectsDropdownOpen] = useState(getSavedDropdownState)
+      
+  // Select the specific fields from the Redux store
+  const userData = useSelector(state => state.user.userData);
+
+  // Use optional chaining for safety
+  const firstName = userData?.firstname;
+  const lastName = userData?.lastname;
+  const username = userData?.username;
+
+  // Combine for the full name
+  const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : 'User';
+
+  // Get initials from first and last names
+  const initials = (firstName && lastName) ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() : 'MJ';
+  
+  // Save activeView to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboardActiveView', activeView);
+    }
+  }, [activeView]);
+
+  // Save dropdown state to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dashboardProjectsDropdown', isProjectsDropdownOpen.toString());
+    }
+  }, [isProjectsDropdownOpen]);
   
   // Check if screen is mobile on mount and resize
   useEffect(() => {
@@ -124,9 +179,11 @@ const DashboardCl = () => {
     switch(activeView) {
       case 'dashboard':
         return <DashboardView />;
-      case 'project-manager': 
-        return <ProjectManager />;
-      case 'project-analytics':
+      case 'projects': 
+        return <ProjectManager /> 
+        
+        ;
+      case 'project-manager':
         return <ProjectAnalytics />;
       case 'messages':
         return <MessagesView />;
@@ -134,6 +191,8 @@ const DashboardCl = () => {
         return <WalletsView />;
       case 'settings':
         return <SettingsView />;
+      case'notifications':
+        return < NotificationsView/>
       case 'help':
         return <HelpView />;
       default:
@@ -146,8 +205,8 @@ const DashboardCl = () => {
       case 'messages': return 'Messages';
       case 'dashboard': return 'AI Assistant';
       case 'wallets': return 'Freelancers';
+      case 'projects': return 'Projects';
       case 'project-manager': return 'Project Manager';
-      case 'project-analytics': return 'Project Analytics';
       case 'settings': return 'Settings';
       case 'help': return 'Help Center';
       default: return 'AI Assistant';
@@ -187,14 +246,20 @@ const DashboardCl = () => {
           
           {/* User Profile Info */}
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">MJ</span>
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">
+                        {initials} {/* Display dynamic initials */}
+                    </span>
+                </div>
+                <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-sm">
+                        {fullName} {/* Display dynamic full name */}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                        {username} {/* Display the server-coined username */}
+                    </p>
+                </div>
             </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900 text-sm">Michael Johnson</h3>
-              <p className="text-xs text-gray-500">Techinnovate</p>
-            </div>
-          </div>
         </div>
         
         {/* Navigation - Clean and Simple */}
@@ -244,29 +309,29 @@ const DashboardCl = () => {
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    handleMenuClick('project-manager');
+                    handleMenuClick('projects');
                   }}
                   className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                    activeView === 'project-manager'
+                    activeView === 'projects'
                       ? 'bg-green-50 text-green-700'
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  Project Manager
+                  Projects
                 </a>
                 <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    handleMenuClick('project-analytics');
+                    handleMenuClick('project-manager');
                   }}
                   className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                    activeView === 'project-analytics'
+                    activeView === 'project-manager'
                       ? 'bg-orange-50 text-orange-700'
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  Project Analytics
+                  Project Manager
                 </a>
               </div>
             )}
@@ -314,7 +379,9 @@ const DashboardCl = () => {
             href="#" 
             onClick={(e) => {
               e.preventDefault();
-              // Handle logout
+              // Handle logout - you might want to clear localStorage here too
+              // localStorage.removeItem('dashboardActiveView');
+              // localStorage.removeItem('dashboardProjectsDropdown');
             }}
             className="flex items-center px-3 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-all duration-200 text-sm"
           >
@@ -337,7 +404,7 @@ const DashboardCl = () => {
             >
               <Sidebar size={18} />
             </button>
-            <h1 className="text-lg font-bold text-blue-600">Lancer AI</h1>
+            <h1 className="text-lg font-bold text-blue-600">Lancer</h1>
           </div>
 
           {/* Center - Current view title */}
@@ -355,9 +422,13 @@ const DashboardCl = () => {
             </button>
             
             {/* Notification bell */}
-            <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors relative">
-              <Bell size={18} className="text-gray-600" />
-            </button>
+               <button 
+                   className="p-2 hover:bg-gray-50 rounded-lg transition-colors relative"
+                   onClick={() => handleMenuClick('notifications')} // Add this onClick handler
+                      >
+                  <Bell size={20} className="text-gray-600" />
+                 <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 bg-red-500 text-white text-xs font-bold rounded-full">3</span>
+                  </button>
           </div>
         </nav>
         

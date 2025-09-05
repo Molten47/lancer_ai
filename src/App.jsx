@@ -8,6 +8,8 @@ import Interview from './Pages/Interview/Interview';
 import DashboardCl from './Pages/DashboardClient/DashboardCL';
 import DashboardFr from './Pages/DashboardLancer/DashboardFr';
 import LancerTaskPage from './Pages/TaskPage/Taskpage'
+import ThreePanelWorkspace from './Sections/Client Side/Projects/ProjectDashboard';
+import Interviewee from './Sections/Freelancer Side/Interview/jobInterview';
 
 
 
@@ -26,6 +28,8 @@ const App = () => {
                     <Route path="/interview" element={<Interview/>}/>
                     <Route path="/task" element={<LancerTaskPage/>}/>
                     <Route path="/client-dashboard" element={<DashboardCl/>}/>
+                    <Route path="/job-interview" element={<Interviewee />} />
+                    <Route path="/workspace" element={<ThreePanelWorkspace />} />
                     <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
                     
                    

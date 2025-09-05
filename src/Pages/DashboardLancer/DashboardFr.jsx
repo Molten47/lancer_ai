@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Sidebar, Bell, User, Settings, Home, 
-       FileText,  MessageCircle, 
-       
-       Download, X, LogOut, MessageSquare, HelpCircle, Building2,
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Sidebar, Bell, User, Settings, Home, FileText,  MessageCircle, Download, X, MessageSquare, HelpCircle, Building2,
        ChevronRight, TrendingUp} from 'lucide-react'
+import { useSelector } from 'react-redux'
        
 import DashboardViews from '../../Sections/Freelancer Side/DashboardView/DashboardView'
 import TaskManagements from '../../Sections/Jobs/Task'
-import WalletViews from '../../Sections/Freelancer Tools/Tools'
+import WalletViews from '../../Sections/Freelancer Side/Tools'
 import MessagesFrs from '../../Sections/Freelancer Side/MessageFL/MessageFr'
 import Prosettingss from '../../Sections/Profile Settings/Prosettings'
 import GetHelps from '../../Sections/Gethelp/Help'
 import LogoutButton from '../../Components/Platform Users/Logout'
 import Analytics from '../../Sections/Analysis/Analytics'
+import Notifications from '../../Pages/Notifications/Notifications'
 
 
 // Mock components - replace with your actual components
@@ -55,6 +55,11 @@ const HelpView = () => <div className="p-6 bg-gray-50 min-h-full">
     <GetHelps/>
   </div>
 </div>
+const NotificationsView = () => <div className="p-6 bg-gray-50 min-h-full">
+  <div className="bg-white rounded-lg p-8 shadow-sm">
+    <Notifications />
+  </div>
+</div>
 
 const DashboardFr = () => {
   // State to track the active view
@@ -67,7 +72,18 @@ const DashboardFr = () => {
   const [isJobsDropdownOpen, setIsJobsDropdownOpen] = useState(false);
   const [isMetricsDropdownOpen, setIsMetricsDropdownOpen] = useState(false);
   // Determine if the main "Jobs" link or its children are active
- 
+  const userData = useSelector(state => state.user.userData);
+
+  const navigate = useNavigate();
+  const firstName = userData?.firstname;
+  const lastName = userData?.lastname;
+  const username = userData?.username;
+
+  // Combine for the full name
+  const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : 'User';
+
+  // Get initials from first and last names
+  const initials = (firstName && lastName) ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() : 'MJ';
 
   
   // Check if screen is mobile on mount and resize
@@ -149,6 +165,8 @@ const isMetricsActive = activeView === 'analytics' || activeView === 'wallets';
         return <SettingsView />;
       case 'help':
         return <HelpView />;
+      case'notifications':
+        return < NotificationsView/>
       case 'analytics':
         return <AnalyticalView/>
       default:
@@ -175,10 +193,13 @@ const isMetricsActive = activeView === 'analytics' || activeView === 'wallets';
         {/* Right side - Notifications and User */}
         <div className="flex items-center gap-4">
           {/* Notification bell */}
-          <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors relative">
-            <Bell size={20} className="text-gray-600" />
-            <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 bg-red-500 text-white text-xs font-bold rounded-full">3</span>
-          </button>
+        <button 
+        className="p-2 hover:bg-gray-50 rounded-lg transition-colors relative"
+        onClick={() => handleMenuClick('notifications')} // Add this onClick handler
+           >
+       <Bell size={20} className="text-gray-600" />
+      <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 bg-red-500 text-white text-xs font-bold rounded-full">3</span>
+       </button>
 
           {/* Messages */}
           <button className="p-2 hover:bg-gray-50 rounded-lg transition-colors relative">
@@ -209,13 +230,19 @@ const isMetricsActive = activeView === 'analytics' || activeView === 'wallets';
           <div className="p-6 border-b border-gray-100 flex-shrink-0">
             {/* User Profile Info */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-semibold text-lg">AM</span>
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">Alex Morgan</h3>
-                <p className="text-sm text-gray-500">@codecraft_alex</p>
-              </div>
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-sm">
+                        {initials} {/* Display dynamic initials */}
+                    </span>
+                </div>
+                <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-sm">
+                        {fullName} {/* Display dynamic full name */}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                        {username} {/* Display the server-coined username */}
+                    </p>
+                </div>
             </div>
           </div>
           
