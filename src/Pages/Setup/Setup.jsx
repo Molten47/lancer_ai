@@ -276,19 +276,92 @@ const Setup = () => {
 
       const data = await response.json();
 
-      if (!response.ok) {
-        setApiError(data.error_message || 'Profile setup failed. Please try again.');
-        
-        if (response.status === 401) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('userRole');
-          localStorage.removeItem('user_id');
-          clearPersistedFormData();
-          navigate('/signin');
-        }
-        return;
+    // Replace the handleSubmit function's success handling section with this:
+
+if (!response.ok) {
+  setApiError(data.error_message || 'Profile setup failed. Please try again.');
+  
+  if (response.status === 401) {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('user_id');
+    clearPersistedFormData();
+    navigate('/signin');
+  }
+  return;
+}
+
+console.log('Profile setup successful:', data);
+
+// Handle the API response according to documentation:
+// Should return: well_received, profile_data (firstname, lastname, skill, country, state)
+if (data.well_received) {
+  // Check if profile_data exists as documented
+  if (data.profile_data) {
+    console.log('Profile data received:', data.profile_data);
+    
+    // Extract user_id if it exists in profile_data
+    if (data.profile_data.user_id) {
+      localStorage.setItem('user_id', data.profile_data.user_id.toString());
+    }
+  } else {
+    // API is not returning profile_data as documented
+    console.warn('API response missing profile_data object. Expected: {firstname, lastname, skill, country, state}');
+    console.warn('Actual response:', data);
+    
+    // Check if the data is returned at root level instead
+    if (data.firstname || data.lastname || data.country || data.state || data.skill) {
+      console.log('Profile data found at root level');
+    } else {
+      console.error('No profile data found in response - all fields are null');
+      setApiError('Profile setup completed but server response is incomplete. You may need to complete setup again.');
+    }
+  }
+
+  // Handle JWT tokens - check both new and existing tokens
+  if (data.access_jwt) {
+    localStorage.setItem('access_token', data.access_jwt);
+    localStorage.setItem('access_jwt', data.access_jwt);
+  } else {
+    // Keep existing tokens since API didn't provide new ones
+    const existingToken = localStorage.getItem('access_token');
+    if (existingToken) {
+      localStorage.setItem('access_jwt', existingToken);
+    }
+  }
+
+  if (data.refresh_jwt) {
+    localStorage.setItem('refresh_token', data.refresh_jwt);
+    localStorage.setItem('refresh_jwt', data.refresh_jwt);
+  } else {
+    const existingRefreshToken = localStorage.getItem('refresh_token');
+    if (existingRefreshToken) {
+      localStorage.setItem('refresh_jwt', existingRefreshToken);
+    }
+  }
+  
+  // Mark profile as completed
+  localStorage.setItem('profileCompleted', 'true');
+  
+  // Clear the form data from storage since profile setup is complete
+  clearPersistedFormData();
+  
+  if (selectedRole === 'freelancer') {
+    setProfileSaved(true);
+  } else {
+    navigate('/client-dashboard', { 
+      state: { 
+        profileCompleted: true,
+        userRole: 'client',
+        userName: `${formData.firstname} ${formData.lastname}`
       }
+    });
+  }
+} else {
+  // Handle case where well_received is false
+  setApiError('Profile setup was not successful. Please try again.');
+}
 
       console.log('Profile setup successful:', data);
       

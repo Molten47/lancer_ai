@@ -4,21 +4,20 @@ import { Loader2, MessageSquare, Send, XCircle } from 'lucide-react';
 import socket from '../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
- const STATUS_MESSAGE_MAP = {
+// Define a map for custom status messages
+const STATUS_MESSAGE_MAP = {
   'Recording provisional chat performance for freelancer 100': 'Recording chat performance...',
   'Updating user_profile with generated username and robust profile bio after interview termination.': 'Updating your profile...',
-  'Recording chat performance score and review for freelancer 100.': 'Calculating test score...',
+  'Recording chat performance score and review for freelancer 100.': 'Calculating final score...',
   'Updating freelancer username and profile bio after interview': 'Finalizing your profile...',
   // Add more mappings as needed
 };
+
 const Interview = ({ chat_type = 'platform_interviewer' }) => {
-
-
   const navigate = useNavigate();
   const location = useLocation();
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
-// Define a map for custom status messages
 
   // State declarations
   const [messages, setMessages] = useState([]);
@@ -239,7 +238,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
           setIsLoadingQuestion(false);
           setStatusMessage('');
           break;
-          case 'redirect':
+         case 'redirect':
             if (instructionData?.type === 'url' && instructionData.content) {
                 // For internal React Router URLs
                 navigate(instructionData.content); 

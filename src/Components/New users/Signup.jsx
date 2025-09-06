@@ -1,136 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Signup = () => {
-  // Key for local storage to prevent conflicts
-  const LOCAL_STORAGE_KEY = 'signupFormData';
-  const SESSION_STORAGE_KEY = 'signupSessionActive';
-  
-  // Ref to track if component is mounting for the first time
-  const isInitialMount = useRef(true);
-
-  // Function to check if session is still active
-  const isSessionActive = () => {
-    try {
-      const sessionData = sessionStorage.getItem(SESSION_STORAGE_KEY);
-      return sessionData === 'true';
-    } catch (error) {
-      console.error("Failed to check session storage:", error);
-      return false;
-    }
-  };
-
-  // Function to clear persisted form data
-  const clearPersistedData = () => {
-    try {
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
-      sessionStorage.removeItem(SESSION_STORAGE_KEY);
-    } catch (error) {
-      console.error("Failed to clear persisted data:", error);
-    }
-  };
-
-  // State to manage form data, initialized from localStorage if session is active
-  const [formData, setFormData] = useState(() => {
-    try {
-      // If session is not active, start fresh
-      if (!isSessionActive()) {
-        clearPersistedData();
-        return {
-          email: '',
-          password: '',
-          confirm_password: '',
-          role: ''
-        };
-      }
-
-      const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-      // Parse the JSON data from local storage, or return an empty object if no data
-      return storedData ? JSON.parse(storedData) : {
-        email: '',
-        password: '',
-        confirm_password: '',
-        role: ''
-      };
-    } catch (error) {
-      console.error("Failed to parse form data from localStorage:", error);
-      clearPersistedData();
-      return {
-        email: '',
-        password: '',
-        confirm_password: '',
-        role: ''
-      };
-    }
+  // State to manage form data, initialized to be completely empty
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    confirm_password: '',
+    role: ''
   });
 
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  // State to track password visibility for both fields
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  // Effect to handle session management and cleanup
-  useEffect(() => {
-    // Mark session as active when component mounts
-    if (isInitialMount.current) {
-      try {
-        sessionStorage.setItem(SESSION_STORAGE_KEY, 'true');
-      } catch (error) {
-        console.error("Failed to set session storage:", error);
-      }
-      isInitialMount.current = false;
-    }
-
-    // Function to clear data when page is being unloaded
-    const handleBeforeUnload = () => {
-      // Clear form data when user navigates away or closes the tab
-      clearPersistedData();
-    };
-
-    // Function to handle visibility change (tab switching, minimizing, etc.)
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        // Optionally clear data when tab becomes hidden for a long time
-        // You might want to implement a timeout here
-      }
-    };
-
-    // Add event listeners
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Cleanup function
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  // useEffect to save formData to localStorage whenever it changes (only if session is active)
-  useEffect(() => {
-    if (!isInitialMount.current && isSessionActive()) {
-      try {
-        // Stringify and save the formData to localStorage
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
-      } catch (error) {
-        console.error("Failed to save form data to localStorage:", error);
-      }
-    }
-  }, [formData]);
-
-  // Effect to clear data when component unmounts
-  useEffect(() => {
-    return () => {
-      // Clear data when component unmounts (navigation away from signup page)
-      if (!isLoading) { // Don't clear if we're in the middle of a submission
-        clearPersistedData();
-      }
-    };
-  }, [isLoading]);
+  // No useEffect hooks for localStorage or sessionStorage needed.
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -139,14 +27,12 @@ const Signup = () => {
       [name]: value
     });
 
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors({
         ...errors,
         [name]: ''
       });
     }
-    // Clear API error if any when user starts typing
     if (apiError) {
       setApiError('');
     }
@@ -193,65 +79,58 @@ const Signup = () => {
     setIsLoading(true);
 
     try {
-      
-       const API_URL = import.meta.env.VITE_API_URL;
-       const response = await fetch(`${API_URL}/api/signup`, {
+      const API_URL = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${API_URL}/api/signup`, {
         method: 'POST',
-       headers: {
-         'Content-Type': 'application/json',
+        headers: {
+          'Content-Type': 'application/json',
         },
-       body: JSON.stringify({
-        email: formData.email,
+        body: JSON.stringify({
+          email: formData.email,
           password: formData.password,
           role: formData.role
         })
-       });
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle failure cases based on API documentation
         if (response.status === 400 && data.culprit && data.error_message) {
-          // Email already exists or other validation error
           if (data.culprit === 'email') {
             setErrors({ email: data.error_message });
           } else {
             setApiError(data.error_message);
           }
         } else {
-          // Generic error fallback
           setApiError(data.error_message || 'Signup failed. Please try again.');
         }
         return;
       }
 
-      // Handle successful signup (200 OK)
       if (data.well_received && data.access_jwt && data.refresh_jwt) {
         console.log('Signup successful:', data);
 
-        // Store JWT tokens and user data
+        // Store tokens and role as per the documentation
         try {
           localStorage.setItem('access_token', data.access_jwt);
           localStorage.setItem('refresh_token', data.refresh_jwt);
-          localStorage.setItem('userRole', data.role || formData.role);
-          localStorage.setItem('showSignupSuccess', 'true');
-          // Clear form data from local storage on successful submission
-          clearPersistedData();
+          localStorage.setItem('userRole', data.role);
+          // showSignupSuccess is not part of the provided documentation,
+          // but kept for the navigation logic to work as intended
+          localStorage.setItem('showSignupSuccess', 'true'); 
         } catch (e) {
           console.error('Failed to save to localStorage:', e);
           setApiError('Failed to save login session. Please try signing in manually.');
           return;
         }
 
-        // Navigate to setup page with success state
         navigate('/profile_setup', {
           state: {
-            role: data.role || formData.role,
+            role: data.role,
             showSuccessAlert: true
           }
         });
       } else {
-        // Unexpected response format
         setApiError('Unexpected response from server. Please try again.');
       }
 
@@ -269,10 +148,8 @@ const Signup = () => {
 
   const handleGoogleSignIn = () => {
     console.log('Google sign-in initiated');
-    // Clear form data before redirecting to Google OAuth
-    clearPersistedData();
-    // This would typically involve redirecting to a Google OAuth flow
-    // You might want to redirect to something like: window.location.href = '/api/auth/google';
+    // As per documentation, no local storage data should be used or cleared.
+    // This is the appropriate place for a redirect to a Google OAuth flow.
   };
 
   const togglePasswordVisibility = (field) => {
@@ -283,29 +160,16 @@ const Signup = () => {
     }
   };
 
-  // Function to manually clear form (useful for testing or reset functionality)
-  const handleClearForm = () => {
-    setFormData({
-      email: '',
-      password: '',
-      confirm_password: '',
-      role: ''
-    });
-    setErrors({});
-    setApiError('');
-    clearPersistedData();
-  };
+  // Removed handleClearForm since form data is no longer persisted.
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
-        {/* Welcome Message */}
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome to Lancer.ai</h1>
           <p className="mt-2 text-[#6B7280] basic-font">Sign up to get started with your new account</p>
         </div>
 
-        {/* API Error Display */}
         {apiError && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
             <strong className="font-bold">Error!</strong>
@@ -320,9 +184,7 @@ const Signup = () => {
           </div>
         )}
 
-        {/* Sign Up Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Email Field */}
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-dark basic-font">Email Address</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -347,7 +209,6 @@ const Signup = () => {
             {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
           </div>
 
-          {/* Password Field */}
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-dark basic-font">Password</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -355,17 +216,14 @@ const Signup = () => {
                 <Lock className="h-5 w-5 text-dark" />
               </div>
               <input
-                // Dynamically change type based on state
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 id="password"
                 value={formData.password}
                 onChange={handleChange}
-                // Add more padding on the right to make room for the toggle icon
                 className={`block w-full pl-10 pr-10 py-2 border ${errors.password ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
               />
-              {/* Password visibility toggle button */}
               <button
                 type="button"
                 onClick={() => togglePasswordVisibility('password')}
@@ -387,7 +245,6 @@ const Signup = () => {
             {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
           </div>
 
-          {/* Confirm Password Field */}
           <div>
             <label htmlFor="confirm_password" className="block text-sm font-medium text-dark basic-font">Confirm Password</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -395,17 +252,14 @@ const Signup = () => {
                 <Lock className="h-5 w-5 text-dark" />
               </div>
               <input
-                // Dynamically change type based on state
                 type={showConfirmPassword ? 'text' : 'password'}
                 name="confirm_password"
                 id="confirm_password"
                 value={formData.confirm_password}
                 onChange={handleChange}
-                // Add more padding on the right to make room for the toggle icon
                 className={`block w-full pl-10 pr-10 py-2 border ${errors.confirm_password ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
                 placeholder="••••••••"
               />
-              {/* Password visibility toggle button */}
               <button
                 type="button"
                 onClick={() => togglePasswordVisibility('confirm_password')}
@@ -427,7 +281,6 @@ const Signup = () => {
             {errors.confirm_password && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
           </div>
 
-          {/* Role Selection */}
           <div>
             <label htmlFor="role" className="block text-sm font-medium text-dark basic-font">Select Role</label>
             <div className="mt-1 relative rounded-md shadow-sm">
@@ -446,7 +299,6 @@ const Signup = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
           <div>
             <button
               type="submit"
@@ -458,7 +310,6 @@ const Signup = () => {
           </div>
         </form>
 
-        {/* Divider */}
         <div className="mt-6 relative">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-gray-300"></div>
@@ -468,7 +319,6 @@ const Signup = () => {
           </div>
         </div>
 
-        {/* Google Sign In Button */}
         <div className="mt-6">
           <button
             onClick={handleGoogleSignIn}
@@ -487,7 +337,6 @@ const Signup = () => {
           </button>
         </div>
 
-        {/* Sign In Link */}
         <div className="mt-6 text-center text-sm">
           <p className="text-dark basic-font">Already have an account? <Link to="/login" className="font-medium text-cta basic-font">Sign in</Link></p>
         </div>
