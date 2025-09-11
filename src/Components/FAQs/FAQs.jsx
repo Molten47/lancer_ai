@@ -7,22 +7,22 @@ const FAQs = () => {
   const faqContents = [
     {
       id: 1,
-      topContent: 'How does Lancer AI differ from other freelancing platforms?',
+      topContent: 'How does Lancer differ from other freelancing platforms?',
       fullContent: 'Lorem ipsum dolor sit amet consectetur, adipisicing elit. Adipisci, et beatae. Hic minus odio dignissimos minima dolorem a, perspiciatis nihil provident, culpa impedit sit nemo pariatur nulla ex eius doloremque.'
     },
     {
       id: 2,
-      topContent: 'When will Lancer AI launch?',
+      topContent: 'When will Lancer launch?',
       fullContent: 'Lorem ipsum dolor sit amet consectetur, adipisicing elit. Adipisci, et beatae. Hic minus odio dignissimos minima dolorem a, perspiciatis nihil provident, culpa impedit sit nemo pariatur nulla ex eius doloremque.'
     },
     {
       id: 3,
-      topContent: 'Is Lancer AI free to use?',
+      topContent: 'Is Lancer free to use?',
       fullContent: 'Lorem ipsum dolor sit amet consectetur, adipisicing elit. Adipisci, et beatae. Hic minus odio dignissimos minima dolorem a, perspiciatis nihil provident, culpa impedit sit nemo pariatur nulla ex eius doloremque.'
     },
     {
       id: 4,
-      topContent: 'What types of skills and industries does Lancer AI support?',
+      topContent: 'What types of skills and industries does Lancer support?',
       fullContent: 'Lorem ipsum dolor sit amet consectetur, adipisicing elit. Adipisci, et beatae. Hic minus odio dignissimos minima dolorem a, perspiciatis nihil provident, culpa impedit sit nemo pariatur nulla ex eius doloremque.'
     },
     {
