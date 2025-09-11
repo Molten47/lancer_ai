@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Logo from '../../assets/Images/SVG/Artboard 19.svg';
+import Logo from '../../assets/Images/SVG/Flogo2.svg';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -34,11 +34,11 @@ const Navbar = () => {
   }, [isMenuOpen]);
 
   return (
-    <div className='w-full bg-white py-3 md:py-4 lg:py-4 px-3 md:px-6 lg:px-8 fixed top-0 left-0 z-30 shadow-sm'>
+    <div className='w-full bg-white py-3 md:py-4 lg:py-4 px-3 md:px-6 lg:px-8 fixed top-0 left-0 z-50 shadow-sm'>
       <nav className='flex flex-row justify-between items-center relative'>
         {/* Logo (Left) */}
         <div className='absolute text-cta flex flex-row items-center justify-center'>
-          <img src={Logo} className=' h-32 md:h-45' alt="" />
+          <img src={Logo} className=' h-28 md:h-35' alt="" />
         </div>
 
         {/* Mobile Menu Button - Only visible on small screens */}
@@ -56,10 +56,10 @@ const Navbar = () => {
 
         {/* Navigation Options (Center) - Hidden on mobile, shown on large screens */}
         <div className='hidden lg:flex flex-grow justify-center'>
-          <ul className='flex flex-row gap-10 items-center basic-font text-primary font-semibold text-[16px]'>
-            <li className='hover:text-[#1447e6] cursor-pointer'>Contact Us</li>
-            <li className='hover:text-[#1447e6] cursor-pointer'>Start a Project</li>
+          <ul className='flex flex-row gap-10 items-center basic-font text-dark font-semibold text-[16px]'>
             <li className='hover:text-[#1447e6] cursor-pointer'>Why Lancer?</li>
+            <li className='hover:text-[#1447e6] cursor-pointer'>Work with Lancer</li>
+            <li className='hover:text-[#1447e6] cursor-pointer'>Contact Us</li>
           </ul>
         </div>
 
@@ -67,12 +67,12 @@ const Navbar = () => {
         <div className='flex fl-row gap-2'>
          <div className='hidden lg:flex justify-end items-center'>
           <Link to='/login'>
-            <button className='py-2 px-6 bg-light rounded-lg b basic-font text-cta '>Log in</button>
+            <button className='py-2 px-6 bg-light rounded-md text-dark basic-font transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50'>Log in</button>
           </Link>
           </div>
           <div className='hidden lg:flex justify-end items-center'>
           <Link to='/signup'>
-            <button className='py-2 px-6 bg-cta rounded-lg text-light basic-font hover:bg-[#1447e6]'>Become a Lancer</button>
+            <button className='py-2 px-6 bg-cta rounded-md text-[16px] font-medium text-white basic-font hover:bg-[#1447e6]'>Start a Project</button>
           </Link>
         </div>
         </div>
@@ -112,7 +112,7 @@ const Navbar = () => {
               {/* Mobile CTA */}
               <div className='mt-6 pt-4 border-t border-gray-200'>
                 <Link to='/signup' onClick={closeMenu} className='block w-full'>
-                  <button className='py-3 px-6 bg-cta rounded-lg text-light basic-font hover:bg-[#00b5b5] w-full transition-colors duration-200 text-base font-semibold'>
+                  <button className='py-3 px-6 bg-cta rounded-lg text-white basic-font hover:bg-[#3163e0] w-full transition-colors duration-200 text-base font-semibold'>
                     Become a Lancer
                   </button>
                 </Link>

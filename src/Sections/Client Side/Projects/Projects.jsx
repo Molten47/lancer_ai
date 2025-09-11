@@ -12,4 +12,4 @@ const Project = () => {
   )
 }
 
-export default Projects
+export default Project

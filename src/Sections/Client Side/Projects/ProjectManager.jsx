@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Settings, MessageSquare } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import socket from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
@@ -12,7 +12,7 @@ const STATUS_MESSAGE_MAP = {
   // Add more mappings as needed
 };
 
-const ProjectManager = ({ 
+const ProjectManager = ({
   chat_type = 'project_manager',
   assistantName = 'Project Manager',
   assistantAvatar = 'PM',
@@ -31,111 +31,84 @@ const ProjectManager = ({
   const [socketError, setSocketError] = useState('');
   const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [interviewId, setInterviewId] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
-  const [interviewComplete, setInterviewComplete] = useState(false);
+  
+  // New state variables for dynamic ID
+  const [projectId, setProjectId] = useState(null);
+  const [dynamicRecipientId, setDynamicRecipientId] = useState(null);
 
-  // Add this helper function near the top of your component
-  const createProjectManagerMessageFilter = (currentUserId, assistantId = 'project_manager_2') => {
-    return (messageData) => {
-      if (!messageData || !currentUserId) return false;
-
-      const { sender_id, recipient_id, sender_tag } = messageData;
-      
-      // Convert to strings for consistent comparison
-      const currentUserStr = String(currentUserId);
-      const senderStr = String(sender_id);
-      const recipientStr = String(recipient_id);
-      const assistantStr = String(assistantId);
-      
-      // Show messages if:
-      // 1. Current user sent to project manager
-      // 2. Project manager AI sent response (to user or general)
-      // 3. AI message with project manager as sender
-      const isUserToAssistant = senderStr === currentUserStr && recipientStr === assistantStr;
-      const isAssistantToUser = senderStr === assistantStr && recipientStr === currentUserStr;
-      const isAIFromAssistant = sender_tag === 'ai' && senderStr === assistantStr;
-      
-      return isUserToAssistant || isAssistantToUser || isAIFromAssistant;
-    };
-  };
-
-  // Initialize component
-  useEffect(() => {
-    const init = async () => {
-      const isAuthenticated = checkAuthentication();
-      if (isAuthenticated) {
-        setupSocketListeners();
-        await initializeChat();
+  // Fetch projects to get dynamic project_id
+  const fetchProjects = async () => {
+    try {
+      const token = localStorage.getItem('access_jwt');
+      const API_URL = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${API_URL}/api/projects`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
-    
-    init();
-    
-    return () => {
-      cleanupSocketListeners();
-    };
-  }, []);
-
-  const handleAuthError = (message, route, delay = 1500) => {
-    setSocketError(message);
-    setIsLoadingAuth(false);
-    setTimeout(() => {
-      navigate(route, { replace: true });
-    }, delay);
-  };
-
-  // Authorization Checker
-  const checkAuthentication = () => {
-    const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
-    const userId = localStorage.getItem('user_id');
-    const userRole = localStorage.getItem('userRole');
-
-    if (!userId && !userRole) {
-      handleAuthError('Please complete the signup process first.', '/signup');
-      return false;
-    }
-
-    if (!token && userRole) {
-      const fromProfileSetup = location.state?.fromProfileSetup;
-      if (!fromProfileSetup) {
-        handleAuthError('Please complete your profile setup first.', '/profile_setup', { state: { role: userRole } });
-        return false;
+      const data = await response.json();
+      if (data.well_received && data.projects.length > 0) {
+        let targetProject = null;
+        for (const projectObj of data.projects) {
+          const projectKey = Object.keys(projectObj)[0];
+          const projectData = projectObj[projectKey];
+          if (projectData.status === 'ongoing') {
+            targetProject = projectData;
+            break;
+          }
+        }
+        if (!targetProject) {
+          const firstProjectObj = data.projects[0];
+          const projectKey = Object.keys(firstProjectObj)[0];
+          targetProject = firstProjectObj[projectKey];
+        }
+        
+        const fetchedProjectId = targetProject.id;
+        setProjectId(fetchedProjectId);
+        // Construct and set the dynamic recipient ID
+        setDynamicRecipientId(`project_manager_${fetchedProjectId}`);
+      } else {
+        setSocketError('No projects found. Cannot initialize project manager chat.');
       }
+    } catch (err) {
+      console.error('Error fetching projects:', err);
+      setSocketError('Failed to load project data. Please try again.');
     }
-
-    if (!userId && userRole) {
-      handleAuthError('Session data incomplete. Please sign in again.', '/signin');
-      return false;
-    }
-
-    setIsLoadingAuth(false);
-    return true;
   };
 
   // Chat Initialization - Fixed API integration
   const initializeChat = async () => {
+    // Only proceed if dynamicRecipientId is available
+    if (!dynamicRecipientId) {
+      console.log('Waiting for dynamic recipient ID to be set...');
+      return;
+    }
+
     try {
       setIsLoadingQuestion(true);
       setStatusMessage('Initializing chat...');
-
+      
       const API_URL = import.meta.env.VITE_API_URL;
       if (!API_URL) {
-        throw new Error('API URL not configured. Please check your environment variables.');
+        throw new Error('API URL not configured.');
       }
 
       const userId = own_id || localStorage.getItem('user_id') || 'temp_user';
       const queryParams = new URLSearchParams({
         chat_type: chat_type,
         own_id: userId,
-        recipient_id: 'project_manager_2'
+        recipient_id: dynamicRecipientId // Use the dynamic ID
       });
-      
+
       const headers = {
         'Content-Type': 'application/json',
       };
-
       const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
@@ -153,101 +126,123 @@ const ProjectManager = ({
         chatData = await response.json();
       } catch (jsonError) {
         console.error('JSON parsing error:', jsonError);
-        if (import.meta.env.DEV) {
-          console.log('Development mode: continuing without API data');
-          setIsLoadingQuestion(false);
-          setStatusMessage('');
-          if (!socket.connected) {
-            socket.connect();
-          }
-          return;
-        }
         throw new Error('Invalid response format from server');
       }
 
       if (!response.ok) {
+        const errorMsg = chatData.error_message || `HTTP ${response.status}: Failed to initialize chat`;
         if (response.status === 401) {
-          if (!authToken) {
-            setSocketError('Please complete the signup process to start the chat.');
-            setTimeout(() => {
-              navigate('/signup', { replace: true });
-            }, 2000);
-          } else {
-            setSocketError('Session expired. Please sign in again.');
-            setTimeout(() => {
-              navigate('/signin', { replace: true });
-            }, 1000);
-          }
-          return;
-        } else if (response.status === 403) {
-          setSocketError('Access denied. Please check your permissions.');
-          return;
-        } else if (response.status === 404) {
-          setSocketError('Chat service not found. Please contact support.');
-          return;
-        }
-        throw new Error(chatData.error_message || `HTTP ${response.status}: Failed to initialize chat`);
-      }
-
-      // Handle successful response
-      if (chat_type === 'project_manager') {
-        // Load message history if available
-        if (chatData.message_history && Array.isArray(chatData.message_history)) {
-          const formattedMessages = chatData.message_history.map((msg, index) => ({
-            id: msg.id || `history-${index}`,
-            type: msg.sender_tag === 'ai' ? 'ai' : 'user',
-            content: msg.message_content,
-            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-            sender: msg.sender_tag === 'ai' ? assistantName : 'You',
-            sender_id: msg.sender_id,
-            recipient_id: msg.recipient_id,
-            isStatus: false
-          }));
-          setMessages(formattedMessages);
-        }
-
-        // Set user_id if provided
-        if (chatData.user_id && !localStorage.getItem('user_id')) {
-          localStorage.setItem('user_id', chatData.user_id.toString());
+          setSocketError('Authentication failed. Please sign in again.');
+        } else {
+          throw new Error(errorMsg);
         }
       }
 
-      // Connect socket after successful API initialization
+      if (chatData.message_history && Array.isArray(chatData.message_history)) {
+        const formattedMessages = chatData.message_history.map((msg, index) => ({
+          id: msg.id || `history-${index}`,
+          type: msg.sender_tag === 'ai' ? 'ai' : 'user',
+          content: msg.message_content,
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+          sender: msg.sender_tag === 'ai' ? assistantName : 'You',
+          sender_id: msg.sender_id,
+          recipient_id: msg.recipient_id,
+          isStatus: false
+        }));
+        setMessages(formattedMessages);
+      }
+
       if (!socket.connected) {
         socket.connect();
       }
-
       setIsLoadingQuestion(false);
       setStatusMessage('');
-
     } catch (error) {
       console.error('Chat initialization error:', error);
-      
       let errorMessage = 'Failed to initialize chat';
-      if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-        if (error.message.includes('CORS') || error.toString().includes('CORS')) {
-          errorMessage = 'Connection blocked by CORS policy. Please contact support or try again later.';
-        } else {
-          errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
-        }
-      } else if (error.message.includes('401') || error.message.includes('unrecognized')) {
-        errorMessage = 'Authentication failed. Please sign in again.';
+      if (error.message.includes('CORS')) {
+        errorMessage = 'Connection blocked by CORS policy. Please contact support or try again later.';
       } else if (error.message.includes('API URL')) {
         errorMessage = 'Server configuration error. Please contact support.';
       } else {
         errorMessage = error.message;
       }
-
       setSocketError(errorMessage);
       setIsLoadingQuestion(false);
       setStatusMessage('');
-
       if (errorMessage.includes('sign in') || errorMessage.includes('Authentication')) {
-        setTimeout(() => {
-          navigate('/signin', { replace: true });
-        }, 2000);
+        setTimeout(() => navigate('/signin', { replace: true }), 2000);
       }
     }
+  };
+
+  // Helper function to create message filter
+  const createProjectManagerMessageFilter = (currentUserId, assistantId) => { // Now takes assistantId as a parameter
+    return (messageData) => {
+      if (!messageData || !currentUserId || !assistantId) return false;
+      const { sender_id, recipient_id, sender_tag } = messageData;
+      const currentUserStr = String(currentUserId);
+      const senderStr = String(sender_id);
+      const recipientStr = String(recipient_id);
+      const assistantStr = String(assistantId);
+      const isUserToAssistant = senderStr === currentUserStr && recipientStr === assistantStr;
+      const isAssistantToUser = senderStr === assistantStr && recipientStr === currentUserStr;
+      const isAIFromAssistant = sender_tag === 'ai' && senderStr === assistantStr;
+      return isUserToAssistant || isAssistantToUser || isAIFromAssistant;
+    };
+  };
+
+  // Initialize component
+  useEffect(() => {
+    const init = async () => {
+      if (checkAuthentication()) {
+        await fetchProjects();
+        setupSocketListeners();
+      }
+    };
+    init();
+    return () => {
+      cleanupSocketListeners();
+    };
+  }, []);
+
+  // New useEffect to trigger chat initialization after fetching project ID
+  useEffect(() => {
+    if (dynamicRecipientId) {
+      initializeChat();
+    }
+  }, [dynamicRecipientId]);
+
+  // Authorization Checker (no changes needed here)
+  const handleAuthError = (message, route, delay = 1500) => {
+    setSocketError(message);
+    setIsLoadingAuth(false);
+    setTimeout(() => {
+      navigate(route, { replace: true });
+    }, delay);
+  };
+
+  const checkAuthentication = () => {
+    const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+    const userId = localStorage.getItem('user_id');
+    const userRole = localStorage.getItem('userRole');
+    if (!userId && !userRole) {
+      handleAuthError('Please complete the signup process first.', '/signup');
+      return false;
+    }
+    if (!token && userRole) {
+      const fromProfileSetup = location.state?.fromProfileSetup;
+      if (!fromProfileSetup) {
+        handleAuthError('Please complete your profile setup first.', '/profile_setup', { state: { role: userRole } });
+        return false;
+      }
+    }
+    if (!userId && userRole) {
+      handleAuthError('Session data incomplete. Please sign in again.', '/signin');
+      return false;
+    }
+    setIsLoadingAuth(false);
+    return true;
   };
 
   // Socket connection management
@@ -256,20 +251,20 @@ const ProjectManager = ({
       setIsConnected(true);
       setSocketError('');
       console.log('✅ Socket connected successfully!');
-
       const userId = own_id || localStorage.getItem('user_id');
       if (userId) {
         socket.emit('join', {
           room_name: String(userId),
           user: parseInt(userId)
         });
+        // Join the PM chat room dynamically
+        if (dynamicRecipientId) {
+          socket.emit('join', { room_name: dynamicRecipientId, user: parseInt(userId) });
+        }
       }
     });
 
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-    });
-
+    socket.on('disconnect', () => setIsConnected(false));
     socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
       setSocketError('Failed to connect to assistant server');
@@ -280,27 +275,12 @@ const ProjectManager = ({
 
     socket.on('new_message', (data, callback) => {
       const userId = own_id || localStorage.getItem('user_id');
-      
-      // Create and apply message filter
-      const messageFilter = createProjectManagerMessageFilter(userId, 'project_manager_2');
-      
-      // Filter the message
+      const messageFilter = createProjectManagerMessageFilter(userId, dynamicRecipientId); // Pass the dynamic ID
       if (!messageFilter(data)) {
-        console.log('Message filtered out - not for this chat:', {
-          sender_id: data.sender_id,
-          recipient_id: data.recipient_id,
-          sender_tag: data.sender_tag,
-          current_user: userId
-        });
-        
-        // Still call callback to acknowledge receipt
-        if (callback && typeof callback === 'function') {
-          callback();
-        }
+        console.log('Message filtered out - not for this chat:', data);
+        if (callback && typeof callback === 'function') callback();
         return;
       }
-      
-      // Process the message (existing code)
       const { message_content, sender_tag, sender_id, recipient_id } = data;
       const newMessage = {
         id: Date.now(),
@@ -312,27 +292,20 @@ const ProjectManager = ({
         recipient_id: recipient_id,
         isStatus: false
       };
-      
       setMessages(prev => [...prev, newMessage]);
-      
-      // Stop typing indicator when AI responds
       if (sender_tag === 'ai') {
         setIsTyping(false);
         setIsLoadingAnswer(false);
         setIsWaitingForResponse(false);
         setStatusMessage('');
       }
-      
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
+      if (callback && typeof callback === 'function') callback();
     });
 
     socket.on('control_instruction', (data, callback) => {
       const { command, data: instructionData } = data;
       switch (command) {
         case 'interview_complete':
-          setInterviewComplete(true);
           setIsWaitingForResponse(false);
           setIsLoadingAnswer(false);
           setStatusMessage('Chat session completed!');
@@ -346,101 +319,39 @@ const ProjectManager = ({
           setStatusMessage('');
           break;
         case 'redirect':
-          if (instructionData?.url) {
-            navigate(instructionData.url);
-          }
+          if (instructionData?.url) navigate(instructionData.url);
           break;
         default:
           console.log('Unknown command:', command);
       }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
+      if (callback && typeof callback === 'function') callback();
     });
 
     socket.on('status_update', (data, callback) => {
       if (data.update) {
         const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
         setStatusMessage(customMessage);
-        
         const statusMessage = {
           id: Date.now(),
           type: 'status',
           content: customMessage,
           timestamp: new Date(),
           sender: 'System',
-          sender_id: 'status', 
-          isStatus: true 
+          sender_id: 'status',
+          isStatus: true
         };
         setMessages(prev => [...prev, statusMessage]);
       }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
+      if (callback && typeof callback === 'function') callback();
     });
 
     socket.on('notification', (data, callback) => {
       const { message, type } = data;
-      if (type === 'error') {
-        setSocketError(message);
-      } else if (type === 'warning') {
-        console.warn('Notification warning:', message);
-      } else if (type === 'info') {
-        console.info('Notification info:', message);
-      }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
+      if (type === 'error') setSocketError(message);
+      else if (type === 'warning') console.warn('Notification warning:', message);
+      else if (type === 'info') console.info('Notification info:', message);
+      if (callback && typeof callback === 'function') callback();
     });
-  };
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
-
-  const handleSendMessage = () => {
-    if (!inputValue.trim() || !isConnected) return;
-
-    const userId = own_id || localStorage.getItem('user_id');
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: inputValue.trim(),
-      timestamp: new Date(),
-      sender: 'You',
-      sender_id: userId,
-      recipient_id: 'project_manager_2',
-      isStatus: false
-    };
-
-    // Add user message immediately
-    setMessages(prev => [...prev, userMessage]);
-
-    // Emit message via socket using the correct event name
-    socket.emit('send_message', {
-      message_content: inputValue.trim(),
-      own_id: parseInt(userId),
-      recipient_id: 'project_manager_2',
-    });
-
-    // Call optional callback
-    if (onMessageSent) {
-      onMessageSent(userMessage);
-    }
-
-    // Clear input and show loading state
-    setInputValue('');
-    setIsWaitingForResponse(true);
-    setIsLoadingAnswer(true);
-    
-    // Show typing indicator
-    setTimeout(() => {
-      setIsTyping(true);
-    }, 500);
-
-    // Focus back to input
-    setTimeout(() => inputRef.current?.focus(), 100);
   };
 
   // Cleanup socket listeners
@@ -453,7 +364,41 @@ const ProjectManager = ({
     socket.off('status_update');
     socket.off('notification');
   };
-  
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isTyping]);
+
+  const handleSendMessage = () => {
+    if (!inputValue.trim() || !isConnected || !dynamicRecipientId) return;
+
+    const userId = own_id || localStorage.getItem('user_id');
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      content: inputValue.trim(),
+      timestamp: new Date(),
+      sender: 'You',
+      sender_id: userId,
+      recipient_id: dynamicRecipientId, // Use the dynamic ID
+      isStatus: false
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    socket.emit('send_message', {
+      message_content: inputValue.trim(),
+      own_id: parseInt(userId),
+      recipient_id: dynamicRecipientId, // Use the dynamic ID
+    });
+    if (onMessageSent) onMessageSent(userMessage);
+    setInputValue('');
+    setIsWaitingForResponse(true);
+    setIsLoadingAnswer(true);
+    setTimeout(() => setIsTyping(true), 500);
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -469,14 +414,13 @@ const ProjectManager = ({
     });
   };
 
-  // Show loading state during authentication
-  if (isLoadingAuth) {
+  if (isLoadingAuth || (!dynamicRecipientId && !socketError)) {
     return (
       <div className={`flex flex-col h-full bg-gray-50 ${className}`}>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Checking authentication...</p>
+            <p className="text-gray-600">Loading your project data...</p>
           </div>
         </div>
       </div>
@@ -500,13 +444,13 @@ const ProjectManager = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button 
+          <button
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
             title="Chat History"
           >
             <MessageSquare size={20} />
           </button>
-          <button 
+          <button
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
             title="Chat Settings"
           >
@@ -545,43 +489,34 @@ const ProjectManager = ({
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="space-y-6">
           {messages.map((message) => {
-            // Determine if message is from current user
             const currentUserId = own_id || localStorage.getItem('user_id');
             const isFromCurrentUser = String(message.sender_id) === String(currentUserId);
-            const isAIMessage = message.type === 'ai' || message.sender_tag === 'ai';
-            
             return (
               <div key={message.id} className={`flex gap-3 ${
-                message.isStatus ? 'justify-center' : 
+                message.isStatus ? 'justify-center' :
                 isFromCurrentUser ? 'justify-end' : 'justify-start'
               }`}>
-                {/* Status messages */}
                 {message.isStatus && (
                   <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
                     {message.content}
                   </div>
                 )}
-
-                {/* Regular messages */}
                 {!message.isStatus && (
                   <>
-                    {/* AI Avatar (left side for AI messages) */}
                     {!isFromCurrentUser && (
                       <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                         <span className="text-white font-semibold text-xs">{assistantAvatar}</span>
                       </div>
                     )}
-                    
-                    {/* Message bubble container */}
                     <div className={`flex flex-col ${
                       isFromCurrentUser ? 'items-end' : 'items-start'
                     } ${
-                      isFromCurrentUser ? 'max-w-[75%] sm:max-w-[70%] md:max-w-[65%] lg:max-w-[60%]' : 
+                      isFromCurrentUser ? 'max-w-[75%] sm:max-w-[70%] md:max-w-[65%] lg:max-w-[60%]' :
                       'max-w-[80%] sm:max-w-[75%] md:max-w-[70%] lg:max-w-[65%]'
                     }`}>
                       <div className={`rounded-2xl px-4 py-3 shadow-sm ${
-                        isFromCurrentUser 
-                          ? 'bg-blue-500 text-white rounded-br-md' 
+                        isFromCurrentUser
+                          ? 'bg-blue-500 text-white rounded-br-md'
                           : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
                       }`}>
                         <p className="whitespace-pre-wrap leading-relaxed text-sm">{message.content}</p>
@@ -592,8 +527,6 @@ const ProjectManager = ({
                         {formatTime(message.timestamp)}
                       </p>
                     </div>
-
-                    {/* User Avatar (right side for user messages) */}
                     {isFromCurrentUser && (
                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                         <span className="text-white font-semibold text-xs">U</span>
@@ -604,8 +537,6 @@ const ProjectManager = ({
               </div>
             );
           })}
-
-          {/* Typing Indicator */}
           {isTyping && (
             <div className="flex gap-3 justify-start">
               <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
@@ -637,20 +568,15 @@ const ProjectManager = ({
               ref={inputRef}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
+              onKeyDown={handleKeyPress}
               placeholder="What do you want to get done?"
-              disabled={!isConnected || isLoadingAnswer}
+              disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId} // Disable if no ID
               className="w-full px-6 py-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all text-sm resize-none"
               minRows={1}
               maxRows={6}
             />
             {inputValue && (
-              <button 
+              <button
                 onClick={() => setInputValue('')}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
@@ -658,9 +584,9 @@ const ProjectManager = ({
               </button>
             )}
           </div>
-          <button 
+          <button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer}
+            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId} // Disable if no ID
             className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md flex-shrink-0"
           >
             {isLoadingAnswer ? (
@@ -670,7 +596,6 @@ const ProjectManager = ({
             )}
           </button>
         </div>
-        
         {/* Connection Status */}
         {!isConnected && (
           <div className="flex justify-center mt-3">
@@ -679,7 +604,6 @@ const ProjectManager = ({
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

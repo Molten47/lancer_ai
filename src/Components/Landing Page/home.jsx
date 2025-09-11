@@ -6,6 +6,8 @@ import Unique from '../Unique/Unique'
 import Benefits from '../Benefits/Benefits'
 import Information from '../Information/information'
 import Footer from '../Footer/Footer'
+import FAQs from '../FAQs/FAQs'
+import NewsletterSubscription from '../EmailSuscription/Newletter'
 
 const LandHome = () => {
   // Create ref for the Philosophy section
@@ -26,7 +28,9 @@ const LandHome = () => {
         </div>
         <Unique />
         <Benefits />
+        <FAQs/>
         <Information />
+        <NewsletterSubscription/>
         <Footer />
       </div>
     </div>

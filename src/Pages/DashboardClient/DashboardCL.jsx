@@ -4,14 +4,14 @@ import { Sidebar, Bell, User, Settings, Home,
        FileText,  MessageCircle, ChevronDown, ChevronRight,
        Download, X, LogOut, MessageSquare, HelpCircle, Building2, Send} from 'lucide-react'
 
-//import ProjectManagement from '../../Sections/Client Side/Projects/Projects'
+import ProjectManagement from '../../Sections/Client Side/Projects/Projects'
 import ProjectManagers from '../../Sections/Client Side/Projects/ProjectManager'
 import AIAssistantChat from '../../Sections/Client Side/Client Assistant/DashboardClient'
 import Notifications from '../Notifications/Notifications'
-//import GroupChatSpace from '../../Sections/Client Side/Projects/Groupchat'
+import GroupChatSpace from '../../Sections/Client Side/Projects/Groupchat'
 //import AssociatedJobs from '../../Sections/Client Side/Projects/AssociatedJob'
 import Analytics from '../../Sections/Client Side/Projects/Analytics'
-
+import HumanChat from '../../Sections/Client Side/Projects/IndividualChat'
 const DashboardView = () => <div className="flex flex-col h-full basic-font">
   {/* AI chat assisant to be imported here*/}
   <AIAssistantChat/>
@@ -19,9 +19,10 @@ const DashboardView = () => <div className="flex flex-col h-full basic-font">
 
 const ProjectManager = () => <div className="p-6 bg-gray-50 min-h-full">
 {/*<AssociatedJobs/>*/}
-{/*<GroupChatSpace/>*/}
+<GroupChatSpace/>
 {/*<ProjectManagers/>*/}
-<Analytics/>
+{/*<Analytics/>*/}
+{/*<HumanChat/>*/}
 
 
 </div>
@@ -89,20 +90,93 @@ const DashboardCl = () => {
   const [isMobile, setIsMobile] = useState(false)
   const [userRole, setUserRole] = useState('client') // Changed default to client
   const [isProjectsDropdownOpen, setIsProjectsDropdownOpen] = useState(getSavedDropdownState)
+  
+  // Add state for profile data
+  const [profileData, setProfileData] = useState(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [profileError, setProfileError] = useState(null);
       
   // Select the specific fields from the Redux store
   const userData = useSelector(state => state.user.userData);
 
-  // Use optional chaining for safety
-  const firstName = userData?.firstname;
-  const lastName = userData?.lastname;
-  const username = userData?.username;
+  // Function to fetch profile data from API
+  const fetchProfileData = async () => {
+    try {
+      setIsLoadingProfile(true);
+      setProfileError(null);
+
+      // Replace with your actual API endpoint
+      const token = localStorage.getItem('access_jwt')
+      const API_URL = import.meta.env.VITE_API_URL
+      const response = await fetch(`${API_URL}/api/profile`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add authorization header if needed
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include', // Include cookies if using session-based auth
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Handle the array format from your API response
+      if (Array.isArray(data) && data.length > 0 && data[0].well_received) {
+        setProfileData(data[0].profile_data);
+      } else if (data.well_received) {
+        setProfileData(data.profile_data);
+      } else {
+        throw new Error('Profile data not well received');
+      }
+      
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      setProfileError(error.message);
+      // Fallback to Redux data if available
+      if (userData) {
+        setProfileData({
+          firstname: userData.firstname,
+          lastname: userData.lastname,
+          username: userData.username,
+          email: userData.email
+        });
+      }
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  // Fetch profile data on component mount
+  useEffect(() => {
+    fetchProfileData();
+  }, []);
+
+  // Extract user information with fallbacks
+  const firstName = profileData?.firstname || userData?.firstname || '';
+  const lastName = profileData?.lastname || userData?.lastname || '';
+  const username = profileData?.username || userData?.username || 'User';
+  const email = profileData?.email || userData?.email || '';
 
   // Combine for the full name
   const fullName = (firstName && lastName) ? `${firstName} ${lastName}` : 'User';
 
   // Get initials from first and last names
-  const initials = (firstName && lastName) ? `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() : 'MJ';
+  const getInitials = (first, last) => {
+    if (first && last) {
+      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+    } else if (first) {
+      return first.charAt(0).toUpperCase();
+    } else if (last) {
+      return last.charAt(0).toUpperCase();
+    }
+    return 'U'; // Default fallback
+  };
+
+  const initials = getInitials(firstName, lastName);
   
   // Save activeView to localStorage whenever it changes
   useEffect(() => {
@@ -181,7 +255,6 @@ const DashboardCl = () => {
         return <DashboardView />;
       case 'projects': 
         return <ProjectManager /> 
-        
         ;
       case 'project-manager':
         return <ProjectAnalytics />;
@@ -246,20 +319,40 @@ const DashboardCl = () => {
           
           {/* User Profile Info */}
           <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">
-                        {initials} {/* Display dynamic initials */}
-                    </span>
-                </div>
-                <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900 text-sm">
-                        {fullName} {/* Display dynamic full name */}
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                        {username} {/* Display the server-coined username */}
-                    </p>
-                </div>
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              {isLoadingProfile ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <span className="text-white font-semibold text-sm">
+                  {initials}
+                </span>
+              )}
             </div>
+            <div className="flex-1">
+              {isLoadingProfile ? (
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-2 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                </div>
+              ) : (
+                <>
+                  <h3 className="font-semibold text-gray-900 text-sm">
+                    {fullName}
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {username || email}
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* Show error message if profile fetch failed */}
+          {profileError && !isLoadingProfile && (
+            <div className="text-xs text-red-500 mt-2">
+              Using cached data
+            </div>
+          )}
         </div>
         
         {/* Navigation - Clean and Simple */}
@@ -422,13 +515,13 @@ const DashboardCl = () => {
             </button>
             
             {/* Notification bell */}
-               <button 
-                   className="p-2 hover:bg-gray-50 rounded-lg transition-colors relative"
-                   onClick={() => handleMenuClick('notifications')} // Add this onClick handler
-                      >
-                  <Bell size={20} className="text-gray-600" />
-                 <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 bg-red-500 text-white text-xs font-bold rounded-full">3</span>
-                  </button>
+            <button 
+              className="p-2 hover:bg-gray-50 rounded-lg transition-colors relative"
+              onClick={() => handleMenuClick('notifications')}
+            >
+              <Bell size={20} className="text-gray-600" />
+              <span className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 bg-red-500 text-white text-xs font-bold rounded-full">3</span>
+            </button>
           </div>
         </nav>
         

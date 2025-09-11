@@ -35,6 +35,9 @@ const AIAssistantChat = ({
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [userAvatar, setUserAvatar] = useState('U');
+  const [userName, setSenderName] = useState('You');
 
   // Add this helper function for message filtering
   const createClientAssistantMessageFilter = (currentUserId, assistantId = 'client_assistant') => {
@@ -42,17 +45,11 @@ const AIAssistantChat = ({
       if (!messageData || !currentUserId) return false;
 
       const { sender_id, recipient_id, sender_tag } = messageData;
-      
       // Convert to strings for consistent comparison
       const currentUserStr = String(currentUserId);
       const senderStr = String(sender_id);
       const recipientStr = String(recipient_id);
       const assistantStr = String(assistantId);
-      
-      // Show messages if:
-      // 1. Current user sent to client assistant
-      // 2. Client assistant AI sent response (to user or general)
-      // 3. AI message with client assistant as sender
       const isUserToAssistant = senderStr === currentUserStr && recipientStr === assistantStr;
       const isAssistantToUser = senderStr === assistantStr && recipientStr === currentUserStr;
       const isAIFromAssistant = sender_tag === 'ai' && senderStr === assistantStr;
@@ -60,6 +57,67 @@ const AIAssistantChat = ({
       return isUserToAssistant || isAssistantToUser || isAIFromAssistant;
     };
   };
+
+  const fetchUserProfile = async () => {
+  try {
+    const API_URL = import.meta.env.VITE_API_URL;
+    if (!API_URL) {
+      console.error('API URL is not configured for profile fetch.');
+      return;
+    }
+
+    const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+    if (!authToken) {
+      console.warn('No auth token available for profile fetch.');
+      return;
+    }
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`
+    };
+
+    console.log('Fetching user profile...');
+
+    const response = await fetch(`${API_URL}/api/profile`, {
+      method: 'GET',
+      headers: headers,
+      mode: 'cors',
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch profile:', response.status);
+      return;
+    }
+
+    const profileResponse = await response.json();
+    console.log('Profile response:', profileResponse);
+
+    if (profileResponse.well_received && profileResponse.profile_data) {
+      const profile = profileResponse.profile_data;
+      setUserProfile(profile);
+
+      // Generate avatar from initials
+      const firstInitial = profile.firstname ? profile.firstname.charAt(0).toUpperCase() : '';
+      const lastInitial = profile.lastname ? profile.lastname.charAt(0).toUpperCase() : '';
+      const avatarInitials = firstInitial + lastInitial || 'U';
+      setUserAvatar(avatarInitials);
+
+      // Set sender name (prefer username, fallback to firstname or 'You')
+      const displayName = profile.username || profile.firstname || 'You';
+      setSenderName(displayName);
+
+      console.log('Profile data loaded:', {
+        avatar: avatarInitials,
+        name: displayName,
+        profile: profile
+      });
+    }
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+  }
+};
 
   // Initialize component
   useEffect(() => {
@@ -69,6 +127,7 @@ const AIAssistantChat = ({
       if (isAuthenticated) {
         setupSocketListeners();
         await initializeChat();
+        await fetchUserProfile() 
       }
     };
     
@@ -211,29 +270,89 @@ const AIAssistantChat = ({
       }
 
       // Handle successful response
-      if (chat_type === 'client_assistant') {
-        // Load message history if available
-        if (chatData.message_history && Array.isArray(chatData.message_history)) {
-          const formattedMessages = chatData.message_history.map((msg, index) => ({
-            id: msg.id || `history-${index}`,
-            type: msg.sender_tag === 'ai' ? 'ai' : 'user',
-            content: msg.message_content,
-            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-            sender: msg.sender_tag === 'ai' ? assistantName : 'You',
-            sender_id: msg.sender_id,
-            recipient_id: msg.recipient_id,
-            isStatus: false
-          }));
-          setMessages(formattedMessages);
-          console.log('Loaded message history:', formattedMessages);
-        }
-
-        // Set user_id if provided
-        if (chatData.user_id && !localStorage.getItem('user_id')) {
-          localStorage.setItem('user_id', chatData.user_id.toString());
-          console.log('User ID set from API response:', chatData.user_id);
+    if (chat_type === 'client_assistant') {
+  // Load message history if available
+  if (chatData.message_history && Array.isArray(chatData.message_history)) {
+    const currentUserId = own_id || localStorage.getItem('user_id');
+    const formattedMessages = chatData.message_history.map((msg, index) => {
+      const currentUserStr = String(currentUserId);
+      const senderStr = String(msg.sender_id);
+      
+      console.log('Processing history message:', {
+        index,
+        sender_id: msg.sender_id,
+        sender_tag: msg.sender_tag,
+        recipient_id: msg.recipient_id,
+        currentUserId: currentUserStr,
+        message_content: msg.message_content?.substring(0, 50) + '...'
+      });
+      
+      // Determine message type based on actual sender and tags
+      let messageType;
+      let senderName;
+      
+      // If sender_tag is explicitly 'ai' or sender_id is 'client_assistant', it's an AI message
+      if (msg.sender_tag === 'ai' || senderStr === 'client_assistant') {
+        messageType = 'ai';
+        senderName = assistantName;
+      }
+      // If sender_id matches current user and it's not tagged as AI, it's a user message
+      else if (senderStr === currentUserStr && msg.sender_tag !== 'ai') {
+        messageType = 'user';
+        senderName = userName
+      }
+      // Fallback for other cases
+      else {
+        // Check if message content or context suggests it's from AI
+        const looksLikeAI = msg.message_content && (
+          msg.message_content.includes('I can help') ||
+          msg.message_content.includes('Let me assist') ||
+          msg.message_content.length > 200 // AI messages tend to be longer
+        );
+        
+        if (looksLikeAI) {
+          messageType = 'ai';
+          senderName = assistantName;
+        } else {
+          messageType = 'user';
+          senderName = userName;
         }
       }
+      
+      console.log('Determined message type:', {
+        messageType,
+        senderName,
+        sender_id: msg.sender_id,
+        sender_tag: msg.sender_tag
+      });
+      
+      return {
+        id: msg.id || `history-${index}`,
+        type: messageType,
+        content: msg.message_content,
+        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+        sender: senderName,
+        sender_id: msg.sender_id,
+        recipient_id: msg.recipient_id,
+        sender_tag: msg.sender_tag,
+        isStatus: false
+      };
+    });
+    
+    setMessages(formattedMessages);
+    console.log('Loaded message history with types:', formattedMessages.map(m => ({
+      type: m.type,
+      sender: m.sender,
+      content: m.content.substring(0, 30) + '...'
+    })));
+  }
+
+  // Set user_id if provided
+  if (chatData.user_id && !localStorage.getItem('user_id')) {
+    localStorage.setItem('user_id', chatData.user_id.toString());
+    console.log('User ID set from API response:', chatData.user_id);
+  }
+}
 
       // Connect socket after successful API initialization
       if (!socket.connected) {
@@ -306,58 +425,96 @@ const AIAssistantChat = ({
       setStatusMessage('');
     });
 
-    socket.on('new_message', (data, callback) => {
-      console.log('Received new message:', data);
-      const userId = own_id || localStorage.getItem('user_id');
-      
-      // Create and apply message filter
-      const messageFilter = createClientAssistantMessageFilter(userId, 'client_assistant');
-      
-      // Filter the message
-      if (!messageFilter(data)) {
-        console.log('Message filtered out - not for this chat:', {
-          sender_id: data.sender_id,
-          recipient_id: data.recipient_id,
-          sender_tag: data.sender_tag,
-          current_user: userId
-        });
-        
-        // Still call callback to acknowledge receipt
-        if (callback && typeof callback === 'function') {
-          callback();
-        }
-        return;
-      }
-      
-      // Process the message with correct type determination
-      const { message_content, sender_tag, sender_id, recipient_id } = data;
-      const newMessage = {
-        id: Date.now(),
-        type: sender_tag === 'ai' ? 'ai' : 'user',
-        content: message_content,
-        timestamp: new Date(),
-        sender: sender_tag === 'ai' ? assistantName : 'You',
-        sender_id: sender_id,
-        recipient_id: recipient_id,
-        isStatus: false
-      };
-      
-      console.log('Adding new message to state:', newMessage);
-      setMessages(prev => [...prev, newMessage]);
-      
-      // Stop typing indicator when AI responds
-      if (sender_tag === 'ai') {
-        setIsTyping(false);
-        setIsLoadingAnswer(false);
-        setIsWaitingForResponse(false);
-        setStatusMessage('');
-        console.log('AI response received. Stopping typing indicator.');
-      }
-
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
+   socket.on('new_message', (data, callback) => {
+  console.log('Received new message:', data);
+  const userId = own_id || localStorage.getItem('user_id');
+  
+  // Create and apply message filter
+  const messageFilter = createClientAssistantMessageFilter(userId, 'client_assistant');
+  
+  // Filter the message
+  if (!messageFilter(data)) {
+    console.log('Message filtered out - not for this chat:', {
+      sender_id: data.sender_id,
+      recipient_id: data.recipient_id,
+      sender_tag: data.sender_tag,
+      current_user: userId
     });
+    
+    // Still call callback to acknowledge receipt
+    if (callback && typeof callback === 'function') {
+      callback();
+    }
+    return;
+  }
+  
+  // Process the message with CORRECTED type determination
+  const { message_content, sender_tag, sender_id, recipient_id } = data;
+  const currentUserId = String(userId);
+  const senderStr = String(sender_id);
+  
+  console.log('Processing real-time message:', {
+    sender_id,
+    sender_tag,
+    recipient_id,
+    currentUserId,
+    message_content: message_content?.substring(0, 50) + '...'
+  });
+  
+  // Determine message type and sender correctly - SAME LOGIC AS HISTORY
+  let messageType;
+  let senderName;
+  
+  // If sender_tag is explicitly 'ai' or sender_id is 'client_assistant', it's an AI message
+  if (sender_tag === 'ai' || senderStr === 'client_assistant') {
+    messageType = 'ai';
+    senderName = assistantName;
+  }
+  // If sender_id matches current user and it's not tagged as AI, it's a user message
+  else if (senderStr === currentUserId && sender_tag !== 'ai') {
+    messageType = 'user';
+    senderName = userName
+  }
+  // Fallback
+  else {
+    messageType = 'other';
+    senderName = 'User';
+  }
+  
+  const newMessage = {
+    id: Date.now(),
+    type: messageType,
+    content: message_content,
+    timestamp: new Date(),
+    sender: senderName,
+    sender_id: sender_id,
+    recipient_id: recipient_id,
+    sender_tag: sender_tag,
+    isStatus: false
+  };
+  
+  console.log('Adding new message to state:', {
+    type: newMessage.type,
+    sender: newMessage.sender,
+    content: newMessage.content.substring(0, 30) + '...'
+  });
+  
+  setMessages(prev => [...prev, newMessage]);
+  
+  // Stop typing indicator when AI responds
+  if (messageType === 'ai') {
+    setIsTyping(false);
+    setIsLoadingAnswer(false);
+    setIsWaitingForResponse(false);
+    setStatusMessage('');
+    console.log('AI response received. Stopping typing indicator.');
+  }
+
+  if (callback && typeof callback === 'function') {
+    callback();
+  }
+});
+
 
     socket.on('control_instruction', (data, callback) => {
       console.log('Received control instruction:', data);
@@ -458,9 +615,10 @@ const AIAssistantChat = ({
       type: 'user',
       content: inputValue.trim(),
       timestamp: new Date(),
-      sender: 'You',
+      sender: userName, 
       sender_id: userId,
       recipient_id: 'client_assistant',
+      sender_tag: 'user',
       isStatus: false
     };
 
@@ -614,66 +772,64 @@ const AIAssistantChat = ({
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="space-y-6">
-          {messages.map((message) => {
-            // Determine if message is from current user
-            const currentUserId = own_id || localStorage.getItem('user_id');
-            const isFromCurrentUser = String(message.sender_id) === String(currentUserId);
-            const isAIMessage = message.type === 'ai' || message.sender_tag === 'ai';
-            
-            return (
-              <div key={message.id} className={`flex gap-3 ${
-                message.isStatus ? 'justify-center' : 
-                isFromCurrentUser ? 'justify-end' : 'justify-start'
-              }`}>
-                {/* Status messages */}
-                {message.isStatus && (
-                  <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
-                    {message.content}
-                  </div>
-                )}
+     {messages.map((message) => {
+  const currentUserId = own_id || localStorage.getItem('user_id');
+  
+  // Use the message type directly instead of recalculating
+  const isFromCurrentUser = message.type === 'user';
+  const isAIMessage = message.type === 'ai';
 
-                {/* Regular messages */}
-                {!message.isStatus && (
-                  <>
-                    {/* AI Avatar (left side for AI messages) */}
-                    {!isFromCurrentUser && (
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-white font-semibold text-xs">{assistantAvatar}</span>
-                      </div>
-                    )}
-                    
-                    {/* Message bubble container */}
-                    <div className={`flex flex-col ${
-                      isFromCurrentUser ? 'items-end' : 'items-start'
-                    } ${
-                      isFromCurrentUser ? 'max-w-[75%] sm:max-w-[70%] md:max-w-[65%] lg:max-w-[60%]' : 
-                      'max-w-[80%] sm:max-w-[75%] md:max-w-[70%] lg:max-w-[65%]'
-                    }`}>
-                      <div className={`rounded-2xl px-4 py-3 shadow-sm ${
-                        isFromCurrentUser 
-                          ? 'bg-blue-500 text-white rounded-br-md' 
-                          : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
-                      }`}>
-                        <p className="whitespace-pre-wrap leading-relaxed text-sm">{message.content}</p>
-                      </div>
-                      <p className={`text-xs text-gray-500 mt-1 px-1 ${
-                        isFromCurrentUser ? 'text-right' : 'text-left'
-                      }`}>
-                        {formatTime(message.timestamp)}
-                      </p>
-                    </div>
+  console.log('Rendering message:', {
+    id: message.id,
+    type: message.type,
+    sender: message.sender,
+    isFromCurrentUser,
+    isAIMessage,
+    content: message.content.substring(0, 30) + '...'
+  });
 
-                    {/* User Avatar (right side for user messages) */}
-                    {isFromCurrentUser && (
-                      <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                        <span className="text-white font-semibold text-xs">U</span>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })}
+  if (message.isStatus) {
+    return (
+      <div key={message.id} className="flex justify-center my-2">
+        <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+          {message.content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div key={message.id} className={`flex gap-3 ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}>
+      {/* AI Avatar (for AI and other non-user messages) */}
+      {!isFromCurrentUser && (
+        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+          <span className="text-white font-semibold text-xs">{assistantAvatar}</span>
+        </div>
+      )}
+
+      {/* Message Bubble Container */}
+      <div className={`flex flex-col ${isFromCurrentUser ? 'items-end' : 'items-start'} max-w-[70%] lg:max-w-[60%]`}>
+        <div className={`rounded-2xl px-4 py-3 shadow-sm ${
+          isFromCurrentUser 
+            ? 'bg-blue-500 text-white rounded-br-md' 
+            : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
+        }`}>
+          <p className="whitespace-pre-wrap leading-relaxed text-sm">{message.content}</p>
+        </div>
+        <p className={`text-xs text-gray-500 mt-1 px-1 ${isFromCurrentUser ? 'text-right' : 'text-left'}`}>
+          {formatTime(message.timestamp)} • {message.sender}
+        </p>
+      </div>
+
+      {/* User Avatar (for user messages) */}
+      {isFromCurrentUser && (
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+          <span className="text-white font-semibold text-xs">{userAvatar}</span>
+        </div>
+      )}
+    </div>
+  );
+     })}
 
           {/* Typing Indicator */}
           {isTyping && (

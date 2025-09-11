@@ -1,18 +1,40 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import BackImage from '../../assets/Images/backgroundimage.jpg'; 
-import Inter from '../../assets/Images/fatemeh (1).jpg';
-import Inter1 from '../../assets/Images/fatemeh (2).jpg';
-import Inter3 from '../../assets/Images/property-10.jpg';
-import Inter4 from '../../assets/Images/property-6.jpg';
+import { ArrowRight, Brain, Rocket, Layers} from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom'
 
 const Hero = ({ onExplore }) => {
-  const imageDisplay = {
-    backgroundImage: `url(${BackImage})`,
-    backgroundPosition: 'center',
-    backgroundSize: 'cover',
-  };
+const navigate = useNavigate()
 
+const heroCarousels = [
+    {
+      id: 1,
+      icon: <Rocket className="w-8 h-8 text-[#2255D7]" />,
+      actionWord: 'Launch Faster',
+      description: 'Automate business setup and operations'
+    },
+    {
+      id: 2,
+      icon: <Layers className="w-8 h-8 text-[#9333EA]" />,
+      actionWord: 'Build Teams',
+      description: 'Connect with skilled freelancers'
+    },
+    {
+      id: 3,
+      icon: <Brain className="w-8 h-8 text-[#16A34A]" />,
+      actionWord: 'AI-Powered',
+      description: 'Frontier GenAI optimizes workflows'
+    },
+    {
+      id: 4,
+      cta: 'Get Started'
+    }
+  ];
+
+
+const startProject = ( ) => {
+  navigate('/signup')
+}
   const handleExploreClick = (e) => {
     e.preventDefault();
     if (onExplore) {
@@ -22,21 +44,7 @@ const Hero = ({ onExplore }) => {
 
   return (
     <div 
-      className='hero-container w-full min-h-screen flex flex-col md:flex-row justify-center items-center z-1 p-4 sm:p-6 md:p-12 md:px-20 relative'
-      style={{
-        background: 'linear-gradient(135deg, #FFFFFF 0%, #F4F6FB 60%, #A7A3FF 100%)',
-        // On larger screens, use white background for the original design
-        '@media (min-width: 768px)': {
-          backgroundColor: 'white'
-        }
-      }}
-    >
-      {/* Desktop overlay - only on larger screens */}
-      <div 
-        className='hidden md:block absolute top-0 left-0 w-full h-full z-2' 
-        style={{ backgroundColor: 'rgba(244, 246, 251, 0.7)' }}
-      ></div>
-      
+      className='hero-container w-full min-h-[90vh] flex flex-col md:flex-row justify-center items-center z-1 p-4 sm:p-6 md:p-12 md:px-20 bg-gradient-to-br from-[#111827] from-0% via-[#0e4283] via-50% to-[#3f2286] to-100%  relative basic-font'>
       {/* Content Section */}
       <div className='w-full md:w-1/2 z-50 relative flex justify-center md:justify-start'>
         <div className='flex flex-col justify-center items-center md:items-start text-center md:text-left p-4 sm:p-6 md:p-10 max-w-2xl'>
@@ -44,7 +52,7 @@ const Hero = ({ onExplore }) => {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className='text-[#0C0950] text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-6xl font-bold basic-font mb-4 sm:mb-6 leading-tight'
+            className='text-white text-3xl sm:text-4xl md:text-4xl lg:text-5xl xl:text-6xl font-semibold basic-font mb-4 sm:mb-6 leading-tight '
           >
             AI-powered <br />
             business life cycle platform
@@ -54,95 +62,75 @@ const Hero = ({ onExplore }) => {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className='text-primary font-normal text-base sm:text-lg max-w-3xl md:text-lg lg:text-xl new-font leading-relaxed mb-8 text-justify md:text-justify'
+            className='text-white font-light text-[16px] sm:text-lg max-w-5xl md:text-lg lg:text-xl basic-font leading-relaxed mb-8 text-justify md:text-justify mt-4'
           >
            Lancer takes the heavy lifting off founders and business owners by automating business formalization, hiring, workflow management, performance evaluation, and everyday operations—powered by frontier GenAI, bespoke machine learning, and general automation. Lancer also connects freelancers with the right skills to Startups and Business that are in need of their talents.
           </motion.p>
           
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className='w-full flex justify-center md:justify-start'
-          >
-            <button 
-              onClick={handleExploreClick}
-              className='py-4 px-10 sm:py-3 sm:px-8 bg-[#2563EB] text-white font-semibold basic-font rounded-lg shadow-xl hover:bg-[#1447e6] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-lg sm:text-base'
-            >
-              Explore
-            </button>
-          </motion.div>
+        <motion.div 
+         initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.4 }}
+       className='w-full flex flex-row gap-3 justify-center md:justify-start'
+>
+  <button 
+    onClick={startProject}
+    className='py-4 px-10 sm:py-3 sm:px-8 bg-[#2255D7] text-white font-semibold basic-font rounded-lg shadow-xl hover:bg-[#1447e6] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-lg sm:text-base flex items-center gap-2'
+  >
+    Start a Project 
+    <ArrowRight size={20} />
+  </button>
+  <button 
+    onClick={handleExploreClick}
+    className='py-4 px-10 sm:py-3 sm:px-8 bg-white text-[#2255d7] font-semibold basic-font rounded-lg shadow-xl hover:bg-[#f1f1f1] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-lg sm:text-base'
+  >
+    Learn More
+  </button>
+</motion.div>
         </div>
       </div>
 
       {/* Image Section - Hidden on Mobile, Visible on Desktop */}
-      <div className='hidden md:flex w-full md:w-1/2 relative z-50 mt-8 md:mt-0 justify-center items-center'>
-        <div className='relative w-full max-w-lg h-96 sm:h-[500px] md:h-96 lg:h-[500px] flex justify-center items-center'>
-          
-          {/* Top Left Circle */}
-          <motion.div 
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className='absolute top-8 -left-8 w-42 h-42 md:w-78 md:h-78 rounded-full overflow-hidden shadow-xl border-4 border-white'
-          >
-            <img 
-              src={Inter}
-              alt="Startup team 1"
-              loading='lazy'
-              className='w-full h-full object-cover'
-            />
-          </motion.div>
-
-          {/* Top Right Circle */}
-          <motion.div 
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className='absolute top-1 -right-32 w-42 h-42 md:w-86 md:h-86 rounded-full overflow-hidden shadow-xl border-4 border-white'
-          >
-            <img 
-              src={Inter1}
-              alt="Startup team 2"
-              className='w-full h-full object-cover'
-            />
-          </motion.div>
-
-          {/* Bottom Left Circle */}
-          <motion.div 
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className='absolute -bottom-38 -left-8 w-42 h-42 md:w-86 md:h-86 rounded-full overflow-hidden shadow-xl border-4 border-white'
-          >
-            <img 
-              src={Inter3}
-              loading='lazy'
-              alt="Startup team 3"
-              className='w-full h-full object-cover'
-            />
-          </motion.div>
-
-          {/* Bottom Right Circle */}
-          <motion.div 
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
-            className='absolute -bottom-38 -right-32 w-42 h-42 md:w-78 md:h-78 rounded-full overflow-hidden shadow-xl border-4 border-white'
-          >
-            <img 
-              src={Inter4}
-              alt="Startup team 4"
-              className='w-full h-full object-cover'
-            />
-          </motion.div>
-
-          {/* Center connecting element */}
-          <div className='absolute inset-0 flex justify-center items-center'>
-            <div className='w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-orange-200 to-orange-100 opacity-20'></div>
+    <div className='hidden md:flex w-full md:w-1/2 relative z-50 mt-8 md:mt-0 justify-center items-center'>
+  {/* Top-left decorative circle */}
+  <div className='absolute -top-13 -left-4 w-28 h-28 bg-[#DBEAFE] rounded-full z-30'></div>
+  
+  {/* Bottom-right decorative circle */}
+  <div className='absolute -bottom-18 -right-10 w-34 h-34 bg-[#F3E8FF] rounded-full z-30'></div>
+  
+  <section className="bg-[#2255d7] w-full max-w-4xl h-[55vh] rounded-lg grid grid-cols-2 gap-6 p-8 relative z-20">
+    {heroCarousels.map((carousel, index) => (
+      <div 
+        key={carousel.id || index} 
+        className="bg-white rounded-lg p-6 flex flex-col justify-center"
+      >
+        {carousel.cta ? (
+          // CTA Card (bottom right)
+          <div className="flex items-center justify-center h-full">
+            <button 
+            onClick={startProject}
+            className="bg-[#9333EA] hover:bg-purple-700 text-white font-semibold py-3 px-8 rounded-lg trasition-all duration-300 transition-colors ease-in-out trans hover:scale-105 focus:outline-none">
+              {carousel.cta}
+            </button>
           </div>
-        </div>
+        ) : (
+          // Regular feature cards
+          <div className="flex flex-col">
+            <div className="mb-4">
+              {carousel.icon}
+            </div>
+            <h3 className="text-xl font-semibold text-[#151B25] mb-3">
+              {carousel.actionWord}
+            </h3>
+            <p className="text-[#4B5563] font-normal text-[16px] leading-relaxed">
+              {carousel.description}
+            </p>
+          </div>
+        )}
       </div>
+    ))}
+  </section>
+</div>
 
       {/* Mobile decorative elements - subtle accent shapes */}
       <div className='md:hidden absolute top-10 right-4 w-20 h-20 rounded-full bg-gradient-to-br from-[#3A8DFF] to-[#A7A3FF] opacity-10'></div>

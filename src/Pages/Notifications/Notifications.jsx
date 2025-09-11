@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle, Info, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import socket from '../../Components/socket'
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -11,6 +12,8 @@ const Notifications = () => {
   const [loading, setLoading] = useState(true);
   // State to handle any errors during the API call
   const [error, setError] = useState(null);
+  // State to track socket connection
+  const [socketConnected, setSocketConnected] = useState(false);
 
   // Click handler for interview routing
   const handleNotificationClick = (notification) => {
@@ -67,7 +70,91 @@ const Notifications = () => {
       }
     };
 
+    // Initialize SocketIO connection using existing socket
+    const initializeSocket = () => {
+      const token = localStorage.getItem('access_jwt');
+      if (!token) return;
+
+      // Connect the socket (it's configured with autoConnect: false)
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      // Event handler functions
+      const handleConnect = () => {
+        console.log('Socket connected:', socket.id);
+        setSocketConnected(true);
+      };
+
+      const handleDisconnect = () => {
+        console.log('Socket disconnected');
+        setSocketConnected(false);
+      };
+
+      const handleConnectError = (error) => {
+        console.error('Socket connection error:', error);
+        setSocketConnected(false);
+      };
+
+      // Listen for real-time notifications
+      const handleClientNotification = (newNotification) => {
+        console.log('Received real-time notification:', newNotification);
+        
+        // Transform the new notification to match our data structure
+        const transformedNotification = {
+          ...newNotification,
+          read: false,
+          time: 'Just now'
+        };
+
+        // Add the new notification to the beginning of the list
+        setNotifications(prevNotifications => [transformedNotification, ...prevNotifications]);
+        
+        // Optional: Show browser notification for better UX
+        if (Notification.permission === 'granted') {
+          new Notification(getNotificationTitle(newNotification.type), {
+            body: newNotification.message,
+            icon: '/favicon.ico' // Adjust path as needed
+          });
+        }
+      };
+
+      // Add event listeners
+      socket.on('connect', handleConnect);
+      socket.on('disconnect', handleDisconnect);
+      socket.on('connect_error', handleConnectError);
+      socket.on('client_notification', handleClientNotification);
+
+      // Set initial connection state
+      setSocketConnected(socket.connected);
+
+      // Return cleanup function
+      return () => {
+        socket.off('connect', handleConnect);
+        socket.off('disconnect', handleDisconnect);
+        socket.off('connect_error', handleConnectError);
+        socket.off('client_notification', handleClientNotification);
+      };
+    };
+
+    // Initial API fetch
     fetchNotifications();
+
+    // Initialize real-time socket
+    const cleanupSocket = initializeSocket();
+
+    // Request browser notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Cleanup function
+    return () => {
+      if (cleanupSocket) {
+        cleanupSocket();
+      }
+      // Note: We don't disconnect the socket here since it might be used by other components
+    };
   }, []);
 
   // Helper function to get the correct icon and color based on notification type
@@ -96,7 +183,17 @@ const Notifications = () => {
   
   // Conditional rendering based on loading and error states
   if (loading) {
-    return <div className="p-6 text-center text-gray-500">Loading notifications...</div>;
+    return (
+      <div className="p-6 text-center text-gray-500">
+        Loading notifications...
+        {/* Optional: Show socket connection status */}
+        <div className="mt-2 text-xs">
+          Socket: <span className={socketConnected ? 'text-green-500' : 'text-red-500'}>
+            {socketConnected ? 'Connected' : 'Disconnected'}
+          </span>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
@@ -107,7 +204,16 @@ const Notifications = () => {
     return (
       <div className="flex flex-col h-full bg-gray-50">
         <div className="p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Notifications</h2>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
+            {/* Real-time status indicator */}
+            <div className="flex items-center text-sm">
+              <div className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className="text-gray-500">
+                {socketConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
+          </div>
           <div className="text-center text-gray-500 py-8">
             <Info size={48} className="mx-auto mb-4 text-gray-300" />
             <p>No notifications yet</p>
@@ -122,7 +228,16 @@ const Notifications = () => {
   return (
     <div className="flex flex-col h-full bg-gray-50">
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Notifications</h2>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
+          {/* Real-time status indicator */}
+          <div className="flex items-center text-sm">
+            <div className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-gray-500">
+              {socketConnected ? 'Live' : 'Offline'}
+            </span>
+          </div>
+        </div>
         
         {/* Unread Notifications Section */}
         {unreadNotifications.length > 0 && (

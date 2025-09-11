@@ -48,38 +48,7 @@ const JobInterview = () => {
   const checkAuthentication = () => {
     const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
     const userId = localStorage.getItem('user_id');
-    const userRole = localStorage.getItem('userRole');
 
-    if (!userId && !userRole) {
-      setSocketError('Please complete the signup process first.');
-      setTimeout(() => {
-        navigate('/signup', { replace: true });
-      }, 1500);
-      return false;
-    }
-
-    if (!token && userRole) {
-      const fromProfileSetup = location.state?.fromProfileSetup;
-      if (!fromProfileSetup) {
-        setSocketError('Please complete your profile setup first.');
-        setTimeout(() => {
-          navigate('/profile_setup', {
-            replace: true,
-            state: { role: userRole }
-          });
-        }, 1500);
-        return false;
-      }
-    }
-
-    if (!userId && userRole) {
-      setSocketError('Session data incomplete. Please sign in again.');
-      setIsLoadingAuth(false);
-      setTimeout(() => {
-        navigate('/signin', { replace: true });
-      }, 1500);
-      return false;
-    }
 
     setIsLoadingAuth(false);
     return true;

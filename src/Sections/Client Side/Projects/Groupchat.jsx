@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import socket, { getAPIUrl } from './socket';
+import socket from '../../../Components/socket';
 
 // GroupChat component for project/job dashboards
 const GroupChat = ({ userId, isClient }) => {
@@ -8,18 +8,19 @@ const GroupChat = ({ userId, isClient }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [groupChatTag, setGroupChatTag] = useState(null);
   const [projectId, setProjectId] = useState(null);
+  const [clientId, setClientId] = useState(null); // Add clientId state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // Fetch projects to get dynamic project_id (taking the first ongoing project)
+  // Fetch projects to get dynamic project_id and client_id
   const fetchProjects = async () => {
     setIsLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('access_jwt');
       const API_URL = import.meta.env.VITE_API_URL
-      const response = await fetch(`${API_URL}/projects`, {
+      const response = await fetch(`${API_URL}/api/projects`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -32,7 +33,6 @@ const GroupChat = ({ userId, isClient }) => {
       if (data.well_received) {
         const projects = data.projects || [];
         if (projects.length > 0) {
-          // Take the first project; if multiple, prefer 'ongoing' (can be enhanced later)
           let targetProject = null;
           for (const projectObj of projects) {
             const projectKey = Object.keys(projectObj)[0];
@@ -43,12 +43,12 @@ const GroupChat = ({ userId, isClient }) => {
             }
           }
           if (!targetProject) {
-            // Fallback to first if no ongoing
             const firstProjectObj = projects[0];
             const projectKey = Object.keys(firstProjectObj)[0];
             targetProject = firstProjectObj[projectKey];
           }
           setProjectId(targetProject.id);
+          setClientId(targetProject.client_id); // Set the clientId
         } else {
           setError('No projects found');
         }
@@ -62,15 +62,17 @@ const GroupChat = ({ userId, isClient }) => {
     }
   };
 
-  // Fetch chat details using dynamic project_id
+  // Fetch chat details using dynamic project_id and client_id
   const fetchChat = async () => {
-    if (!projectId) return;
+    if (!projectId || !clientId) return; // Wait for both IDs
     setIsLoading(true);
     setError(null);
     try {
       const token = localStorage.getItem('access_jwt');
       const API_URL = import.meta.env.VITE_API_URL
-      const response = await fetch(`${API_URL}/chat?chat_type=group&project_id=${projectId}`, {
+      // Construct the dynamic recipient ID for the API call
+      const recipientId = `group_chat_tag_${projectId}_${clientId}`; 
+      const response = await fetch(`${API_URL}/api/chat?chat_type=group&recipient_id=${recipientId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -82,7 +84,6 @@ const GroupChat = ({ userId, isClient }) => {
       const data = await response.json();
       if (data.success) {
         setGroupChatTag(data.group_chat_tag || null);
-        // Assume API returns historical messages
         setMessages((data.messages || []).map(msg => ({
           content: msg.message_content,
           sender: msg.sender_tag,
@@ -100,22 +101,18 @@ const GroupChat = ({ userId, isClient }) => {
 
   // Connect to Socket.IO and join rooms
   useEffect(() => {
-    // Fetch projects on mount
     fetchProjects();
 
-    // Connect to socket if not already connected
     if (!socket.connected) {
       socket.connect();
     }
 
-    // Handle connection status
     socket.on('connect', () => {
       setIsConnected(true);
       console.log('Connected to Socket.IO server');
-      // Join default user room
       socket.emit('join', { room_name: String(userId), user: userId });
-      // Join group chat room if tag exists
       if (groupChatTag) {
+        // The group chat room name is now the groupChatTag
         socket.emit('join', { room_name: groupChatTag, user: userId });
       }
     });
@@ -130,9 +127,10 @@ const GroupChat = ({ userId, isClient }) => {
       setError('Socket connection failed');
     });
 
-    // Listen for new messages
     socket.on('new_message', (data) => {
-      if (data.recipient_id === groupChatTag) {
+      // The recipient_id in the message now needs to match the new format
+      const dynamicRecipientId = `group_chat_tag_${projectId}_${clientId}`;
+      if (data.recipient_id === dynamicRecipientId) { 
         setMessages((prev) => [
           ...prev,
           {
@@ -144,29 +142,25 @@ const GroupChat = ({ userId, isClient }) => {
       }
     });
 
-    // Listen for notifications (e.g., group chat created)
     socket.on('notification', (data) => {
       if (data.type === 'group_chat_created' && data.message.project_id === projectId) {
-        setGroupChatTag(data.message.group_chat_tag);
-        socket.emit('join', { room_name: data.message.group_chat_tag, user: userId });
+        const newGroupChatTag = data.message.group_chat_tag;
+        setGroupChatTag(newGroupChatTag);
+        socket.emit('join', { room_name: newGroupChatTag, user: userId });
       }
     });
 
-    // Listen for status updates
     socket.on('status_update', (data) => {
       console.log('Status update:', data.update);
-      // Refetch chat if job status changes
       if (data.update.includes('job_activated')) {
         fetchChat();
       }
     });
 
-    // Listen for AI instructions
     socket.on('control_instruction', (data) => {
       console.log('AI instruction:', data.command, data.data);
     });
 
-    // Cleanup on unmount
     return () => {
       socket.off('connect');
       socket.off('disconnect');
@@ -176,12 +170,14 @@ const GroupChat = ({ userId, isClient }) => {
       socket.off('status_update');
       socket.off('control_instruction');
     };
-  }, [userId, groupChatTag, projectId]);
+  }, [userId, groupChatTag, projectId, clientId]); // Add clientId to dependency array
 
-  // Fetch chat when projectId is set
+  // Trigger fetchChat when projectId or clientId is set
   useEffect(() => {
-    fetchChat();
-  }, [projectId]);
+    if (projectId && clientId) {
+      fetchChat();
+    }
+  }, [projectId, clientId]); // Dependency on both IDs
 
   // Scroll to bottom of messages
   useEffect(() => {
@@ -190,11 +186,12 @@ const GroupChat = ({ userId, isClient }) => {
 
   // Send message to group chat
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !groupChatTag) return;
+    if (!messageInput.trim() || !groupChatTag || !projectId || !clientId) return;
+    const recipientId = `group_chat_tag_${projectId}_${clientId}`;
     socket.emit('send_message', {
       message_content: messageInput,
       own_id: userId,
-      recipient_id: groupChatTag,
+      recipient_id: recipientId,
     });
     setMessageInput('');
   };

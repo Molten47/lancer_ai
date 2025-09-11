@@ -1,5 +1,5 @@
 import React from 'react'
-import Messages from '../FreeMessa/MessageFree'
+import Messages from '../FreeMessa/GroupChat'
 
 const MessagesFr = () => {
   return (

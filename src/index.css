@@ -12,6 +12,24 @@
   --jobs-cor: #343744;
   --updated-background:#0C0950;
   
+ /* ---   THE NEW COLORS  --- */
+ --color-one:#2255d7;
+ --color-two:#151b25; 
+ --color-three:#bed2f4;
+ --color-four:#809fde;
+ --color-five: #F3F4F6;
+ --color-six:#9CA3AF;
+ --color-seven:#6B7280;
+ --color-texts:#111827;
+
+ /* -Card colors and Icons- */
+
+ --color-a: #4B5563;
+ --color-b:#16A34A;
+ --color-c:#E5E7EB;
+ --color-d:#DBEAFE;
+ --color-e:#DCFCE7;
+ --color-f:#E0E7FF;
 
 
   --basic-font:'Sora', sans-serif;
@@ -29,7 +47,7 @@ body, h1, h2, h3, h4, h5, h6, ul {
   margin: 15px; 
   height: 80px;
   width: 80px; 
-  border-radius: 50%; 
+  border-radius: 15px; 
 }
 
 /*body styles */
@@ -44,7 +62,7 @@ body {
 @layer utilities {
   /* background-colors */
   .bg-primary{
-    background-color: var(--primary-color);
+    background-color: var(--color-one);
     }
     .bg-accent1{
       background-color: var(--accent-1);
@@ -53,7 +71,7 @@ body {
       background-color: var(--accent-2);
     }
     .bg-cta{
-      background-color: var(--call-to-action);
+      background-color: var(--color-one);
     }
     .bg-light{
       background-color: var(--background-light);
@@ -71,13 +89,13 @@ body {
   /*text-colors*/
 
     .text-primary{
-      color: var(--primary-color);
+      color: var(--color-two);
     }
     .text-light{
-      color: var(--text-light);
+      color: var(--color-one);
     }
     .text-secondary{
-      color: var(--secondary-color);
+      color: var(--color-a);
     }
     .text-paragraph{
     color: var(--paragraph-color);
@@ -86,7 +104,7 @@ body {
       color: var(--call-to-action);
     }
     .text-dark{
-      color: var(--text-dark);
+      color: var(--color-texts);
     }
     .text-jobs{
       color: var(--jobs-cor);
