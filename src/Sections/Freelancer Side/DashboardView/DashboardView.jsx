@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Calendar, Clock, DollarSign, User, MapPin, Edit3, Eye, Bot } from 'lucide-react';
+import { Star, Calendar, Clock, DollarSign, User, MapPin, Edit3, Eye, Bot, X } from 'lucide-react';
 
 const DashboardView = () => {
   const [selectedJob, setSelectedJob] = useState(null);
@@ -47,7 +47,10 @@ const DashboardView = () => {
 
   const handleOpenRightModal = (job) => {
     setSelectedJob(job);
-    // This function would likely set state for a modal to become visible
+  };
+
+  const handleCloseModal = () => {
+    setSelectedJob(null);
   };
 
   const calculateDueDate = (initDate, duration) => {
@@ -102,8 +105,8 @@ const DashboardView = () => {
 
   const formattedJobs = jobs.map(job => {
     const statusColor = job.status === 'inactive'
-      ? 'bg-green-100 text-green-800' // Past jobs
-      : 'bg-blue-100 text-blue-800'; // Current/active jobs
+      ? 'bg-green-100 text-green-800'
+      : 'bg-blue-100 text-blue-800';
 
     const dueDate = calculateDueDate(job.init_date, job.duration);
 
@@ -172,6 +175,44 @@ const DashboardView = () => {
           </div>
         </div>
       </div>
+      {/* Task Modal (will show up on top) */}
+      {selectedJob && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-200">
+              <h3 className="text-xl font-semibold text-gray-900">Tasks for "{selectedJob.title}"</h3>
+              <button onClick={handleCloseModal} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="mt-4">
+              {selectedJob.tasks && selectedJob.tasks.length > 0 ? (
+                <ul className="space-y-4">
+                  {selectedJob.tasks.map((task, index) => (
+                    <li key={task.id || index} className="p-4 bg-gray-50 rounded-lg shadow-sm">
+                      <h4 className="font-semibold text-gray-800">{task.title}</h4>
+                      <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                      <div className="flex items-center text-xs text-gray-500 mt-2">
+                        <Clock size={12} className="mr-1" />
+                        <span>Due: {task.due_date}</span>
+                        <User size={12} className="ml-4 mr-1" />
+                        <span>Assignee: {task.assignee}</span>
+                      </div>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full mt-2 ${
+                        task.status === 'complete' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {task.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500 text-center">No tasks found for this job.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
 </div>
   );

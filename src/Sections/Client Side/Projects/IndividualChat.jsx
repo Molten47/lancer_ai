@@ -121,7 +121,7 @@ const P2PChatComponent = ({
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('new_message', handleNewMessage);
-    socket.on('message', handleNewMessage); // Alternative event name
+    socket.on('message', handleNewMessage);
     socket.on('typing', handleTyping);
     socket.on('stop_typing', handleStopTyping);
     socket.on('user_online', handleUserOnline);
@@ -196,128 +196,152 @@ const P2PChatComponent = ({
   };
 
   return (
-    <div className="flex flex-col h-96 max-w-md mx-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+    <div className="flex flex-col h-full w-full bg-white basic-font">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 bg-blue-600 text-white rounded-t-lg">
-        <div className="flex items-center space-x-3">
+      <div className="flex items-center justify-between p-6 bg-blue-600 text-white border-b flex-shrink-0">
+        <div className="flex items-center space-x-4">
           <div className="relative">
-            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-              <User size={20} />
+            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+              <User size={24} />
             </div>
-            <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${onlineStatus ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${onlineStatus ? 'bg-green-500' : 'bg-gray-400'}`}></div>
           </div>
           <div>
-            <h3 className="font-semibold">{recipientName}</h3>
-            <div className="flex items-center space-x-1">
-              <Circle size={6} className={`${isConnected ? 'text-green-300' : 'text-red-300'} fill-current`} />
-              <span className="text-xs">
+            <h3 className="font-semibold text-lg">{recipientName}</h3>
+            <div className="flex items-center space-x-2">
+              <Circle size={8} className={`${isConnected ? 'text-green-300' : 'text-red-300'} fill-current`} />
+              <span className="text-sm opacity-90">
                 {isConnected ? (onlineStatus ? 'Online' : 'Connected') : 'Disconnected'}
               </span>
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <button className="p-2 hover:bg-blue-700 rounded-full transition-colors">
-            <Phone size={16} />
+        <div className="flex items-center space-x-3">
+          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
+            <Phone size={20} />
           </button>
-          <button className="p-2 hover:bg-blue-700 rounded-full transition-colors">
-            <Video size={16} />
+          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
+            <Video size={20} />
           </button>
-          <button className="p-2 hover:bg-blue-700 rounded-full transition-colors">
-            <MoreVertical size={16} />
+          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
+            <MoreVertical size={20} />
           </button>
         </div>
       </div>
 
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <User size={24} />
+          <div className="flex flex-col items-center justify-center h-full text-gray-500">
+            <div className="w-20 h-20 bg-gray-200 rounded-full mb-6 flex items-center justify-center">
+              <User size={32} />
             </div>
-            <p>Start your conversation with {recipientName}</p>
+            <h3 className="text-lg font-medium mb-2">No messages yet</h3>
+            <p className="text-center max-w-md">
+              Start your conversation with {recipientName}. Send a message to get things started!
+            </p>
           </div>
         ) : (
-          messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.sender === ownId ? 'justify-end' : 'justify-start'}`}
-            >
+          <>
+            {messages.map((message) => (
               <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  message.sender === ownId
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-800 border'
-                }`}
+                key={message.id}
+                className={`flex ${message.sender === ownId ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-sm">{message.text}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-xs opacity-75">
-                    {formatTime(message.timestamp)}
-                  </span>
+                <div className="flex items-end space-x-2 max-w-lg">
+                  {message.sender !== ownId && (
+                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                      <User size={16} />
+                    </div>
+                  )}
+                  <div
+                    className={`px-4 py-3 rounded-2xl max-w-sm lg:max-w-md ${
+                      message.sender === ownId
+                        ? 'bg-blue-600 text-white rounded-br-md'
+                        : 'bg-white text-gray-800 border rounded-bl-md shadow-sm'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed">{message.text}</p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className={`text-xs ${message.sender === ownId ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {formatTime(message.timestamp)}
+                      </span>
+                      {message.sender === ownId && (
+                        <span className="text-xs text-blue-100 ml-2">
+                          {message.delivered ? '✓✓' : '✓'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   {message.sender === ownId && (
-                    <span className="text-xs opacity-75">
-                      {message.delivered ? '✓✓' : '✓'}
-                    </span>
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                      <User size={16} className="text-white" />
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          ))
-        )}
-        
-        {/* Typing Indicator */}
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="bg-white text-gray-800 border px-4 py-2 rounded-lg max-w-xs">
-              <div className="flex space-x-1">
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+            ))}
+            
+            {/* Typing Indicator */}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="flex items-end space-x-2">
+                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User size={16} />
+                  </div>
+                  <div className="bg-white text-gray-800 border px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
         
         <div ref={messagesEndRef} />
       </div>
 
       {/* Message Input */}
-      <div className="p-4 border-t bg-white rounded-b-lg">
-        <div className="flex items-center space-x-2">
-          <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-            <Smile size={20} />
+      <div className="p-6 border-t bg-white flex-shrink-0">
+        <div className="flex items-center space-x-3">
+          <button className="p-3 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100">
+            <Smile size={24} />
           </button>
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={!isConnected}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message..."
+              className="w-full px-6 py-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              disabled={!isConnected}
+            />
+          </div>
           <button
             onClick={sendMessage}
             disabled={!newMessage.trim() || !isConnected}
-            className={`p-2 rounded-full transition-colors ${
+            className={`p-3 rounded-full transition-colors ${
               newMessage.trim() && isConnected
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            <Send size={20} />
+            <Send size={24} />
           </button>
         </div>
         {!isConnected && (
-          <p className="text-xs text-red-500 mt-2">Connecting to chat...</p>
+          <p className="text-sm text-red-500 mt-3 text-center">
+            Connecting to chat...
+          </p>
         )}
       </div>
     </div>
   );
 };
 
-export default P2PChatComponent
-
-// Usage example component
+export default P2PChatComponent;

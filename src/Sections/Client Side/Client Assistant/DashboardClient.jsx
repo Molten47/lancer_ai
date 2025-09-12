@@ -38,16 +38,17 @@ const AIAssistantChat = ({
   const [userProfile, setUserProfile] = useState(null);
   const [userAvatar, setUserAvatar] = useState('U');
   const [userName, setSenderName] = useState('You');
+  const [initializationAttempts, setInitializationAttempts] = useState(0);
 
   // Add this helper function for message filtering
   const createClientAssistantMessageFilter = (currentUserId, assistantId = 'client_assistant') => {
     return (messageData) => {
       if (!messageData || !currentUserId) return false;
 
-      const { sender_id, recipient_id, sender_tag } = messageData;
+      const { own_id, recipient_id, sender_tag } = messageData;
       // Convert to strings for consistent comparison
       const currentUserStr = String(currentUserId);
-      const senderStr = String(sender_id);
+      const senderStr = String(own_id);
       const recipientStr = String(recipient_id);
       const assistantStr = String(assistantId);
       const isUserToAssistant = senderStr === currentUserStr && recipientStr === assistantStr;
@@ -59,85 +60,220 @@ const AIAssistantChat = ({
   };
 
   const fetchUserProfile = async () => {
-  try {
-    const API_URL = import.meta.env.VITE_API_URL;
-    if (!API_URL) {
-      console.error('API URL is not configured for profile fetch.');
-      return;
-    }
+    try {
+      const API_URL = import.meta.env.VITE_API_URL;
+      if (!API_URL) {
+        console.error('API URL is not configured for profile fetch.');
+        return;
+      }
 
-    const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
-    if (!authToken) {
-      console.warn('No auth token available for profile fetch.');
-      return;
-    }
+      const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+      if (!authToken) {
+        console.warn('No auth token available for profile fetch.');
+        return;
+      }
 
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authToken}`
-    };
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      };
 
-    console.log('Fetching user profile...');
+      console.log('Fetching user profile...');
 
-    const response = await fetch(`${API_URL}/api/profile`, {
-      method: 'GET',
-      headers: headers,
-      mode: 'cors',
-      credentials: 'include'
-    });
-
-    if (!response.ok) {
-      console.error('Failed to fetch profile:', response.status);
-      return;
-    }
-
-    const profileResponse = await response.json();
-    console.log('Profile response:', profileResponse);
-
-    if (profileResponse.well_received && profileResponse.profile_data) {
-      const profile = profileResponse.profile_data;
-      setUserProfile(profile);
-
-      // Generate avatar from initials
-      const firstInitial = profile.firstname ? profile.firstname.charAt(0).toUpperCase() : '';
-      const lastInitial = profile.lastname ? profile.lastname.charAt(0).toUpperCase() : '';
-      const avatarInitials = firstInitial + lastInitial || 'U';
-      setUserAvatar(avatarInitials);
-
-      // Set sender name (prefer username, fallback to firstname or 'You')
-      const displayName = profile.username || profile.firstname || 'You';
-      setSenderName(displayName);
-
-      console.log('Profile data loaded:', {
-        avatar: avatarInitials,
-        name: displayName,
-        profile: profile
+      const response = await fetch(`${API_URL}/api/profile`, {
+        method: 'GET',
+        headers: headers,
+        mode: 'cors',
+        credentials: 'include'
       });
-    }
-  } catch (error) {
-    console.error('Error fetching user profile:', error);
-  }
-};
 
-  // Initialize component
+      if (!response.ok) {
+        console.error('Failed to fetch profile:', response.status);
+        return;
+      }
+
+      const profileResponse = await response.json();
+      console.log('Profile response:', profileResponse);
+
+      if (profileResponse.well_received && profileResponse.profile_data) {
+        const profile = profileResponse.profile_data;
+        setUserProfile(profile);
+
+        // Generate avatar from initials
+        const firstInitial = profile.firstname ? profile.firstname.charAt(0).toUpperCase() : '';
+        const lastInitial = profile.lastname ? profile.lastname.charAt(0).toUpperCase() : '';
+        const avatarInitials = firstInitial + lastInitial || 'U';
+        setUserAvatar(avatarInitials);
+
+        // Set sender name (prefer username, fallback to firstname or 'You')
+        const displayName = profile.username || profile.firstname || 'You';
+        setSenderName(displayName);
+
+        console.log('Profile data loaded:', {
+          avatar: avatarInitials,
+          name: displayName,
+          profile: profile
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  // Improved socket connection management
+  const connectSocket = () => {
+    return new Promise((resolve, reject) => {
+      console.log('Attempting socket connection...');
+      
+      // Clear any existing error state
+      setSocketError('');
+      
+      // If already connected, resolve immediately
+      if (socket.connected) {
+        console.log('Socket already connected');
+        setIsConnected(true);
+        resolve(socket);
+        return;
+      }
+
+      // Set up one-time connection handlers
+      const onConnect = () => {
+        console.log('✅ Socket connected successfully!');
+        setIsConnected(true);
+        setSocketError('');
+        
+        const userId = own_id || localStorage.getItem('user_id');
+        if (userId) {
+          console.log(`Joining socket room: ${userId}`);
+          socket.emit('join', {
+            room_name: String(userId),
+            user: parseInt(userId)
+          });
+        }
+        
+        // Clean up event listeners
+        socket.off('connect', onConnect);
+        socket.off('connect_error', onConnectError);
+        
+        resolve(socket);
+      };
+
+      const onConnectError = (error) => {
+        console.error('Socket connection error:', error);
+        setIsConnected(false);
+        
+        // Clean up event listeners
+        socket.off('connect', onConnect);
+        socket.off('connect_error', onConnectError);
+        
+        reject(new Error(`Socket connection failed: ${error.message}`));
+      };
+
+      // Attach event listeners
+      socket.on('connect', onConnect);
+      socket.on('connect_error', onConnectError);
+
+      // Attempt connection with timeout
+      socket.connect();
+      
+      // Set a timeout to reject if connection takes too long
+      setTimeout(() => {
+        if (!socket.connected) {
+          socket.off('connect', onConnect);
+          socket.off('connect_error', onConnectError);
+          reject(new Error('Socket connection timeout'));
+        }
+      }, 10000); // 10 second timeout
+    });
+  };
+
+  // Initialize component with better error handling and retry logic
   useEffect(() => {
-    console.log('Component initialized. Starting authentication check...');
-    const init = async () => {
-      const isAuthenticated = checkAuthentication();
-      if (isAuthenticated) {
+    console.log('Component initialized. Starting initialization process...');
+    
+    const initializeWithRetry = async (attempt = 1) => {
+      try {
+        console.log(`Initialization attempt ${attempt}`);
+        setInitializationAttempts(attempt);
+        
+        // Step 1: Check authentication
+        console.log('Step 1: Checking authentication...');
+        const isAuthenticated = checkAuthentication();
+        if (!isAuthenticated) {
+          console.log('Authentication failed, stopping initialization');
+          return;
+        }
+
+        // Step 2: Setup socket listeners (before connecting)
+        console.log('Step 2: Setting up socket listeners...');
         setupSocketListeners();
+
+        // Step 3: Connect socket with timeout and retry
+        console.log('Step 3: Connecting socket...');
+        try {
+          await connectSocket();
+        } catch (socketError) {
+          console.error('Socket connection failed:', socketError);
+          
+          // If this is not the last attempt, retry
+          if (attempt < 3) {
+            console.log(`Retrying socket connection in 2 seconds... (attempt ${attempt + 1}/3)`);
+            setSocketError(`Connection attempt ${attempt} failed. Retrying...`);
+            
+            setTimeout(() => {
+              initializeWithRetry(attempt + 1);
+            }, 2000);
+            return;
+          } else {
+            // Final attempt failed
+            throw new Error(`Failed to connect after ${attempt} attempts: ${socketError.message}`);
+          }
+        }
+
+        // Step 4: Initialize chat via API
+        console.log('Step 4: Initializing chat via API...');
         await initializeChat();
-        await fetchUserProfile() 
+
+        // Step 5: Fetch user profile
+        console.log('Step 5: Fetching user profile...');
+        await fetchUserProfile();
+
+        console.log('✅ Initialization completed successfully');
+        
+      } catch (error) {
+        console.error('Initialization failed:', error);
+        
+        let errorMessage = 'Failed to initialize chat';
+        if (error.message.includes('Socket connection')) {
+          errorMessage = 'Cannot connect to chat server. Please check your internet connection and try refreshing the page.';
+        } else if (error.message.includes('Authentication')) {
+          errorMessage = 'Authentication failed. Please sign in again.';
+        } else if (error.message.includes('API')) {
+          errorMessage = 'Cannot connect to server. Please try again later.';
+        } else {
+          errorMessage = error.message;
+        }
+        
+        setSocketError(errorMessage);
+        setIsLoadingAuth(false);
+        setIsLoadingQuestion(false);
+        
+        // Auto-redirect for auth errors
+        if (errorMessage.includes('sign in') || errorMessage.includes('Authentication')) {
+          setTimeout(() => {
+            navigate('/signin', { replace: true });
+          }, 3000);
+        }
       }
     };
-    
-    init();
+
+    initializeWithRetry();
     
     return () => {
       console.log('Cleaning up socket listeners on component unmount.');
       cleanupSocketListeners();
     };
-  }, []);
+  }, []); // Empty dependency array - only run once
 
   // Authorization Checker
   const checkAuthentication = () => {
@@ -216,12 +352,20 @@ const AIAssistantChat = ({
       }
 
       console.log(`Fetching chat history from: ${API_URL}/api/chat?${queryParams.toString()}`);
+      
+      // Add timeout to fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+      
       const response = await fetch(`${API_URL}/api/chat?${queryParams}`, {
         method: 'GET',
         headers: headers,
         mode: 'cors',
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       console.log('API response status:', response.status);
 
       let chatData;
@@ -235,10 +379,6 @@ const AIAssistantChat = ({
           console.log('Development mode: continuing without API data');
           setIsLoadingQuestion(false);
           setStatusMessage('');
-          if (!socket.connected) {
-            socket.connect();
-            console.log('Attempting to connect socket...');
-          }
           return;
         }
         throw new Error('Invalid response format from server');
@@ -270,94 +410,88 @@ const AIAssistantChat = ({
       }
 
       // Handle successful response
-    if (chat_type === 'client_assistant') {
-  // Load message history if available
-  if (chatData.message_history && Array.isArray(chatData.message_history)) {
-    const currentUserId = own_id || localStorage.getItem('user_id');
-    const formattedMessages = chatData.message_history.map((msg, index) => {
-      const currentUserStr = String(currentUserId);
-      const senderStr = String(msg.sender_id);
-      
-      console.log('Processing history message:', {
-        index,
-        sender_id: msg.sender_id,
-        sender_tag: msg.sender_tag,
-        recipient_id: msg.recipient_id,
-        currentUserId: currentUserStr,
-        message_content: msg.message_content?.substring(0, 50) + '...'
-      });
-      
-      // Determine message type based on actual sender and tags
-      let messageType;
-      let senderName;
-      
-      // If sender_tag is explicitly 'ai' or sender_id is 'client_assistant', it's an AI message
-      if (msg.sender_tag === 'ai' || senderStr === 'client_assistant') {
-        messageType = 'ai';
-        senderName = assistantName;
-      }
-      // If sender_id matches current user and it's not tagged as AI, it's a user message
-      else if (senderStr === currentUserStr && msg.sender_tag !== 'ai') {
-        messageType = 'user';
-        senderName = userName
-      }
-      // Fallback for other cases
-      else {
-        // Check if message content or context suggests it's from AI
-        const looksLikeAI = msg.message_content && (
-          msg.message_content.includes('I can help') ||
-          msg.message_content.includes('Let me assist') ||
-          msg.message_content.length > 200 // AI messages tend to be longer
-        );
-        
-        if (looksLikeAI) {
-          messageType = 'ai';
-          senderName = assistantName;
-        } else {
-          messageType = 'user';
-          senderName = userName;
+      if (chat_type === 'client_assistant') {
+        // Load message history if available
+        if (chatData.message_history && Array.isArray(chatData.message_history)) {
+          const currentUserId = own_id || localStorage.getItem('user_id');
+          const formattedMessages = chatData.message_history.map((msg, index) => {
+            const currentUserStr = String(currentUserId);
+            const senderStr = String(msg.sender_id);
+            
+            console.log('Processing history message:', {
+              index,
+              sender_id: msg.sender_id,
+              sender_tag: msg.sender_tag,
+              recipient_id: msg.recipient_id,
+              currentUserId: currentUserStr,
+              message_content: msg.message_content?.substring(0, 50) + '...'
+            });
+            
+            // Determine message type based on actual sender and tags
+            let messageType;
+            let senderName;
+            
+            // If sender_tag is explicitly 'ai' or sender_id is 'client_assistant', it's an AI message
+            if (msg.sender_tag === 'ai' || senderStr === 'client_assistant') {
+              messageType = 'ai';
+              senderName = assistantName;
+            }
+            // If sender_id matches current user and it's not tagged as AI, it's a user message
+            else if (senderStr === currentUserStr && msg.sender_tag !== 'ai') {
+              messageType = 'user';
+              senderName = userName;
+            }
+            // Fallback for other cases
+            else {
+              // Check if message content or context suggests it's from AI
+              const looksLikeAI = msg.message_content && (
+                msg.message_content.includes('I can help') ||
+                msg.message_content.includes('Let me assist') ||
+                msg.message_content.length > 200 // AI messages tend to be longer
+              );
+              
+              if (looksLikeAI) {
+                messageType = 'ai';
+                senderName = assistantName;
+              } else {
+                messageType = 'user';
+                senderName = userName;
+              }
+            }
+            
+            console.log('Determined message type:', {
+              messageType,
+              senderName,
+              sender_id: msg.sender_id,
+              sender_tag: msg.sender_tag
+            });
+            
+            return {
+              id: msg.id || `history-${index}`,
+              type: messageType,
+              content: msg.message_content,
+              timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+              sender: senderName,
+              sender_id: msg.sender_id,
+              recipient_id: msg.recipient_id,
+              sender_tag: msg.sender_tag,
+              isStatus: false
+            };
+          });
+          
+          setMessages(formattedMessages);
+          console.log('Loaded message history with types:', formattedMessages.map(m => ({
+            type: m.type,
+            sender: m.sender,
+            content: m.content.substring(0, 30) + '...'
+          })));
         }
-      }
-      
-      console.log('Determined message type:', {
-        messageType,
-        senderName,
-        sender_id: msg.sender_id,
-        sender_tag: msg.sender_tag
-      });
-      
-      return {
-        id: msg.id || `history-${index}`,
-        type: messageType,
-        content: msg.message_content,
-        timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-        sender: senderName,
-        sender_id: msg.sender_id,
-        recipient_id: msg.recipient_id,
-        sender_tag: msg.sender_tag,
-        isStatus: false
-      };
-    });
-    
-    setMessages(formattedMessages);
-    console.log('Loaded message history with types:', formattedMessages.map(m => ({
-      type: m.type,
-      sender: m.sender,
-      content: m.content.substring(0, 30) + '...'
-    })));
-  }
 
-  // Set user_id if provided
-  if (chatData.user_id && !localStorage.getItem('user_id')) {
-    localStorage.setItem('user_id', chatData.user_id.toString());
-    console.log('User ID set from API response:', chatData.user_id);
-  }
-}
-
-      // Connect socket after successful API initialization
-      if (!socket.connected) {
-        socket.connect();
-        console.log('API initialization successful. Connecting socket...');
+        // Set user_id if provided
+        if (chatData.user_id && !localStorage.getItem('user_id')) {
+          localStorage.setItem('user_id', chatData.user_id.toString());
+          console.log('User ID set from API response:', chatData.user_id);
+        }
       }
 
       setIsLoadingQuestion(false);
@@ -367,7 +501,9 @@ const AIAssistantChat = ({
       console.error('Chat initialization error:', error);
       
       let errorMessage = 'Failed to initialize chat';
-      if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
+      if (error.name === 'AbortError') {
+        errorMessage = 'Request timeout. Please check your internet connection and try again.';
+      } else if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
         if (error.message.includes('CORS') || error.toString().includes('CORS')) {
           errorMessage = 'Connection blocked by CORS policy. Please contact support or try again later.';
         } else {
@@ -381,140 +517,116 @@ const AIAssistantChat = ({
         errorMessage = error.message;
       }
 
-      setSocketError(errorMessage);
       setIsLoadingQuestion(false);
       setStatusMessage('');
-      console.error('Setting socket error:', errorMessage);
-
-      if (errorMessage.includes('sign in') || errorMessage.includes('Authentication')) {
-        setTimeout(() => {
-          navigate('/signin', { replace: true });
-        }, 2000);
-      }
+      
+      throw new Error(errorMessage); // Re-throw to be caught by initialization logic
     }
   };
 
   // Socket connection management
   const setupSocketListeners = () => {
     console.log('Setting up socket listeners...');
-    socket.on('connect', () => {
-      setIsConnected(true);
-      setSocketError('');
-      console.log('✅ Socket connected successfully!');
-
-      const userId = own_id || localStorage.getItem('user_id');
-      if (userId) {
-        console.log(`Joining socket room: ${userId}`);
-        socket.emit('join', {
-          room_name: String(userId),
-          user: parseInt(userId)
-        });
+    
+    // Clean up existing listeners first
+    cleanupSocketListeners();
+    
+    socket.on('disconnect', (reason) => {
+      setIsConnected(false);
+      console.warn('⚠️ Socket disconnected:', reason);
+      
+      // Auto-reconnect for certain disconnect reasons
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        console.log('Attempting to reconnect...');
+        setTimeout(() => {
+          if (!socket.connected) {
+            socket.connect();
+          }
+        }, 1000);
       }
     });
 
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-      console.warn('⚠️ Socket disconnected.');
+    socket.on('new_message', (data, callback) => {
+      console.log('Received new message:', data);
+      
+      const userId = own_id || localStorage.getItem('user_id');
+      
+      // Create and apply message filter
+      const messageFilter = createClientAssistantMessageFilter(userId, 'client_assistant');
+      
+      // Filter the message
+      if (!messageFilter(data)) {
+        console.log('Message filtered out - not for this chat');
+        if (callback && typeof callback === 'function') {
+          callback();
+        }
+        return;
+      }
+      
+      const { message_content, sender_tag, own_id: socket_sender_id, recipient_id } = data;
+      
+      const currentUserId = String(userId);
+      const senderStr = String(socket_sender_id);
+      
+      console.log('Processing real-time message:', {
+        socket_sender_id,
+        sender_tag,
+        recipient_id,
+        currentUserId,
+        message_content: message_content?.substring(0, 50) + '...'
+      });
+      
+      // Determine message type 
+      let messageType;
+      let senderName;
+      
+      if (sender_tag === 'ai' || senderStr === 'client_assistant') {
+        messageType = 'ai';
+        senderName = assistantName;
+      }
+      else if (senderStr === currentUserId && sender_tag !== 'ai') {
+        messageType = 'user';
+        senderName = userName;
+      }
+      else {
+        messageType = 'other';
+        senderName = 'User';
+      }
+      
+      const newMessage = {
+        id: Date.now(),
+        type: messageType,
+        content: message_content,
+        timestamp: new Date(),
+        sender: senderName,
+        sender_id: socket_sender_id,
+        recipient_id: recipient_id,
+        sender_tag: sender_tag,
+        isStatus: false
+      };
+      
+      console.log('Adding new message to state:', {
+        type: newMessage.type,
+        sender: newMessage.sender,
+        actual_sender_id: socket_sender_id,
+        content: newMessage.content.substring(0, 30) + '...'
+      });
+      
+      setMessages(prev => [...prev, newMessage]);
+      
+      // Stop typing indicator when AI responds
+      if (messageType === 'ai') {
+        setIsTyping(false);
+        setIsLoadingAnswer(false);
+        setIsWaitingForResponse(false);
+        setStatusMessage('');
+        console.log('AI response received. Stopping typing indicator.');
+      }
+
+      if (callback && typeof callback === 'function') {
+        callback();
+      }
     });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      setSocketError('Failed to connect to assistant server');
-      setIsConnected(false);
-      setIsLoadingAnswer(false);
-      setStatusMessage('');
-    });
-
-   socket.on('new_message', (data, callback) => {
-  console.log('Received new message:', data);
-  const userId = own_id || localStorage.getItem('user_id');
-  
-  // Create and apply message filter
-  const messageFilter = createClientAssistantMessageFilter(userId, 'client_assistant');
-  
-  // Filter the message
-  if (!messageFilter(data)) {
-    console.log('Message filtered out - not for this chat:', {
-      sender_id: data.sender_id,
-      recipient_id: data.recipient_id,
-      sender_tag: data.sender_tag,
-      current_user: userId
-    });
-    
-    // Still call callback to acknowledge receipt
-    if (callback && typeof callback === 'function') {
-      callback();
-    }
-    return;
-  }
-  
-  // Process the message with CORRECTED type determination
-  const { message_content, sender_tag, sender_id, recipient_id } = data;
-  const currentUserId = String(userId);
-  const senderStr = String(sender_id);
-  
-  console.log('Processing real-time message:', {
-    sender_id,
-    sender_tag,
-    recipient_id,
-    currentUserId,
-    message_content: message_content?.substring(0, 50) + '...'
-  });
-  
-  // Determine message type and sender correctly - SAME LOGIC AS HISTORY
-  let messageType;
-  let senderName;
-  
-  // If sender_tag is explicitly 'ai' or sender_id is 'client_assistant', it's an AI message
-  if (sender_tag === 'ai' || senderStr === 'client_assistant') {
-    messageType = 'ai';
-    senderName = assistantName;
-  }
-  // If sender_id matches current user and it's not tagged as AI, it's a user message
-  else if (senderStr === currentUserId && sender_tag !== 'ai') {
-    messageType = 'user';
-    senderName = userName
-  }
-  // Fallback
-  else {
-    messageType = 'other';
-    senderName = 'User';
-  }
-  
-  const newMessage = {
-    id: Date.now(),
-    type: messageType,
-    content: message_content,
-    timestamp: new Date(),
-    sender: senderName,
-    sender_id: sender_id,
-    recipient_id: recipient_id,
-    sender_tag: sender_tag,
-    isStatus: false
-  };
-  
-  console.log('Adding new message to state:', {
-    type: newMessage.type,
-    sender: newMessage.sender,
-    content: newMessage.content.substring(0, 30) + '...'
-  });
-  
-  setMessages(prev => [...prev, newMessage]);
-  
-  // Stop typing indicator when AI responds
-  if (messageType === 'ai') {
-    setIsTyping(false);
-    setIsLoadingAnswer(false);
-    setIsWaitingForResponse(false);
-    setStatusMessage('');
-    console.log('AI response received. Stopping typing indicator.');
-  }
-
-  if (callback && typeof callback === 'function') {
-    callback();
-  }
-});
-
 
     socket.on('control_instruction', (data, callback) => {
       console.log('Received control instruction:', data);
@@ -694,7 +806,14 @@ const AIAssistantChat = ({
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Checking authentication...</p>
+            <p className="text-gray-600">
+              {initializationAttempts > 1 ? `Connection attempt ${initializationAttempts}...` : 'Initializing chat...'}
+            </p>
+            {initializationAttempts > 1 && (
+              <p className="text-gray-500 text-sm mt-2">
+                Having trouble connecting? Try refreshing the page.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -723,7 +842,9 @@ const AIAssistantChat = ({
             <h3 className="font-semibold text-gray-900">{assistantName}</h3>
             <p className="text-xs text-gray-500 flex items-center gap-1">
               <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></span>
-              {isConnected ? 'Online' : 'Connecting...'} • {formatTime(new Date())}
+              {isConnected ? 'Online' : (
+                initializationAttempts > 1 ? `Reconnecting (${initializationAttempts}/3)...` : 'Connecting...'
+              )} • {formatTime(new Date())}
             </p>
           </div>
         </div>
@@ -746,15 +867,25 @@ const AIAssistantChat = ({
       {/* Error Display */}
       {socketError && (
         <div className="px-4 py-3 bg-red-50 border-b border-red-200">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-800">{socketError}</p>
+              </div>
             </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-800">{socketError}</p>
-            </div>
+            {!isConnected && initializationAttempts < 3 && (
+              <button
+                onClick={() => window.location.reload()}
+                className="ml-3 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-800 text-xs rounded-md transition-colors"
+              >
+                Refresh Page
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -772,64 +903,64 @@ const AIAssistantChat = ({
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="space-y-6">
-     {messages.map((message) => {
-  const currentUserId = own_id || localStorage.getItem('user_id');
-  
-  // Use the message type directly instead of recalculating
-  const isFromCurrentUser = message.type === 'user';
-  const isAIMessage = message.type === 'ai';
+          {messages.map((message) => {
+            const currentUserId = own_id || localStorage.getItem('user_id');
+            
+            // Use the message type directly instead of recalculating
+            const isFromCurrentUser = message.type === 'user';
+            const isAIMessage = message.type === 'ai';
 
-  console.log('Rendering message:', {
-    id: message.id,
-    type: message.type,
-    sender: message.sender,
-    isFromCurrentUser,
-    isAIMessage,
-    content: message.content.substring(0, 30) + '...'
-  });
+            console.log('Rendering message:', {
+              id: message.id,
+              type: message.type,
+              sender: message.sender,
+              isFromCurrentUser,
+              isAIMessage,
+              content: message.content.substring(0, 30) + '...'
+            });
 
-  if (message.isStatus) {
-    return (
-      <div key={message.id} className="flex justify-center my-2">
-        <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
-          {message.content}
-        </div>
-      </div>
-    );
-  }
+            if (message.isStatus) {
+              return (
+                <div key={message.id} className="flex justify-center my-2">
+                  <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+                    {message.content}
+                  </div>
+                </div>
+              );
+            }
 
-  return (
-    <div key={message.id} className={`flex gap-3 ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}>
-      {/* AI Avatar (for AI and other non-user messages) */}
-      {!isFromCurrentUser && (
-        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-          <span className="text-white font-semibold text-xs">{assistantAvatar}</span>
-        </div>
-      )}
+            return (
+              <div key={message.id} className={`flex gap-3 ${isFromCurrentUser ? 'justify-end' : 'justify-start'}`}>
+                {/* AI Avatar (for AI and other non-user messages) */}
+                {!isFromCurrentUser && (
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-white font-semibold text-xs">{assistantAvatar}</span>
+                  </div>
+                )}
 
-      {/* Message Bubble Container */}
-      <div className={`flex flex-col ${isFromCurrentUser ? 'items-end' : 'items-start'} max-w-[70%] lg:max-w-[60%]`}>
-        <div className={`rounded-2xl px-4 py-3 shadow-sm ${
-          isFromCurrentUser 
-            ? 'bg-blue-500 text-white rounded-br-md' 
-            : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
-        }`}>
-          <p className="whitespace-pre-wrap leading-relaxed text-sm">{message.content}</p>
-        </div>
-        <p className={`text-xs text-gray-500 mt-1 px-1 ${isFromCurrentUser ? 'text-right' : 'text-left'}`}>
-          {formatTime(message.timestamp)} • {message.sender}
-        </p>
-      </div>
+                {/* Message Bubble Container */}
+                <div className={`flex flex-col ${isFromCurrentUser ? 'items-end' : 'items-start'} max-w-[70%] lg:max-w-[60%]`}>
+                  <div className={`rounded-2xl px-4 py-3 shadow-sm ${
+                    isFromCurrentUser 
+                      ? 'bg-blue-500 text-white rounded-br-md' 
+                      : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
+                  }`}>
+                    <p className="whitespace-pre-wrap leading-relaxed text-sm">{message.content}</p>
+                  </div>
+                  <p className={`text-xs text-gray-500 mt-1 px-1 ${isFromCurrentUser ? 'text-right' : 'text-left'}`}>
+                    {formatTime(message.timestamp)} • {message.sender}
+                  </p>
+                </div>
 
-      {/* User Avatar (for user messages) */}
-      {isFromCurrentUser && (
-        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-          <span className="text-white font-semibold text-xs">{userAvatar}</span>
-        </div>
-      )}
-    </div>
-  );
-     })}
+                {/* User Avatar (for user messages) */}
+                {isFromCurrentUser && (
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                    <span className="text-white font-semibold text-xs">{userAvatar}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
 
           {/* Typing Indicator */}
           {isTyping && (
@@ -901,13 +1032,16 @@ const AIAssistantChat = ({
         {!isConnected && (
           <div className="flex justify-center mt-3">
             <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-medium">
-              Connection lost. Trying to reconnect...
+              {initializationAttempts > 1 ? 
+                `Connection attempt ${initializationAttempts}/3. Retrying...` : 
+                'Connection lost. Trying to reconnect...'
+              }
             </div>
           </div>
         )}
         
         {/* Quick Actions */}
-        {!isWaitingForResponse && messages.length === 0 && (
+        {!isWaitingForResponse && messages.length === 0 && isConnected && (
           <div className="flex justify-center mt-4">
             <div className="flex flex-wrap justify-center gap-2">
               <button 

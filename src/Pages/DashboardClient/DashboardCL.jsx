@@ -9,39 +9,27 @@ import ProjectManagers from '../../Sections/Client Side/Projects/ProjectManager'
 import AIAssistantChat from '../../Sections/Client Side/Client Assistant/DashboardClient'
 import Notifications from '../Notifications/Notifications'
 import GroupChatSpace from '../../Sections/Client Side/Projects/Groupchat'
-//import AssociatedJobs from '../../Sections/Client Side/Projects/AssociatedJob'
+import AssociatedJobs from '../../Sections/Client Side/Projects/AssociatedJob'
 import Analytics from '../../Sections/Client Side/Projects/Analytics'
 import HumanChat from '../../Sections/Client Side/Projects/IndividualChat'
 const DashboardView = () => <div className="flex flex-col h-full basic-font">
   {/* AI chat assisant to be imported here*/}
   <AIAssistantChat/>
 </div>
-
-const ProjectManager = () => <div className="p-6 bg-gray-50 min-h-full">
-{/*<AssociatedJobs/>*/}
-<GroupChatSpace/>
-{/*<ProjectManagers/>*/}
-{/*<Analytics/>*/}
-{/*<HumanChat/>*/}
-
-
+const ProjectOverview = () => <div className="p-6 bg-gray-50 min-h-full">
+<AssociatedJobs/>
 </div>
-
 const ProjectAnalytics = () => <div className="p-6 bg-gray-50 min-h-full">
+  <Analytics/>
 </div>
-
-const MessagesView = () => <div className="p-6 bg-gray-50 min-h-full">
-  <div className="bg-white rounded-lg p-8 shadow-sm">
-    <h3 className="text-xl font-semibold mb-4">Messages</h3>
-    <p className="text-gray-600">View all your conversations here.</p>
-  </div>
+const AgentView = () => <div className="p-6 bg-gray-50 min-h-full">
+  <ProjectManagers/>
 </div>
-
-const WalletsView = () => <div className="p-6 bg-gray-50 min-h-full">
-  <div className="bg-white rounded-lg p-8 shadow-sm">
-    <h3 className="text-xl font-semibold mb-4">Freelancers</h3>
-    <p className="text-gray-600">Browse and manage freelancers here.</p>
-  </div>
+const HumanChatView = () => <div className="p-6 bg-gray-50 min-h-full">
+<HumanChat/>
+</div>
+const GroupChatView = () => <div className="p-6 bg-gray-50 min-h-full">
+  <GroupChatSpace/>
 </div>
 
 const SettingsView = () => <div className="p-6 bg-gray-50 min-h-full">
@@ -82,6 +70,13 @@ const DashboardCl = () => {
     }
     return false;
   };
+  const getSavedMessagesDropdownState = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('dashboardMessagesDropdown');
+    return saved === 'true';
+  }
+  return false;
+};
 
   // State to track the active view - now initialized from localStorage
   const [activeView, setActiveView] = useState(getSavedView)
@@ -90,6 +85,7 @@ const DashboardCl = () => {
   const [isMobile, setIsMobile] = useState(false)
   const [userRole, setUserRole] = useState('client') // Changed default to client
   const [isProjectsDropdownOpen, setIsProjectsDropdownOpen] = useState(getSavedDropdownState)
+  const [isMessagesDropdownOpen, setIsMessagesDropdownOpen] = useState(getSavedMessagesDropdownState)
   
   // Add state for profile data
   const [profileData, setProfileData] = useState(null);
@@ -210,6 +206,16 @@ const DashboardCl = () => {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
+  // Add this new useEffect for Messages dropdown
+useEffect(() => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('dashboardMessagesDropdown', isMessagesDropdownOpen.toString());
+  }
+}, [isMessagesDropdownOpen]);
+
+// Add this new toggle function
+
+
   // Lock/unlock body scroll when sidebar opens/closes on mobile
   useEffect(() => {
     if (isMobile && isSidebarOpen) {
@@ -227,10 +233,14 @@ const DashboardCl = () => {
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen)
   }
-
+// Project Dropdown Toggler
   const toggleProjectsDropdown = () => {
     setIsProjectsDropdownOpen(!isProjectsDropdownOpen)
   }
+  // Message Dropwown Toggler
+  const toggleMessagesDropdown = () => {
+  setIsMessagesDropdownOpen(!isMessagesDropdownOpen)
+}
 
   // Handle menu item clicks
   const handleMenuClick = (view) => {
@@ -254,14 +264,15 @@ const DashboardCl = () => {
       case 'dashboard':
         return <DashboardView />;
       case 'projects': 
-        return <ProjectManager /> 
-        ;
-      case 'project-manager':
+        return <ProjectOverview /> ;
+      case 'project-analytics':
         return <ProjectAnalytics />;
-      case 'messages':
-        return <MessagesView />;
-      case 'wallets':
-        return <WalletsView />;
+      case 'pm-agent':
+        return <AgentView />;
+      case 'group-chat':
+        return <GroupChatView />;
+      case 'personal-chat':
+        return <HumanChatView />;
       case 'settings':
         return <SettingsView />;
       case'notifications':
@@ -275,11 +286,12 @@ const DashboardCl = () => {
 
   const getPageTitle = () => {
     switch(activeView) {
-      case 'messages': return 'Messages';
+      case 'pm-agent': return 'PM Agent';
       case 'dashboard': return 'AI Assistant';
-      case 'wallets': return 'Freelancers';
+      case 'group-chat': return 'Group Chat';
       case 'projects': return 'Projects';
-      case 'project-manager': return 'Project Manager';
+      case 'project-analytics': return 'Project Analytics';
+      case 'personal-chat': return 'Chat';
       case 'settings': return 'Settings';
       case 'help': return 'Help Center';
       default: return 'AI Assistant';
@@ -379,7 +391,7 @@ const DashboardCl = () => {
             <button
               onClick={toggleProjectsDropdown}
               className={`w-full flex items-center justify-between px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-                (activeView === 'project-manager' || activeView === 'project-analytics') 
+                (activeView === 'projects' || activeView === 'project-analytics' || activeView === 'pm-agent') 
                   ? 'bg-blue-50 text-blue-700' 
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
@@ -410,21 +422,90 @@ const DashboardCl = () => {
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  Projects
+                  Associated Jobs
                 </a>
                 <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    handleMenuClick('project-manager');
+                    handleMenuClick('project-analytics');
                   }}
                   className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                    activeView === 'project-manager'
+                    activeView === 'project-analytics'
                       ? 'bg-orange-50 text-orange-700'
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
-                  Project Manager
+                  Analytics
+                </a>
+                 <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleMenuClick('pm-agent');
+                  }}
+                  className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
+                    activeView === 'pm-agent'
+                      ? 'bg-orange-50 text-orange-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  PM Agent
+                </a>
+              </div>
+            )}
+          </div>
+            {/* Messages dropdown */}
+          <div className="space-y-1">
+            <button
+              onClick={toggleMessagesDropdown}
+              className={`w-full flex items-center justify-between px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+                (activeView === 'group-chat' || activeView === 'personal-chat') 
+                  ? 'bg-blue-50 text-blue-700' 
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center">
+               <MessageCircle size={18} className="mr-3" />
+                <span>Chats</span>
+              </div>
+              {isMessagesDropdownOpen ? (
+                <ChevronDown size={16} />
+              ) : (
+                <ChevronRight size={16} />
+              )}
+            </button>
+
+            {/* Dropdown content */}
+            {isMessagesDropdownOpen && (
+              <div className="ml-6 space-y-1">
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleMenuClick('group-chat');
+                  }}
+                  className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
+                    activeView === 'group-chat'
+                      ? 'bg-green-50 text-green-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Groupchat
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleMenuClick('personal-chat');
+                  }}
+                  className={`flex items-center px-3 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
+                    activeView === 'personal-chat'
+                      ? 'bg-orange-50 text-orange-700'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Chat
                 </a>
               </div>
             )}

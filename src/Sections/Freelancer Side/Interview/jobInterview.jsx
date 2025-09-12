@@ -12,7 +12,6 @@ const STATUS_MESSAGE_MAP = {
   'Evaluating freelancer responses': 'Evaluating your answers...',
   'Preparing next question': 'Preparing next question...',
   'Analyzing job requirements': 'Analyzing job requirements...',
-  // Add more mappings as needed
 };
 
 const JobInterview = () => {
@@ -21,287 +20,254 @@ const JobInterview = () => {
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
 
-  // Get interview parameters from navigation state
   const { recipient_id, chat_type } = location.state || {};
   
-  // If no interview data, redirect back to notifications
+  // If no interview data, redirect
   if (!recipient_id || !chat_type) {
     useEffect(() => {
       navigate('/notifications', { replace: true });
-    }, []);
+    }, [navigate]);
     return null;
   }
 
-  // State declarations
+  // --- State declarations ---
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [socketError, setSocketError] = useState('');
-  const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true); // Combined loading state
+  const [statusMessage, setStatusMessage] = useState('Initializing...');
   const [interviewId, setInterviewId] = useState(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-  // Authentication check
-  const checkAuthentication = () => {
-    const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
-    const userId = localStorage.getItem('user_id');
+  // --- Core logic functions moved inside useEffect for cleaner dependency management ---
 
+  useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates on unmounted component
 
-    setIsLoadingAuth(false);
-    return true;
-  };
-
-  // Initialize job interview chat
-  const initializeChat = async () => {
-    try {
-      setIsLoadingQuestion(true);
-      setStatusMessage('Connecting to interviewer...');
-
-      const API_URL = import.meta.env.VITE_API_URL;
-      const queryParams = new URLSearchParams({
-        chat_type: chat_type,
-        own_id: own_id || localStorage.getItem('user_id') || 'temp_user',
-        recipient_id: recipient_id
-      });
-      
-      const headers = {
-        'Content-Type': 'application/json',
-      };
-
-      // Enhanced token checking with debug info
+    const checkAuthentication = () => {
       const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
-      console.log('Auth Debug Info:', {
-        hasAccessJWT: !!localStorage.getItem('access_jwt'),
-        hasAccessToken: !!localStorage.getItem('access_token'),
-        userId: own_id,
-        chatType: chat_type,
-        recipientId: recipient_id,
-        tokenLength: authToken ? authToken.length : 0
-      });
+      const userId = localStorage.getItem('user_id');
+      if (!authToken || !userId) {
+        if (isMounted) {
+          setSocketError('Authentication failed. Please sign in again.');
+          setIsLoading(false);
+          setTimeout(() => navigate('/signin', { replace: true }), 2000);
+        }
+        return false;
+      }
+      return true;
+    };
 
-      if (authToken) {
-        headers['Authorization'] = `Bearer ${authToken}`;
-      } else {
-        console.warn('No authentication token found in localStorage');
-        setSocketError('No authentication token found. Please sign in again.');
-        setTimeout(() => {
-          navigate('/signin', { replace: true });
-        }, 1500);
+    const initializeChat = async () => {
+      if (!checkAuthentication()) {
         return;
       }
 
-      console.log('Making request to:', `${API_URL}/api/chat?${queryParams}`);
-      console.log('Request headers:', headers);
-
-      const response = await fetch(`${API_URL}/api/chat?${queryParams}`, {
-        method: 'GET',
-        headers: headers,
-        mode: 'cors',
-        credentials: 'include'
-      });
-
-      let chatData;
       try {
-        chatData = await response.json();
-      } catch (jsonError) {
-        if (import.meta.env.DEV) {
-          if (!socket.connected) {
-            socket.connect();
-          }
-          return;
+        if (isMounted) {
+          setIsLoading(true);
+          setStatusMessage('Connecting to interviewer...');
         }
-        throw new Error('Invalid response format from server');
-      }
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          if (!authToken) {
-            setSocketError('Please complete the signup process to start the interview.');
-            setTimeout(() => {
-              navigate('/signup', { replace: true });
-            }, 2000);
-          } else {
-            setSocketError('Session expired. Please sign in again.');
-            setTimeout(() => {
-              navigate('/signin', { replace: true });
-            }, 1000);
-          }
-          return;
-        }
-        throw new Error(chatData.error_message || `HTTP ${response.status}: Failed to initialize interview`);
-      }
-
-      if (chat_type === 'interview') {
-        if (!chatData.well_received) {
-          throw new Error('Job interview was not accepted by server');
-        }
-      }
-
-      if (!socket.connected) {
-        socket.connect();
-      }
-
-    } catch (error) {
-      let errorMessage = 'Failed to initialize job interview';
-      if (error.message.includes('Failed to fetch') || error.name === 'TypeError') {
-        if (error.message.includes('CORS') || error.toString().includes('CORS')) {
-          errorMessage = 'Connection blocked by CORS policy. Please contact support or try again later.';
-        } else {
-          errorMessage = 'Cannot connect to server. Please check your internet connection or try again later.';
-        }
-      } else if (error.message.includes('401') || error.message.includes('unrecognized')) {
-        errorMessage = 'Authentication failed. Please sign in again.';
-      } else if (error.message.includes('well_received')) {
-        errorMessage = 'Server rejected the interview request';
-      } else if (error.message.includes('API URL')) {
-        errorMessage = 'Server configuration error. Please contact support.';
-      } else {
-        errorMessage = error.message;
-      }
-
-      setSocketError(errorMessage);
-      setIsLoadingQuestion(false);
-      setStatusMessage('');
-
-      if (errorMessage.includes('sign in') || errorMessage.includes('Authentication')) {
-        setTimeout(() => {
-          navigate('/signin', { replace: true });
-        }, 2000);
-      }
-    }
-  };
-
-  // Setup socket listeners
-  const setupSocketListeners = () => {
-    socket.on('connect', () => {
-      setIsConnected(true);
-      setSocketError('');
-      
-      const userId = own_id || localStorage.getItem('user_id');
-      socket.emit('join', {
-        room_name: String(userId),
-        user: parseInt(userId)
-      });
-    });
-
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-    });
-
-    socket.on('connect_error', (error) => {
-      setSocketError('Failed to connect to interview server');
-      setIsConnected(false);
-      setIsLoadingQuestion(false);
-      setStatusMessage('');
-    });
-
-    socket.on('new_message', (data, callback) => {
-      const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
-      const newMessage = {
-        id: Date.now(),
-        sender_id: senderOwnId || 'interviewer',
-        message_content: message_content,
-        sender_tag: sender_tag || 'interviewer',
-        recipient_id: recipient_id,
-        timestamp: new Date().toISOString(),
-        questionNumber: data.questionNumber,
-        totalQuestions: data.totalQuestions,
-        isStatus: false
-      };
-      setMessages(prev => [...prev, newMessage]);
-      setIsWaitingForResponse(true);
-      setIsLoadingQuestion(false);
-      setStatusMessage('');
-
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
-
-    socket.on('control_instruction', (data, callback) => {
-      const { command, data: instructionData } = data;
-      switch (command) {
-        case 'interview_complete':
-          setInterviewComplete(true);
-          setIsWaitingForResponse(false);
-          setIsLoadingQuestion(false);
-          setStatusMessage('Interview finished!');
-          break;
-        case 'next_question':
-          setIsWaitingForResponse(true);
-          break;
-        case 'error':
-          setSocketError(instructionData?.message || 'An error occurred');
-          setIsLoadingQuestion(false);
-          setStatusMessage('');
-          break;
-       case 'redirect':
-      if (instructionData?.type === 'url' && instructionData.content) {
-        // Check if the redirect URL is '/dashboard' and change it
-        const redirectPath = instructionData.content === '/dashboard' 
-          ? '/freelancer-dashboard' 
-          : instructionData.content;
-        navigate(redirectPath); 
-      } else if (instructionData?.type === 'external_url' && instructionData.content) {
-        window.location.href = instructionData.content;
-      }
-      break;
-        default:
-          console.log('Unknown command:', command);
-      }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
-
-    socket.on('status_update', (data, callback) => {
-      if (data.update) {
-        const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
+        const API_URL = import.meta.env.VITE_API_URL;
+        const queryParams = new URLSearchParams({
+          chat_type: chat_type,
+          own_id: own_id,
+          recipient_id: recipient_id
+        });
         
-        const statusMessage = {
-          id: Date.now(),
-          sender_id: 'status', 
-          message_content: customMessage,
-          timestamp: new Date().toISOString(),
-          isStatus: true 
+        const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`,
         };
-        setMessages(prev => [...prev, statusMessage]);
-      }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
 
-    socket.on('notification', (data, callback) => {
-      const { message, type } = data;
-      if (type === 'error') {
-        setSocketError(message);
-      } else if (type === 'warning') {
-        console.warn('Notification warning:', message);
-      } else if (type === 'info') {
-        console.info('Notification info:', message);
-      }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
-  };
+        const response = await fetch(`${API_URL}/api/chat?${queryParams}`, {
+          method: 'GET',
+          headers: headers,
+          mode: 'cors',
+          credentials: 'include'
+        });
 
-  // Cleanup socket listeners
-  const cleanupSocketListeners = () => {
-    socket.off('connect');
-    socket.off('disconnect');
-    socket.off('connect_error');
-    socket.off('new_message');
-    socket.off('control_instruction');
-    socket.off('status_update');
-    socket.off('notification');
-  };
+        const chatData = await response.json();
 
-  // Utility functions
+        if (!response.ok) {
+          if (isMounted) {
+            setSocketError(chatData.error_message || `HTTP ${response.status}: Failed to initialize interview`);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        if (chat_type === 'interview' && !chatData.well_received) {
+          if (isMounted) {
+            setSocketError('Job interview was not accepted by server');
+            setIsLoading(false);
+          }
+          return;
+        }
+        
+        // This is the key fix: Connect socket AFTER a successful API call
+        if (!socket.connected) {
+          socket.connect();
+        }
+
+        if (isMounted) {
+          setIsLoading(false); // Hide the main loader after successful API call
+        }
+
+      } catch (error) {
+        if (isMounted) {
+          let errorMessage = 'Failed to initialize job interview';
+          if (error.message.includes('Failed to fetch')) {
+            errorMessage = 'Cannot connect to server. Check your internet connection.';
+          } else if (error.message.includes('401')) {
+            errorMessage = 'Authentication failed. Please sign in again.';
+          } else {
+            errorMessage = error.message;
+          }
+          setSocketError(errorMessage);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    // Socket listeners setup
+    const setupSocketListeners = () => {
+      socket.on('connect', () => {
+        if (isMounted) {
+          setIsConnected(true);
+          setSocketError('');
+          setStatusMessage('Connected. Awaiting first question...'); // New status
+        }
+        const userId = own_id || localStorage.getItem('user_id');
+        socket.emit('join', { room_name: String(userId), user: parseInt(userId) });
+      });
+
+      socket.on('disconnect', () => {
+        if (isMounted) {
+          setIsConnected(false);
+          setStatusMessage('Disconnected. Reconnecting...');
+        }
+      });
+
+      socket.on('connect_error', (error) => {
+        if (isMounted) {
+          setSocketError('Failed to connect to interview server.');
+          setIsConnected(false);
+          setIsLoading(false);
+        }
+      });
+      
+      // ... (all other socket listeners)
+      socket.on('new_message', (data, callback) => {
+          if (isMounted) {
+            const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
+            const newMessage = {
+              id: Date.now(),
+              sender_id: senderOwnId || 'interviewer',
+              message_content: message_content,
+              sender_tag: sender_tag || 'interviewer',
+              recipient_id: recipient_id,
+              timestamp: new Date().toISOString(),
+              questionNumber: data.questionNumber,
+              totalQuestions: data.totalQuestions,
+              isStatus: false
+            };
+            setMessages(prev => [...prev, newMessage]);
+            setIsWaitingForResponse(true);
+            setIsLoading(false); // New: stop loading after first message
+            setStatusMessage('');
+          }
+          if (callback && typeof callback === 'function') callback();
+      });
+
+      socket.on('control_instruction', (data, callback) => {
+          if (isMounted) {
+            const { command, data: instructionData } = data;
+            switch (command) {
+              case 'interview_complete':
+                setInterviewComplete(true);
+                setIsWaitingForResponse(false);
+                setIsLoading(false);
+                setStatusMessage('Interview finished!');
+                break;
+              case 'next_question':
+                setIsWaitingForResponse(true);
+                setIsLoading(false); // Ensure loading stops here
+                break;
+              case 'error':
+                setSocketError(instructionData?.message || 'An error occurred');
+                setIsLoading(false);
+                setStatusMessage('');
+                break;
+              case 'redirect':
+                const redirectPath = instructionData.content === '/dashboard' 
+                  ? '/freelancer-dashboard' 
+                  : instructionData.content;
+                navigate(redirectPath);
+                break;
+            }
+          }
+          if (callback && typeof callback === 'function') callback();
+      });
+
+      socket.on('status_update', (data, callback) => {
+          if (isMounted && data.update) {
+            const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
+            const statusMessage = {
+              id: Date.now(),
+              sender_id: 'status', 
+              message_content: customMessage,
+              timestamp: new Date().toISOString(),
+              isStatus: true 
+            };
+            setMessages(prev => [...prev, statusMessage]);
+          }
+          if (callback && typeof callback === 'function') callback();
+      });
+
+      socket.on('notification', (data, callback) => {
+          if (isMounted) {
+            if (data.type === 'error') setSocketError(data.message);
+            console.log(`Notification ${data.type}: ${data.message}`);
+          }
+          if (callback && typeof callback === 'function') callback();
+      });
+    };
+
+    const cleanupSocketListeners = () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('new_message');
+      socket.off('control_instruction');
+      socket.off('status_update');
+      socket.off('notification');
+    };
+
+    // Initial setup
+    initializeChat();
+    setupSocketListeners();
+    
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      cleanupSocketListeners();
+      if (socket.connected) {
+        socket.disconnect(); // Added to disconnect on component unmount
+      }
+    };
+  }, [navigate, own_id, chat_type, recipient_id]);
+
+  // Scroll to bottom effect
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  // Utility and handler functions
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -312,11 +278,9 @@ const JobInterview = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     if (currentInput.trim() === '' || !isWaitingForResponse || !isConnected) {
       return;
     }
-
     const userMessage = {
       id: Date.now(),
       sender_id: parseInt(own_id),
@@ -325,51 +289,28 @@ const JobInterview = () => {
       timestamp: new Date().toISOString(),
       isStatus: false
     };
-
     setMessages(prev => [...prev, userMessage]);
-
     socket.emit('send_message', {
       message_content: currentInput.trim(),
       own_id: parseInt(own_id || localStorage.getItem('user_id')),
       recipient_id: recipient_id
-    }, () => {
     });
-
     setCurrentInput('');
     setIsWaitingForResponse(false);
-    setIsLoadingQuestion(true);
+    setIsLoading(true); // New: set loading state while waiting for AI response
     setStatusMessage('Processing your answer...');
   };
 
-  const handleBackToNotifications = () => {
-    navigate('/notifications');
-  };
-
-  const handleContinueToDashboard = () => {
-    navigate('/task');
-  };
-
-  // Effects
-  useEffect(() => {
-    if (!checkAuthentication()) {
-      return;
-    }
-    initializeChat();
-    setupSocketListeners();
-    return cleanupSocketListeners;
-  }, [navigate, own_id, chat_type, recipient_id, location.state]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Loading state
-  if (isLoadingAuth) {
+  const handleBackToNotifications = () => navigate('/notifications');
+  const handleContinueToDashboard = () => navigate('/task');
+  
+  // --- Render logic ---
+  if (isLoading && !socketError) { // Changed this to use the new `isLoading` state
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
-        <Loader2 className="h-16 w-16 text-blue-600 mb-4 animate-spin" />
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">Setting Up Job Interview</h2>
-        <p className="text-gray-600">Please wait while we connect you to the interviewer...</p>
+        <Loader2 className="h-16 w-16 text-green-600 mb-4 animate-spin" />
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Connecting</h2>
+        <p className="text-gray-600">{statusMessage}</p>
       </div>
     );
   }
@@ -379,55 +320,21 @@ const JobInterview = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
         <XCircle className="h-16 w-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-800 mb-2">
-          {socketError.includes('Authentication') || socketError.includes('sign in')
-            ? 'Authentication Required'
-            : 'Connection Error'}
-        </h2>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">Connection Error</h2>
         <p className="text-gray-600 mb-4 max-w-md">{socketError}</p>
-        {import.meta.env.DEV && (
-          <div className="mb-4 p-3 bg-yellow-100 rounded-lg text-sm text-left max-w-md">
-            <strong>Debug Info:</strong><br />
-            User ID: {own_id || localStorage.getItem('user_id') || 'null'}<br />
-            Has Token: {localStorage.getItem('access_jwt') ? 'Yes' : 'No'}<br />
-            API URL: {import.meta.env.VITE_API_URL || 'Not set'}<br />
-            User Role: {localStorage.getItem('userRole') || 'Not set'}<br />
-            Chat Type: {chat_type || 'Not set'}<br />
-            Recipient ID: {recipient_id || 'Not set'}
-          </div>
-        )}
-        <div className="space-y-2">
-          {!socketError.includes('Authentication') && !socketError.includes('sign in') && (
-            <button
-              onClick={() => {
-                setSocketError('');
-                window.location.reload();
-              }}
-              className="py-2 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-md transition-all mr-2"
-            >
-              Try Again
-            </button>
-          )}
-          <button
-            onClick={handleBackToNotifications}
-            className="py-2 px-6 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow-md transition-all mr-2"
-          >
-            Back to Notifications
-          </button>
-          <button
-            onClick={() => navigate('/signin', { replace: true })}
-            className="py-2 px-6 bg-red-500 hover:bg-red-600 text-white rounded-md shadow-md transition-all"
-          >
-            Go to Sign In
-          </button>
-        </div>
+        <button
+          onClick={() => window.location.reload()}
+          className="py-2 px-6 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-md transition-all mr-2"
+        >
+          Try Again
+        </button>
       </div>
     );
   }
 
-  // Main job interview interface
+  // Main interface
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-green-50 to-white flex justify-center py-12">
+   <div className="w-full min-h-screen bg-gradient-to-b from-green-50 to-white flex justify-center py-12">
       <div className="w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl">
         {/* Header */}
         <div className="bg-green-600 text-white rounded-t-xl px-8 py-6 border-b border-gray-200">
