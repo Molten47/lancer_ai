@@ -37,6 +37,7 @@ const ProjectManager = ({
   // New state variables for dynamic ID
   const [projectId, setProjectId] = useState(null);
   const [dynamicRecipientId, setDynamicRecipientId] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Fetch projects to get dynamic project_id
   const fetchProjects = async () => {
@@ -72,24 +73,22 @@ const ProjectManager = ({
         const fetchedProjectId = targetProject.id;
         setProjectId(fetchedProjectId);
         // Construct and set the dynamic recipient ID
-        setDynamicRecipientId(`project_manager_${fetchedProjectId}`);
+        const recipientId = `project_manager_${fetchedProjectId}`;
+        setDynamicRecipientId(recipientId);
+        return recipientId; // Return the ID for immediate use
       } else {
         setSocketError('No projects found. Cannot initialize project manager chat.');
+        return null;
       }
     } catch (err) {
       console.error('Error fetching projects:', err);
       setSocketError('Failed to load project data. Please try again.');
+      return null;
     }
   };
 
   // Chat Initialization - Fixed API integration
-  const initializeChat = async () => {
-    // Only proceed if dynamicRecipientId is available
-    if (!dynamicRecipientId) {
-      console.log('Waiting for dynamic recipient ID to be set...');
-      return;
-    }
-
+  const initializeChat = async (recipientId) => {
     try {
       setIsLoadingQuestion(true);
       setStatusMessage('Initializing chat...');
@@ -103,7 +102,7 @@ const ProjectManager = ({
       const queryParams = new URLSearchParams({
         chat_type: chat_type,
         own_id: userId,
-        recipient_id: dynamicRecipientId // Use the dynamic ID
+        recipient_id: recipientId
       });
 
       const headers = {
@@ -152,11 +151,9 @@ const ProjectManager = ({
         setMessages(formattedMessages);
       }
 
-      if (!socket.connected) {
-        socket.connect();
-      }
       setIsLoadingQuestion(false);
       setStatusMessage('');
+      return true;
     } catch (error) {
       console.error('Chat initialization error:', error);
       let errorMessage = 'Failed to initialize chat';
@@ -173,16 +170,17 @@ const ProjectManager = ({
       if (errorMessage.includes('sign in') || errorMessage.includes('Authentication')) {
         setTimeout(() => navigate('/signin', { replace: true }), 2000);
       }
+      return false;
     }
   };
 
   // Helper function to create message filter
-  const createProjectManagerMessageFilter = (currentUserId, assistantId) => { // Now takes assistantId as a parameter
+  const createProjectManagerMessageFilter = (currentUserId, assistantId) => {
     return (messageData) => {
       if (!messageData || !currentUserId || !assistantId) return false;
-      const { sender_id, recipient_id, sender_tag } = messageData;
+      const { own_id, recipient_id, sender_tag } = messageData;
       const currentUserStr = String(currentUserId);
-      const senderStr = String(sender_id);
+      const senderStr = String(own_id);
       const recipientStr = String(recipient_id);
       const assistantStr = String(assistantId);
       const isUserToAssistant = senderStr === currentUserStr && recipientStr === assistantStr;
@@ -192,79 +190,35 @@ const ProjectManager = ({
     };
   };
 
-  // Initialize component
-  useEffect(() => {
-    const init = async () => {
-      if (checkAuthentication()) {
-        await fetchProjects();
-        setupSocketListeners();
-      }
-    };
-    init();
-    return () => {
-      cleanupSocketListeners();
-    };
-  }, []);
+  // Socket connection management - Fixed to wait for recipient ID
+  const setupSocketListeners = (recipientId) => {
+    // Clean up existing listeners first
+    cleanupSocketListeners();
 
-  // New useEffect to trigger chat initialization after fetching project ID
-  useEffect(() => {
-    if (dynamicRecipientId) {
-      initializeChat();
-    }
-  }, [dynamicRecipientId]);
-
-  // Authorization Checker (no changes needed here)
-  const handleAuthError = (message, route, delay = 1500) => {
-    setSocketError(message);
-    setIsLoadingAuth(false);
-    setTimeout(() => {
-      navigate(route, { replace: true });
-    }, delay);
-  };
-
-  const checkAuthentication = () => {
-    const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
-    const userId = localStorage.getItem('user_id');
-    const userRole = localStorage.getItem('userRole');
-    if (!userId && !userRole) {
-      handleAuthError('Please complete the signup process first.', '/signup');
-      return false;
-    }
-    if (!token && userRole) {
-      const fromProfileSetup = location.state?.fromProfileSetup;
-      if (!fromProfileSetup) {
-        handleAuthError('Please complete your profile setup first.', '/profile_setup', { state: { role: userRole } });
-        return false;
-      }
-    }
-    if (!userId && userRole) {
-      handleAuthError('Session data incomplete. Please sign in again.', '/signin');
-      return false;
-    }
-    setIsLoadingAuth(false);
-    return true;
-  };
-
-  // Socket connection management
-  const setupSocketListeners = () => {
     socket.on('connect', () => {
       setIsConnected(true);
       setSocketError('');
       console.log('✅ Socket connected successfully!');
       const userId = own_id || localStorage.getItem('user_id');
-      if (userId) {
+      if (userId && recipientId) {
         socket.emit('join', {
           room_name: String(userId),
           user: parseInt(userId)
         });
-        // Join the PM chat room dynamically
-        if (dynamicRecipientId) {
-          socket.emit('join', { room_name: dynamicRecipientId, user: parseInt(userId) });
-        }
+        // Join the PM chat room with the correct recipient ID
+        socket.emit('join', { 
+          room_name: recipientId, 
+          user: parseInt(userId) 
+        });
+        console.log(`✅ Joined PM room: ${recipientId}`);
       }
     });
 
-    socket.on('disconnect', () => setIsConnected(false));
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+      console.log('❌ Socket disconnected');
+    });
+
     socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
       setSocketError('Failed to connect to assistant server');
@@ -275,13 +229,14 @@ const ProjectManager = ({
 
     socket.on('new_message', (data, callback) => {
       const userId = own_id || localStorage.getItem('user_id');
-      const messageFilter = createProjectManagerMessageFilter(userId, dynamicRecipientId); // Pass the dynamic ID
+      const messageFilter = createProjectManagerMessageFilter(userId, recipientId);
       if (!messageFilter(data)) {
         console.log('Message filtered out - not for this chat:', data);
         if (callback && typeof callback === 'function') callback();
         return;
       }
       const { message_content, sender_tag, sender_id, recipient_id } = data;
+      
       const newMessage = {
         id: Date.now(),
         type: sender_tag === 'ai' ? 'ai' : 'user',
@@ -365,6 +320,89 @@ const ProjectManager = ({
     socket.off('notification');
   };
 
+  // Initialize component - Fixed sequence
+  useEffect(() => {
+    const init = async () => {
+      if (!checkAuthentication()) return;
+      
+      try {
+        // First fetch projects and get recipient ID
+        const recipientId = await fetchProjects();
+        if (!recipientId) return;
+
+        // Then initialize chat with the recipient ID
+        const chatInitialized = await initializeChat(recipientId);
+        if (!chatInitialized) return;
+
+        // Finally setup socket listeners with the recipient ID
+        setupSocketListeners(recipientId);
+
+        // Connect socket if not already connected
+        if (!socket.connected) {
+          socket.connect();
+        } else {
+          // If already connected, manually trigger the join logic
+          const userId = own_id || localStorage.getItem('user_id');
+          if (userId && recipientId) {
+            socket.emit('join', {
+              room_name: String(userId),
+              user: parseInt(userId)
+            });
+            socket.emit('join', { 
+              room_name: recipientId, 
+              user: parseInt(userId) 
+            });
+            setIsConnected(true);
+            console.log(`✅ Manually joined PM room: ${recipientId}`);
+          }
+        }
+
+        setIsInitialized(true);
+      } catch (error) {
+        console.error('Initialization error:', error);
+        setSocketError('Failed to initialize chat. Please refresh the page.');
+      }
+    };
+
+    init();
+
+    return () => {
+      cleanupSocketListeners();
+    };
+  }, []);
+
+  // Authorization Checker (no changes needed here)
+  const handleAuthError = (message, route, delay = 1500) => {
+    setSocketError(message);
+    setIsLoadingAuth(false);
+    setTimeout(() => {
+      navigate(route, { replace: true });
+    }, delay);
+  };
+
+  const checkAuthentication = () => {
+    const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+    const userId = localStorage.getItem('user_id');
+    const userRole = localStorage.getItem('userRole');
+    if (!userId && !userRole) {
+      handleAuthError('Please complete the signup process first.', '/signup');
+      return false;
+    }
+    if (!token && userRole) {
+      const fromProfileSetup = location.state?.fromProfileSetup;
+      if (!fromProfileSetup) {
+        handleAuthError('Please complete your profile setup first.', '/profile_setup', { state: { role: userRole } });
+        return false;
+      }
+    }
+    if (!userId && userRole) {
+      handleAuthError('Session data incomplete. Please sign in again.', '/signin');
+      return false;
+    }
+    setIsLoadingAuth(false);
+    return true;
+  };
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -381,7 +419,7 @@ const ProjectManager = ({
       timestamp: new Date(),
       sender: 'You',
       sender_id: userId,
-      recipient_id: dynamicRecipientId, // Use the dynamic ID
+      recipient_id: dynamicRecipientId,
       isStatus: false
     };
 
@@ -389,7 +427,7 @@ const ProjectManager = ({
     socket.emit('send_message', {
       message_content: inputValue.trim(),
       own_id: parseInt(userId),
-      recipient_id: dynamicRecipientId, // Use the dynamic ID
+      recipient_id: dynamicRecipientId,
     });
     if (onMessageSent) onMessageSent(userMessage);
     setInputValue('');
@@ -414,13 +452,16 @@ const ProjectManager = ({
     });
   };
 
-  if (isLoadingAuth || (!dynamicRecipientId && !socketError)) {
+  if (isLoadingAuth || !isInitialized) {
     return (
       <div className={`flex flex-col h-full bg-gray-50 ${className}`}>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600">Loading your project data...</p>
+            {statusMessage && (
+              <p className="text-sm text-gray-500 mt-2">{statusMessage}</p>
+            )}
           </div>
         </div>
       </div>
@@ -570,7 +611,7 @@ const ProjectManager = ({
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="What do you want to get done?"
-              disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId} // Disable if no ID
+              disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId}
               className="w-full px-6 py-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all text-sm resize-none"
               minRows={1}
               maxRows={6}
@@ -586,7 +627,7 @@ const ProjectManager = ({
           </div>
           <button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId} // Disable if no ID
+            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId}
             className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md flex-shrink-0"
           >
             {isLoadingAnswer ? (
