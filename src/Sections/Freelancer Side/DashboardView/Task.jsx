@@ -152,7 +152,7 @@ const JobTask = ({ task_type = 'job_interviewer' }) => {
         console.error('Failed to decode token:', e.message);
       }
 
-      const API_URL = 'http://localhost:8000'; // Hardcoded URL to fix the `import.meta` issue
+      const API_URL = import.meta.env.VITE_API_URL; // Hardcoded URL to fix the `import.meta` issue
       console.log('API_URL:', API_URL);
 
       // INITIATION REQUEST: Send status, start_time, and the dynamically fetched job_id
@@ -250,7 +250,7 @@ const JobTask = ({ task_type = 'job_interviewer' }) => {
       formData.append('elapsed_time', elapsed_time.toString());
       formData.append('file', uploadedFile, uploadedFile.name); // Correct way to append a file
 
-      const API_URL = 'http://localhost:8000'; // Hardcoded URL to fix the `import.meta` issue
+      const API_URL = import.meta.env.VITE_API_URL; // 
       console.log('Sending submission request to:', `${API_URL}/api/task/${taskIdentifier}`);
       console.log('Submission FormData fields:', { 
         status: 'submission',

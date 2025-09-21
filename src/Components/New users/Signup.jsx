@@ -18,8 +18,6 @@ const Signup = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
-  // No useEffect hooks for localStorage or sessionStorage needed.
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -110,11 +108,11 @@ const Signup = () => {
       if (data.well_received && data.access_jwt && data.refresh_jwt) {
         console.log('Signup successful:', data);
 
-        // Store tokens and role as per the documentation
+        // Store tokens and role using formData.role instead of data.role
         try {
           localStorage.setItem('access_token', data.access_jwt);
           localStorage.setItem('refresh_token', data.refresh_jwt);
-          localStorage.setItem('userRole', data.role);
+          localStorage.setItem('userRole', formData.role);
           // showSignupSuccess is not part of the provided documentation,
           // but kept for the navigation logic to work as intended
           localStorage.setItem('showSignupSuccess', 'true'); 
@@ -126,7 +124,7 @@ const Signup = () => {
 
         navigate('/profile_setup', {
           state: {
-            role: data.role,
+            role: formData.role,
             showSuccessAlert: true
           }
         });
@@ -147,9 +145,11 @@ const Signup = () => {
   };
 
   const handleGoogleSignIn = () => {
-    console.log('Google sign-in initiated');
-    // As per documentation, no local storage data should be used or cleared.
-    // This is the appropriate place for a redirect to a Google OAuth flow.
+    console.log('Google sign-in initiated - COMMENTED OUT FOR DEBUG');
+    // GOOGLE SIGN-IN BACKEND CALLS COMMENTED OUT
+    /*
+    // Google sign-in logic would go here
+    */
   };
 
   const togglePasswordVisibility = (field) => {
@@ -159,8 +159,6 @@ const Signup = () => {
       setShowConfirmPassword(!showConfirmPassword);
     }
   };
-
-  // Removed handleClearForm since form data is no longer persisted.
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">

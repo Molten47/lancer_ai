@@ -63,11 +63,14 @@ const Signin = () => {
       setErrors(validationErrors);
       return;
     }
-
+    console.log('Setting isLoading to true');
     setIsLoading(true);
 
     try {
       const API_URL = import.meta.env.VITE_API_URL;
+      {/*Added for debugging purpose*/}
+      console.log('Sending login data:', { email: formData.email, password: '***' });
+
       const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: {
@@ -78,6 +81,9 @@ const Signin = () => {
           password: formData.password
         })
       });
+
+      console.log('HTTP Status Code:', response.status);
+      console.log('Response is OK:', response.ok);
 
       const data = await response.json();
 

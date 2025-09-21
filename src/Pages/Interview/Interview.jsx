@@ -211,7 +211,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         totalQuestions: data.totalQuestions,
         isStatus: false
       };
+
       setMessages(prev => [...prev, newMessage]);
+      
       setIsWaitingForResponse(true);
       setIsLoadingQuestion(false);
       setStatusMessage('');

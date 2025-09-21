@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Settings, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import socket from '../../../Components/socket';
+import socket, { 
+  isSocketConnected, 
+  joinRoom, 
+  getConnectionStatus, 
+  getAPIUrl 
+} from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
 const STATUS_MESSAGE_MAP = {
@@ -21,7 +26,8 @@ const JobsProjectManagerChat = ({
   const navigate = useNavigate();
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  // IMPROVED: Initialize with actual socket connection status
+  const [isConnected, setIsConnected] = useState(socket.connected);
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -40,7 +46,7 @@ const JobsProjectManagerChat = ({
   const fetchJobs = async () => {
     try {
       const token = localStorage.getItem('access_jwt');
-      const API_URL = import.meta.env.VITE_API_URL;
+      const API_URL = getAPIUrl();
       const response = await fetch(`${API_URL}/api/jobs`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -69,7 +75,7 @@ const JobsProjectManagerChat = ({
     }
   };
 
-  // Chat Initialization - Fixed API integration
+  // Chat Initialization - Updated to use centralized API URL
   const initializeChat = async () => {
     if (!dynamicRecipientId) {
       console.log('Waiting for dynamic recipient ID to be set...');
@@ -78,7 +84,7 @@ const JobsProjectManagerChat = ({
     try {
       setIsLoadingQuestion(true);
       setStatusMessage('Initializing chat...');
-      const API_URL = import.meta.env.VITE_API_URL;
+      const API_URL = getAPIUrl();
       if (!API_URL) throw new Error('API URL not configured.');
 
       const userId = own_id || localStorage.getItem('user_id') || 'temp_user';
@@ -121,7 +127,11 @@ const JobsProjectManagerChat = ({
         }));
         setMessages(formattedMessages);
       }
-      if (!socket.connected) socket.connect();
+      
+      // Join the project manager chat room using the centralized socket
+      const userId_int = parseInt(userId);
+      joinRoom(dynamicRecipientId, userId_int);
+      
       setIsLoadingQuestion(false);
       setStatusMessage('');
     } catch (error) {
@@ -157,6 +167,39 @@ const JobsProjectManagerChat = ({
       return isUserToAssistant || isAssistantToUser || isAIFromAssistant;
     };
   };
+
+  // IMPROVED: Better connection monitoring with immediate socket state sync
+  useEffect(() => {
+    // Set initial connection state
+    setIsConnected(socket.connected);
+
+    // Listen for socket connection events
+    const handleConnect = () => {
+      setIsConnected(true);
+      setSocketError(''); // Clear any connection errors
+    };
+
+    const handleDisconnect = () => {
+      setIsConnected(false);
+    };
+
+    const handleConnectError = (error) => {
+      setIsConnected(false);
+      console.error('Socket connection error:', error);
+    };
+
+    // Add event listeners
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect_error', handleConnectError);
+
+    // Cleanup function
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect_error', handleConnectError);
+    };
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -208,32 +251,8 @@ const JobsProjectManagerChat = ({
     return true;
   };
 
+  // Updated socket listeners using the centralized socket
   const setupSocketListeners = () => {
-    socket.on('connect', () => {
-      setIsConnected(true);
-      setSocketError('');
-      console.log('✅ Socket connected successfully!');
-      const userId = own_id || localStorage.getItem('user_id');
-      if (userId) {
-        socket.emit('join', {
-          room_name: String(userId),
-          user: parseInt(userId)
-        });
-        if (dynamicRecipientId) {
-          socket.emit('join', { room_name: dynamicRecipientId, user: parseInt(userId) });
-        }
-      }
-    });
-
-    socket.on('disconnect', () => setIsConnected(false));
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      setSocketError('Failed to connect to assistant server');
-      setIsConnected(false);
-      setIsLoadingAnswer(false);
-      setStatusMessage('');
-    });
-
     socket.on('new_message', (data, callback) => {
       const userId = own_id || localStorage.getItem('user_id');
       const messageFilter = createProjectManagerMessageFilter(userId, dynamicRecipientId);
@@ -313,16 +332,24 @@ const JobsProjectManagerChat = ({
       else if (type === 'info') console.info('Notification info:', message);
       if (callback && typeof callback === 'function') callback();
     });
+
+    // Handle connection errors specifically for this component
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error in chat:', error);
+      setSocketError('Failed to connect to assistant server');
+      setIsLoadingAnswer(false);
+      setStatusMessage('');
+    });
   };
 
   const cleanupSocketListeners = () => {
-    socket.off('connect');
-    socket.off('disconnect');
-    socket.off('connect_error');
+    // Only remove listeners that are specific to this component
     socket.off('new_message');
     socket.off('control_instruction');
     socket.off('status_update');
     socket.off('notification');
+    socket.off('connect_error');
+    // Don't remove connect/disconnect listeners as they're managed by the centralized socket
   };
 
   useEffect(() => {

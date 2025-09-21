@@ -127,7 +127,7 @@ const Setup = () => {
     "graphics designer",
     "UI/UX Design",
     "Content Writing",
-    "Copywriting",
+    "copy writter",
     "Digital Marketing",
     "seo expert",
     "Social Media Management",

@@ -7,7 +7,7 @@ const DashboardView = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const VITE_API_URL = import.meta.env.VITE_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const StarRating = ({ rating, maxRating = 10 }) => {
     // StarRating component logic...
@@ -72,7 +72,7 @@ const DashboardView = () => {
           throw new Error('Authentication token not found.');
         }
 
-        const response = await fetch(`${VITE_API_URL}/api/jobs`, {
+        const response = await fetch(`${API_URL}/api/jobs`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -101,7 +101,7 @@ const DashboardView = () => {
     };
 
     fetchJobs();
-  }, [VITE_API_URL]);
+  }, [API_URL]);
 
   const formattedJobs = jobs.map(job => {
     const statusColor = job.status === 'inactive'

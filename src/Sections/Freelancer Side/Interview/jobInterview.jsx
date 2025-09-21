@@ -20,13 +20,21 @@ const JobInterview = () => {
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
 
+  console.log('🚀 JobInterview component initialized (Agent Mode)');
+  console.log('📍 Location state:', location.state);
+  console.log('👤 Own ID from localStorage:', own_id);
+
   const { recipient_id, chat_type } = location.state || {};
-  
+  console.log('🎯 Interview details - recipient_id:', recipient_id, 'chat_type:', chat_type);
+ 
   // If no interview data, redirect
-  if (!recipient_id || !chat_type) {
-    useEffect(() => {
+  useEffect(() => {
+    if (!recipient_id || !chat_type) {
       navigate('/notifications', { replace: true });
-    }, [navigate]);
+    }
+  }, [recipient_id, chat_type, navigate]);
+
+  if (!recipient_id || !chat_type) {
     return null;
   }
 
@@ -35,40 +43,52 @@ const JobInterview = () => {
   const [currentInput, setCurrentInput] = useState('');
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(socket.connected);
   const [socketError, setSocketError] = useState('');
-  const [isLoading, setIsLoading] = useState(true); // Combined loading state
+  const [isLoading, setIsLoading] = useState(true);
   const [statusMessage, setStatusMessage] = useState('Initializing...');
-  const [interviewId, setInterviewId] = useState(null);
+  const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
 
-  // --- Core logic functions moved inside useEffect for cleaner dependency management ---
+  console.log('📊 Initial state setup complete');
 
   useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted component
+    console.log('🔄 Main useEffect triggered (Agent Mode)');
+    let isMounted = true;
 
     const checkAuthentication = () => {
+      console.log('🔐 Checking authentication...');
       const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
+      console.log('🔑 Auth token exists:', !!authToken);
+      console.log('👤 User ID exists:', !!userId);
+      
       if (!authToken || !userId) {
+        console.log('❌ Authentication failed - missing token or user ID');
         if (isMounted) {
           setSocketError('Authentication failed. Please sign in again.');
           setIsLoading(false);
-          setTimeout(() => navigate('/signin', { replace: true }), 2000);
+          setTimeout(() => {
+            console.log('↪️ Redirecting to signin due to auth failure');
+            navigate('/signin', { replace: true });
+          }, 2000);
         }
         return false;
       }
+      console.log('✅ Authentication check passed');
       return true;
     };
 
-    const initializeChat = async () => {
+    const initializeInterview = async () => {
+      console.log('🔧 Initializing interview (Agent Mode)...');
       if (!checkAuthentication()) {
         return;
       }
 
       try {
         if (isMounted) {
+          console.log('⏳ Setting loading state and status');
           setIsLoading(true);
-          setStatusMessage('Connecting to interviewer...');
+          setStatusMessage('Connecting to interview agent...');
         }
 
         const API_URL = import.meta.env.VITE_API_URL;
@@ -78,12 +98,16 @@ const JobInterview = () => {
           recipient_id: recipient_id
         });
         
+        console.log('🌐 API URL:', API_URL);
+        console.log('📋 Query params:', queryParams.toString());
+       
         const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
         const headers = {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`,
         };
 
+        console.log('📡 Making API request to initialize interview...');
         const response = await fetch(`${API_URL}/api/chat?${queryParams}`, {
           method: 'GET',
           headers: headers,
@@ -91,9 +115,12 @@ const JobInterview = () => {
           credentials: 'include'
         });
 
+        console.log('📥 API response status:', response.status);
         const chatData = await response.json();
+        console.log('📄 Chat data received:', chatData);
 
         if (!response.ok) {
+          console.log('❌ API request failed:', chatData.error_message);
           if (isMounted) {
             setSocketError(chatData.error_message || `HTTP ${response.status}: Failed to initialize interview`);
             setIsLoading(false);
@@ -102,23 +129,33 @@ const JobInterview = () => {
         }
 
         if (chat_type === 'interview' && !chatData.well_received) {
+          console.log('❌ Interview not accepted by server');
           if (isMounted) {
             setSocketError('Job interview was not accepted by server');
             setIsLoading(false);
           }
           return;
         }
-        
-        // This is the key fix: Connect socket AFTER a successful API call
-        if (!socket.connected) {
-          socket.connect();
-        }
-
+       
+        // After successful API call, just mark as ready (no room joining)
         if (isMounted) {
-          setIsLoading(false); // Hide the main loader after successful API call
+          console.log('✅ API call successful, interview ready');
+          setIsLoading(false);
+          setStatusMessage('Connected. Awaiting first question...');
+          
+          // Notify server about interview session start (without room joining)
+          if (socket.connected) {
+            console.log('📤 Notifying server about interview start');
+            socket.emit('interview_session_start', {
+              recipient_id: recipient_id,
+              own_id: parseInt(own_id),
+              chat_type: chat_type
+            });
+          }
         }
 
       } catch (error) {
+        console.log('❌ Error in initializeInterview:', error);
         if (isMounted) {
           let errorMessage = 'Failed to initialize job interview';
           if (error.message.includes('Failed to fetch')) {
@@ -128,25 +165,39 @@ const JobInterview = () => {
           } else {
             errorMessage = error.message;
           }
+          console.log('💥 Setting error message:', errorMessage);
           setSocketError(errorMessage);
           setIsLoading(false);
         }
       }
     };
 
-    // Socket listeners setup
+    // Socket listeners setup (simplified for agent mode)
     const setupSocketListeners = () => {
+      console.log('🔌 Setting up socket listeners (Agent Mode)...');
+      
+      // Connection status listeners
       socket.on('connect', () => {
+        console.log('🟢 Socket connected (Agent Mode)');
         if (isMounted) {
           setIsConnected(true);
           setSocketError('');
-          setStatusMessage('Connected. Awaiting first question...'); // New status
+          setStatusMessage('Connected to interview agent...');
+          
+          // Notify about session start if we have interview data
+          if (recipient_id && own_id) {
+            console.log('📤 Notifying server about interview session');
+            socket.emit('interview_session_start', {
+              recipient_id: recipient_id,
+              own_id: parseInt(own_id),
+              chat_type: chat_type
+            });
+          }
         }
-        const userId = own_id || localStorage.getItem('user_id');
-        socket.emit('join', { room_name: String(userId), user: parseInt(userId) });
       });
 
       socket.on('disconnect', () => {
+        console.log('🔴 Socket disconnected');
         if (isMounted) {
           setIsConnected(false);
           setStatusMessage('Disconnected. Reconnecting...');
@@ -154,133 +205,215 @@ const JobInterview = () => {
       });
 
       socket.on('connect_error', (error) => {
+        console.log('💥 Socket connection error:', error);
         if (isMounted) {
           setSocketError('Failed to connect to interview server.');
           setIsConnected(false);
           setIsLoading(false);
         }
       });
-      
-      // ... (all other socket listeners)
+     
+      // Interview session confirmation (replaces room joined)
+      socket.on('interview_session_ready', (data) => {
+        console.log('🎉 Interview session ready event received:', data);
+        if (isMounted && data.recipient_id === recipient_id) {
+          console.log('✅ Interview session confirmed ready:', data);
+          setStatusMessage('Connected. Awaiting first question...');
+          setIsLoading(false);
+        }
+      });
+
+      // Interview-specific listeners
       socket.on('new_message', (data, callback) => {
-          if (isMounted) {
-            const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
-            const newMessage = {
-              id: Date.now(),
-              sender_id: senderOwnId || 'interviewer',
-              message_content: message_content,
-              sender_tag: sender_tag || 'interviewer',
-              recipient_id: recipient_id,
-              timestamp: new Date().toISOString(),
-              questionNumber: data.questionNumber,
-              totalQuestions: data.totalQuestions,
-              isStatus: false
-            };
-            setMessages(prev => [...prev, newMessage]);
-            setIsWaitingForResponse(true);
-            setIsLoading(false); // New: stop loading after first message
-            setStatusMessage('');
-          }
-          if (callback && typeof callback === 'function') callback();
+        console.log('💬 New message received:', data);
+        if (isMounted) {
+          const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
+          const newMessage = {
+            id: Date.now(),
+            sender_id: senderOwnId || 'interviewer',
+            message_content: message_content,
+            sender_tag: sender_tag || 'interviewer',
+            recipient_id: recipient_id,
+            timestamp: new Date().toISOString(),
+            questionNumber: data.questionNumber,
+            totalQuestions: data.totalQuestions,
+            isStatus: false
+          };
+          console.log('📝 Adding new message to state:', newMessage);
+          setMessages(prev => {
+            console.log('📚 Previous messages count:', prev.length);
+            const updated = [...prev, newMessage];
+            console.log('📚 Updated messages count:', updated.length);
+            return updated;
+          });
+          setIsWaitingForResponse(true);
+          setIsLoading(false);
+          setIsLoadingQuestion(false);
+          setStatusMessage('');
+          console.log('✅ Message state updated, waiting for user response');
+        }
+        if (callback && typeof callback === 'function') {
+          console.log('🔄 Calling message callback');
+          callback();
+        }
       });
 
       socket.on('control_instruction', (data, callback) => {
-          if (isMounted) {
-            const { command, data: instructionData } = data;
-            switch (command) {
-              case 'interview_complete':
-                setInterviewComplete(true);
-                setIsWaitingForResponse(false);
-                setIsLoading(false);
-                setStatusMessage('Interview finished!');
-                break;
-              case 'next_question':
-                setIsWaitingForResponse(true);
-                setIsLoading(false); // Ensure loading stops here
-                break;
-              case 'error':
-                setSocketError(instructionData?.message || 'An error occurred');
-                setIsLoading(false);
-                setStatusMessage('');
-                break;
-              case 'redirect':
-                const redirectPath = instructionData.content === '/dashboard' 
-                  ? '/freelancer-dashboard' 
-                  : instructionData.content;
-                navigate(redirectPath);
-                break;
-            }
+        console.log('🎮 Control instruction received:', data);
+        if (isMounted) {
+          const { command, data: instructionData } = data;
+          console.log('📋 Processing command:', command, 'with data:', instructionData);
+          
+          switch (command) {
+            case 'interview_complete':
+              console.log('🏁 Interview completed');
+              setInterviewComplete(true);
+              setIsWaitingForResponse(false);
+              setIsLoading(false);
+              setIsLoadingQuestion(false);
+              setStatusMessage('Interview finished!');
+              break;
+            case 'next_question':
+              console.log('❓ Next question command received');
+              setIsWaitingForResponse(true);
+              setIsLoading(false);
+              setIsLoadingQuestion(false);
+              break;
+            case 'error':
+              console.log('❌ Error command received:', instructionData?.message);
+              setSocketError(instructionData?.message || 'An error occurred');
+              setIsLoading(false);
+              setIsLoadingQuestion(false);
+              setStatusMessage('');
+              break;
+            case 'redirect':
+              const redirectPath = instructionData.content === '/freelancer-dashboard'
+                ? '/freelancer-dashboard'
+                : instructionData.content;
+              console.log('↪️ Redirect command received, navigating to:', redirectPath);
+              navigate(redirectPath);
+              break;
+            default:
+              console.log('❓ Unknown command received:', command);
           }
-          if (callback && typeof callback === 'function') callback();
+        }
+        if (callback && typeof callback === 'function') {
+          console.log('🔄 Calling control instruction callback');
+          callback();
+        }
       });
 
       socket.on('status_update', (data, callback) => {
-          if (isMounted && data.update) {
-            const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
-            const statusMessage = {
-              id: Date.now(),
-              sender_id: 'status', 
-              message_content: customMessage,
-              timestamp: new Date().toISOString(),
-              isStatus: true 
-            };
-            setMessages(prev => [...prev, statusMessage]);
-          }
-          if (callback && typeof callback === 'function') callback();
+        console.log('📊 Status update received:', data);
+        if (isMounted && data.update) {
+          const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
+          console.log('📢 Custom status message:', customMessage);
+          const statusMessage = {
+            id: Date.now(),
+            sender_id: 'status',
+            message_content: customMessage,
+            timestamp: new Date().toISOString(),
+            isStatus: true
+          };
+          console.log('📝 Adding status message to state:', statusMessage);
+          setMessages(prev => [...prev, statusMessage]);
+          setIsLoadingQuestion(true);
+          setStatusMessage(customMessage);
+        }
+        if (callback && typeof callback === 'function') {
+          console.log('🔄 Calling status update callback');
+          callback();
+        }
       });
 
       socket.on('notification', (data, callback) => {
-          if (isMounted) {
-            if (data.type === 'error') setSocketError(data.message);
-            console.log(`Notification ${data.type}: ${data.message}`);
+        console.log('🔔 Notification received:', data);
+        if (isMounted) {
+          if (data.type === 'error') {
+            console.log('❌ Error notification:', data.message);
+            setSocketError(data.message);
           }
-          if (callback && typeof callback === 'function') callback();
+          console.log(`📢 Notification ${data.type}: ${data.message}`);
+        }
+        if (callback && typeof callback === 'function') {
+          console.log('🔄 Calling notification callback');
+          callback();
+        }
       });
+
+      console.log('✅ Socket listeners setup complete (Agent Mode)');
     };
 
     const cleanupSocketListeners = () => {
+      console.log('🧹 Cleaning up socket listeners...');
       socket.off('connect');
       socket.off('disconnect');
       socket.off('connect_error');
+      socket.off('interview_session_ready');
       socket.off('new_message');
       socket.off('control_instruction');
       socket.off('status_update');
       socket.off('notification');
+      console.log('✅ Socket listeners cleanup complete');
     };
 
     // Initial setup
-    initializeChat();
+    console.log('🚀 Starting initialization process (Agent Mode)...');
+    initializeInterview();
     setupSocketListeners();
-    
+   
     // Cleanup function
     return () => {
+      console.log('🔄 Component unmounting, running cleanup...');
       isMounted = false;
       cleanupSocketListeners();
+      
+      // Notify server about session end (no room leaving needed)
       if (socket.connected) {
-        socket.disconnect(); // Added to disconnect on component unmount
+        console.log('👋 Notifying server about interview session end');
+        socket.emit('interview_session_end', {
+          recipient_id: recipient_id,
+          own_id: parseInt(own_id),
+          chat_type: chat_type
+        });
       }
+      console.log('✅ Component cleanup complete');
     };
   }, [navigate, own_id, chat_type, recipient_id]);
 
   // Scroll to bottom effect
   useEffect(() => {
+    console.log('📜 Scroll effect triggered, messages count:', messages.length);
     scrollToBottom();
   }, [messages]);
 
   // Utility and handler functions
   const scrollToBottom = () => {
+    console.log('📜 Scrolling to bottom');
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleInputChange = (e) => {
+    console.log('✏️ Input changed, new value length:', e.target.value.length);
     setCurrentInput(e.target.value);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('📤 Form submission attempted');
+    console.log('📤 Current input:', currentInput.trim());
+    console.log('📤 Is waiting for response:', isWaitingForResponse);
+    console.log('📤 Is connected:', isConnected);
+    console.log('📤 Is loading question:', isLoadingQuestion);
+    
     if (currentInput.trim() === '' || !isWaitingForResponse || !isConnected) {
+      console.log('❌ Form submission blocked - conditions not met');
+      console.log('   - Empty input:', currentInput.trim() === '');
+      console.log('   - Not waiting for response:', !isWaitingForResponse);
+      console.log('   - Not connected:', !isConnected);
       return;
     }
+    
     const userMessage = {
       id: Date.now(),
       sender_id: parseInt(own_id),
@@ -289,23 +422,63 @@ const JobInterview = () => {
       timestamp: new Date().toISOString(),
       isStatus: false
     };
-    setMessages(prev => [...prev, userMessage]);
-    socket.emit('send_message', {
+    
+    console.log('📝 Adding user message to state:', userMessage);
+    setMessages(prev => {
+      console.log('📝 Previous messages before user input:', prev.length);
+      const updated = [...prev, userMessage];
+      console.log('📝 Messages after adding user input:', updated.length);
+      return updated;
+    });
+    
+    const messagePayload = {
       message_content: currentInput.trim(),
       own_id: parseInt(own_id || localStorage.getItem('user_id')),
-      recipient_id: recipient_id
-    });
+      recipient_id: recipient_id,
+      chat_type: chat_type
+    };
+    
+    console.log('📤 Emitting interview_response with payload:', messagePayload);
+    console.log('🔌 Socket connected before emit:', socket.connected);
+    console.log('🔌 Socket ID:', socket.id);
+    
+    // Use specific event for interview responses (not generic send_message)
+    socket.emit('interview_response', messagePayload);
+    
+    console.log('✅ Response emitted, updating UI state');
     setCurrentInput('');
     setIsWaitingForResponse(false);
-    setIsLoading(true); // New: set loading state while waiting for AI response
+    setIsLoadingQuestion(true);
     setStatusMessage('Processing your answer...');
+    console.log('🔄 UI state updated after response send');
   };
 
-  const handleBackToNotifications = () => navigate('/notifications');
-  const handleContinueToDashboard = () => navigate('/task');
+  const handleBackToNotifications = () => {
+    console.log('↪️ Navigating back to notifications');
+    navigate('/notifications');
+  };
   
+  const handleContinueToDashboard = () => {
+    console.log('↪️ Navigating to task dashboard');
+    navigate('/task');
+  };
+ 
+  // Log current state for debugging
+  console.log('📊 Current component state:', {
+    messagesCount: messages.length,
+    isLoading,
+    isConnected,
+    isWaitingForResponse,
+    interviewComplete,
+    isLoadingQuestion,
+    socketError,
+    statusMessage,
+    currentInputLength: currentInput.length
+  });
+
   // --- Render logic ---
-  if (isLoading && !socketError) { // Changed this to use the new `isLoading` state
+  if (isLoading && !socketError) {
+    console.log('🔄 Rendering loading state');
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
         <Loader2 className="h-16 w-16 text-green-600 mb-4 animate-spin" />
@@ -317,13 +490,17 @@ const JobInterview = () => {
 
   // Error state
   if (socketError) {
+    console.log('❌ Rendering error state:', socketError);
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
         <XCircle className="h-16 w-16 text-red-500 mb-4" />
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Connection Error</h2>
         <p className="text-gray-600 mb-4 max-w-md">{socketError}</p>
         <button
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            console.log('🔄 Reloading page due to error');
+            window.location.reload();
+          }}
           className="py-2 px-6 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-md transition-all mr-2"
         >
           Try Again
@@ -332,9 +509,11 @@ const JobInterview = () => {
     );
   }
 
+  console.log('🎨 Rendering main interview interface (Agent Mode)');
+
   // Main interface
   return (
-   <div className="w-full min-h-screen bg-gradient-to-b from-green-50 to-white flex justify-center py-12">
+    <div className="w-full min-h-screen bg-gradient-to-b from-green-50 to-white flex justify-center py-12">
       <div className="w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl">
         {/* Header */}
         <div className="bg-green-600 text-white rounded-t-xl px-8 py-6 border-b border-gray-200">
@@ -353,13 +532,13 @@ const JobInterview = () => {
           </div>
           <p className="mt-2 text-lg opacity-90">
             {!interviewComplete
-              ? "You're being interviewed for a specific job opportunity"
+              ? "You're being interviewed by our AI agent for a specific job opportunity"
               : 'Interview complete! The client will review your responses.'}
           </p>
           <div className="mt-2 flex items-center">
             <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
             <span className="text-sm opacity-75">
-              {isConnected ? 'Connected to interviewer' : 'Connecting...'}
+              {isConnected ? 'Connected to interview agent' : 'Connecting...'}
             </span>
           </div>
           <div className="mt-2 text-sm opacity-75">
@@ -389,9 +568,10 @@ const JobInterview = () => {
             {!isConnected && messages.length === 0 && (
               <div className="text-center text-green-600 p-2 bg-green-100 rounded-md">
                 <Loader2 className="inline-block h-4 w-4 animate-spin mr-1" />
-                Connecting to interviewer...
+                Connecting to interview agent...
               </div>
             )}
+            
             {/* Messages */}
             {messages.map((message) => (
               <div key={message.id}>
@@ -424,12 +604,13 @@ const JobInterview = () => {
                 )}
               </div>
             ))}
+            
             {/* Loading indicator */}
             {isLoadingQuestion && (
               <div className="flex justify-start">
                 <div className="max-w-[75%] p-4 rounded-xl shadow-sm bg-white text-gray-800 rounded-bl-none border border-gray-200">
                   <p className="text-sm md:text-base animate-pulse">
-                    {STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'Interviewer is typing...'}
+                    {STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'Interview agent is preparing...'}
                   </p>
                 </div>
               </div>
@@ -450,7 +631,7 @@ const JobInterview = () => {
                     !isConnected
                       ? 'Connecting...'
                       : isLoadingQuestion
-                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'Interviewer is typing...'
+                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'Interview agent is working...'
                         : isWaitingForResponse
                           ? 'Type your response...'
                           : 'Please wait...'

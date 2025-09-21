@@ -9,7 +9,6 @@ const STATUS_MESSAGE_MAP = {
   'connecting': 'Connecting to AI services...',
   'processing': 'Processing your request...',
   'generating': 'Generating response...',
-  // Add more mappings as needed
 };
 
 const ProjectManager = ({
@@ -22,7 +21,7 @@ const ProjectManager = ({
   const navigate = useNavigate();
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(socket.connected);
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -38,6 +37,136 @@ const ProjectManager = ({
   const [projectId, setProjectId] = useState(null);
   const [dynamicRecipientId, setDynamicRecipientId] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [userName, setUserName] = useState('You');
+
+  const responseTimeoutRef = useRef(null);
+
+  // Consistent message type detection function
+  const determineMessageType = (messageData, currentUserId) => {
+    const currentUserStr = String(currentUserId);
+    const senderStr = String(messageData.sender_id || messageData.own_id);
+    const recipientStr = String(messageData.recipient_id);
+    const senderTag = messageData.sender_tag;
+
+    // Priority 1: Handle specific sender_tag patterns from message history
+    if (senderTag === 'ai') {
+      return {
+        type: 'ai',
+        sender: assistantName
+      };
+    }
+
+    // Priority 2: Handle sender_a and sender_b patterns (common in message history)
+    if (senderTag === 'sender_a') {
+      return {
+        type: 'user',
+        sender: userName
+      };
+    }
+
+    if (senderTag === 'sender_b') {
+      return {
+        type: 'ai',
+        sender: assistantName
+      };
+    }
+
+    // Priority 3: Check if sender is the assistant (project manager)
+    if (senderStr !== 'undefined' && (senderStr === dynamicRecipientId || senderStr.includes('project_manager'))) {
+      return {
+        type: 'ai',
+        sender: assistantName
+      };
+    }
+
+    // Priority 4: Check if sender is current user
+    if (senderStr === currentUserStr && senderStr !== 'undefined') {
+      return {
+        type: 'user',
+        sender: userName
+      };
+    }
+
+    // Priority 5: Check recipient to infer type (when sender/recipient IDs are available)
+    if (recipientStr !== 'undefined' && senderStr !== 'undefined') {
+      if (recipientStr === currentUserStr && (senderStr === dynamicRecipientId || senderStr.includes('project_manager'))) {
+        return {
+          type: 'ai',
+          sender: assistantName
+        };
+      }
+
+      if ((recipientStr === dynamicRecipientId || recipientStr.includes('project_manager')) && senderStr === currentUserStr) {
+        return {
+          type: 'user',
+          sender: userName
+        };
+      }
+    }
+
+    // Default fallback with better logging
+    console.warn('Could not determine message type, using content-based fallback', {
+      messageData,
+      currentUserId,
+      senderTag,
+      senderStr,
+      recipientStr,
+      dynamicRecipientId
+    });
+
+    // Content-based fallback for edge cases
+    const content = messageData.message_content || messageData.content || '';
+    const contentLength = content.length;
+    
+    // If it's a very long message or contains AI-like responses, assume it's from AI
+    if (contentLength > 100 || 
+        content.includes('I can help') || 
+        content.includes('Let me assist') ||
+        content.includes('I understand') ||
+        content.includes('Based on') ||
+        content.includes('project') ||
+        content.match(/^(Sure|Certainly|Of course|I'll|Let me)/)) {
+      return {
+        type: 'ai',
+        sender: assistantName
+      };
+    }
+
+    // Default to user for short messages
+    return {
+      type: 'user',
+      sender: userName
+    };
+  };
+
+  // Clear loading states function
+  const clearLoadingStates = () => {
+    setIsTyping(false);
+    setIsLoadingAnswer(false);
+    setIsWaitingForResponse(false);
+    setStatusMessage('');
+    
+    // Clear any pending timeout
+    if (responseTimeoutRef.current) {
+      clearTimeout(responseTimeoutRef.current);
+      responseTimeoutRef.current = null;
+    }
+  };
+
+  // Set response timeout
+  const setResponseTimeout = () => {
+    // Clear any existing timeout
+    if (responseTimeoutRef.current) {
+      clearTimeout(responseTimeoutRef.current);
+    }
+    
+    // Set new timeout (30 seconds)
+    responseTimeoutRef.current = setTimeout(() => {
+      console.warn('Response timeout - clearing loading states');
+      clearLoadingStates();
+      setSocketError('Response timeout. The Project Manager may be experiencing issues. Please try again.');
+    }, 30000);
+  };
 
   // Fetch projects to get dynamic project_id
   const fetchProjects = async () => {
@@ -72,10 +201,10 @@ const ProjectManager = ({
         
         const fetchedProjectId = targetProject.id;
         setProjectId(fetchedProjectId);
-        // Construct and set the dynamic recipient ID
         const recipientId = `project_manager_${fetchedProjectId}`;
         setDynamicRecipientId(recipientId);
-        return recipientId; // Return the ID for immediate use
+        console.log(`✅ Project Manager initialized with ID: ${recipientId}`);
+        return recipientId;
       } else {
         setSocketError('No projects found. Cannot initialize project manager chat.');
         return null;
@@ -87,11 +216,11 @@ const ProjectManager = ({
     }
   };
 
-  // Chat Initialization - Fixed API integration
+  // Chat Initialization with proper message type detection
   const initializeChat = async (recipientId) => {
     try {
       setIsLoadingQuestion(true);
-      setStatusMessage('Initializing chat...');
+      setStatusMessage('Loading chat history...');
       
       const API_URL = import.meta.env.VITE_API_URL;
       if (!API_URL) {
@@ -105,9 +234,7 @@ const ProjectManager = ({
         recipient_id: recipientId
       });
 
-      const headers = {
-        'Content-Type': 'application/json',
-      };
+      const headers = { 'Content-Type': 'application/json' };
       const authToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
@@ -137,22 +264,47 @@ const ProjectManager = ({
         }
       }
 
+      // Load message history with consistent type detection
       if (chatData.message_history && Array.isArray(chatData.message_history)) {
-        const formattedMessages = chatData.message_history.map((msg, index) => ({
-          id: msg.id || `history-${index}`,
-          type: msg.sender_tag === 'ai' ? 'ai' : 'user',
-          content: msg.message_content,
-          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
-          sender: msg.sender_tag === 'ai' ? assistantName : 'You',
-          sender_id: msg.sender_id,
-          recipient_id: msg.recipient_id,
-          isStatus: false
-        }));
+        const currentUserId = own_id || localStorage.getItem('user_id');
+        
+        const formattedMessages = chatData.message_history.map((msg, index) => {
+          // Use the consistent message type detection with the full message object
+          const { type: messageType, sender: senderName } = determineMessageType({
+            sender_id: msg.sender_id,
+            recipient_id: msg.recipient_id,
+            sender_tag: msg.sender_tag,
+            own_id: msg.own_id,
+            message_content: msg.message_content
+          }, currentUserId);
+          
+          return {
+            id: msg.id || `history-${index}`,
+            type: messageType,
+            content: msg.message_content,
+            timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+            sender: senderName,
+            sender_id: msg.sender_id,
+            recipient_id: msg.recipient_id,
+            isStatus: false
+          };
+        });
+        
+        // Sort messages by timestamp to ensure correct order
+        formattedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        console.log('Processed PM message history:', formattedMessages.map(m => ({ 
+          type: m.type, 
+          sender: m.sender, 
+          content_preview: m.content.substring(0, 50) 
+        })));
+        
         setMessages(formattedMessages);
       }
 
       setIsLoadingQuestion(false);
       setStatusMessage('');
+      setIsInitialized(true);
       return true;
     } catch (error) {
       console.error('Chat initialization error:', error);
@@ -178,200 +330,21 @@ const ProjectManager = ({
   const createProjectManagerMessageFilter = (currentUserId, assistantId) => {
     return (messageData) => {
       if (!messageData || !currentUserId || !assistantId) return false;
-      const { own_id, recipient_id, sender_tag } = messageData;
+      const { own_id, recipient_id, sender_tag, sender_id } = messageData;
       const currentUserStr = String(currentUserId);
-      const senderStr = String(own_id);
+      const senderStr = String(sender_id || own_id);
       const recipientStr = String(recipient_id);
       const assistantStr = String(assistantId);
+      
       const isUserToAssistant = senderStr === currentUserStr && recipientStr === assistantStr;
       const isAssistantToUser = senderStr === assistantStr && recipientStr === currentUserStr;
-      const isAIFromAssistant = sender_tag === 'ai' && senderStr === assistantStr;
+      const isAIFromAssistant = sender_tag === 'ai' && (senderStr === assistantStr || recipientStr === currentUserStr);
+      
       return isUserToAssistant || isAssistantToUser || isAIFromAssistant;
     };
   };
 
-  // Socket connection management - Fixed to wait for recipient ID
-  const setupSocketListeners = (recipientId) => {
-    // Clean up existing listeners first
-    cleanupSocketListeners();
-
-    socket.on('connect', () => {
-      setIsConnected(true);
-      setSocketError('');
-      console.log('✅ Socket connected successfully!');
-      const userId = own_id || localStorage.getItem('user_id');
-      if (userId && recipientId) {
-        socket.emit('join', {
-          room_name: String(userId),
-          user: parseInt(userId)
-        });
-        // Join the PM chat room with the correct recipient ID
-        socket.emit('join', { 
-          room_name: recipientId, 
-          user: parseInt(userId) 
-        });
-        console.log(`✅ Joined PM room: ${recipientId}`);
-      }
-    });
-
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-      console.log('❌ Socket disconnected');
-    });
-
-    socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      setSocketError('Failed to connect to assistant server');
-      setIsConnected(false);
-      setIsLoadingAnswer(false);
-      setStatusMessage('');
-    });
-
-    socket.on('new_message', (data, callback) => {
-      const userId = own_id || localStorage.getItem('user_id');
-      const messageFilter = createProjectManagerMessageFilter(userId, recipientId);
-      if (!messageFilter(data)) {
-        console.log('Message filtered out - not for this chat:', data);
-        if (callback && typeof callback === 'function') callback();
-        return;
-      }
-      const { message_content, sender_tag, sender_id, recipient_id } = data;
-      
-      const newMessage = {
-        id: Date.now(),
-        type: sender_tag === 'ai' ? 'ai' : 'user',
-        content: message_content,
-        timestamp: new Date(),
-        sender: sender_tag === 'ai' ? assistantName : 'You',
-        sender_id: sender_id,
-        recipient_id: recipient_id,
-        isStatus: false
-      };
-      setMessages(prev => [...prev, newMessage]);
-      if (sender_tag === 'ai') {
-        setIsTyping(false);
-        setIsLoadingAnswer(false);
-        setIsWaitingForResponse(false);
-        setStatusMessage('');
-      }
-      if (callback && typeof callback === 'function') callback();
-    });
-
-    socket.on('control_instruction', (data, callback) => {
-      const { command, data: instructionData } = data;
-      switch (command) {
-        case 'interview_complete':
-          setIsWaitingForResponse(false);
-          setIsLoadingAnswer(false);
-          setStatusMessage('Chat session completed!');
-          break;
-        case 'next_question':
-          setIsWaitingForResponse(true);
-          break;
-        case 'error':
-          setSocketError(instructionData?.message || 'An error occurred');
-          setIsLoadingAnswer(false);
-          setStatusMessage('');
-          break;
-        case 'redirect':
-          if (instructionData?.url) navigate(instructionData.url);
-          break;
-        default:
-          console.log('Unknown command:', command);
-      }
-      if (callback && typeof callback === 'function') callback();
-    });
-
-    socket.on('status_update', (data, callback) => {
-      if (data.update) {
-        const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
-        setStatusMessage(customMessage);
-        const statusMessage = {
-          id: Date.now(),
-          type: 'status',
-          content: customMessage,
-          timestamp: new Date(),
-          sender: 'System',
-          sender_id: 'status',
-          isStatus: true
-        };
-        setMessages(prev => [...prev, statusMessage]);
-      }
-      if (callback && typeof callback === 'function') callback();
-    });
-
-    socket.on('notification', (data, callback) => {
-      const { message, type } = data;
-      if (type === 'error') setSocketError(message);
-      else if (type === 'warning') console.warn('Notification warning:', message);
-      else if (type === 'info') console.info('Notification info:', message);
-      if (callback && typeof callback === 'function') callback();
-    });
-  };
-
-  // Cleanup socket listeners
-  const cleanupSocketListeners = () => {
-    socket.off('connect');
-    socket.off('disconnect');
-    socket.off('connect_error');
-    socket.off('new_message');
-    socket.off('control_instruction');
-    socket.off('status_update');
-    socket.off('notification');
-  };
-
-  // Initialize component - Fixed sequence
-  useEffect(() => {
-    const init = async () => {
-      if (!checkAuthentication()) return;
-      
-      try {
-        // First fetch projects and get recipient ID
-        const recipientId = await fetchProjects();
-        if (!recipientId) return;
-
-        // Then initialize chat with the recipient ID
-        const chatInitialized = await initializeChat(recipientId);
-        if (!chatInitialized) return;
-
-        // Finally setup socket listeners with the recipient ID
-        setupSocketListeners(recipientId);
-
-        // Connect socket if not already connected
-        if (!socket.connected) {
-          socket.connect();
-        } else {
-          // If already connected, manually trigger the join logic
-          const userId = own_id || localStorage.getItem('user_id');
-          if (userId && recipientId) {
-            socket.emit('join', {
-              room_name: String(userId),
-              user: parseInt(userId)
-            });
-            socket.emit('join', { 
-              room_name: recipientId, 
-              user: parseInt(userId) 
-            });
-            setIsConnected(true);
-            console.log(`✅ Manually joined PM room: ${recipientId}`);
-          }
-        }
-
-        setIsInitialized(true);
-      } catch (error) {
-        console.error('Initialization error:', error);
-        setSocketError('Failed to initialize chat. Please refresh the page.');
-      }
-    };
-
-    init();
-
-    return () => {
-      cleanupSocketListeners();
-    };
-  }, []);
-
-  // Authorization Checker (no changes needed here)
+  // Authorization Checker
   const handleAuthError = (message, route, delay = 1500) => {
     setSocketError(message);
     setIsLoadingAuth(false);
@@ -403,11 +376,182 @@ const ProjectManager = ({
     return true;
   };
 
+  // REMOVED: Join project manager room - agents don't use rooms
+
+  // Setup socket listeners function
+  const setupSocketListeners = () => {
+    console.log('Setting up socket listeners...');
+    setIsConnected(socket.connected);
+    
+    socket.on('connect', () => {
+      console.log('Socket connected');
+      setIsConnected(true);
+      setSocketError('');
+      // REMOVED: No room joining for agents
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      setIsConnected(false);
+      clearLoadingStates();
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setIsConnected(false);
+      clearLoadingStates();
+      setSocketError('Connection error. Please try refreshing the page.');
+    });
+
+    socket.on('new_message', (data, callback) => {
+      console.log('Received new message:', data);
+      
+      const userId = own_id || localStorage.getItem('user_id');
+      const messageFilter = createProjectManagerMessageFilter(userId, dynamicRecipientId);
+      
+      if (!messageFilter(data)) {
+        console.log('Message filtered out - not for this chat');
+        if (callback && typeof callback === 'function') callback();
+        return;
+      }
+      
+      const { message_content, sender_tag, own_id: socket_sender_id, recipient_id, sender_id } = data;
+      
+      const { type: messageType, sender: senderName } = determineMessageType({
+        sender_id: sender_id || socket_sender_id,
+        recipient_id: recipient_id,
+        sender_tag: sender_tag,
+        message_content: message_content
+      }, userId);
+
+      const newMessage = {
+        id: Date.now(),
+        type: messageType,
+        content: message_content,
+        timestamp: new Date(),
+        sender: senderName,
+        sender_id: sender_id || socket_sender_id,
+        recipient_id: recipient_id,
+        sender_tag: sender_tag,
+        isStatus: false
+      };
+      
+      setMessages(prev => [...prev, newMessage]);
+      
+      if (messageType === 'ai') {
+        clearLoadingStates();
+      }
+
+      if (callback && typeof callback === 'function') callback();
+    });
+
+    socket.on('control_instruction', (data, callback) => {
+      console.log('Received control instruction:', data);
+      const { command, data: instructionData } = data;
+      
+      switch (command) {
+        case 'interview_complete':
+          clearLoadingStates();
+          setStatusMessage('Chat session completed!');
+          break;
+        case 'next_question':
+          setIsWaitingForResponse(true);
+          break;
+        case 'error':
+          setSocketError(instructionData?.message || 'An error occurred');
+          clearLoadingStates();
+          break;
+        case 'redirect':
+          if (instructionData?.url) {
+            navigate(instructionData.url);
+          }
+          break;
+      }
+      
+      if (callback && typeof callback === 'function') callback();
+    });
+
+    socket.on('status_update', (data, callback) => {
+      console.log('Received status update:', data);
+      if (data.update) {
+        const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
+        setStatusMessage(customMessage);
+        
+        const statusMessage = {
+          id: Date.now(),
+          type: 'status',
+          content: customMessage,
+          timestamp: new Date().toISOString(),
+          sender: 'System',
+          sender_id: 'status', 
+          isStatus: true 
+        };
+        setMessages(prev => [...prev, statusMessage]);
+      }
+      if (callback && typeof callback === 'function') callback();
+    });
+
+    socket.on('notification', (data, callback) => {
+      console.log('Received notification:', data);
+      const { message, type } = data;
+      if (type === 'error') {
+        setSocketError(message);
+        clearLoadingStates();
+      }
+      if (callback && typeof callback === 'function') callback();
+    });
+  };
+
+  const cleanupSocketListeners = () => {
+    console.log('Cleaning up socket listeners...');
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.off('connect_error');
+    socket.off('new_message');
+    socket.off('control_instruction');
+    socket.off('status_update');
+    socket.off('notification');
+  };
+
+  // Cleanup timeouts when component unmounts
+  useEffect(() => {
+    return () => {
+      if (responseTimeoutRef.current) {
+        clearTimeout(responseTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Main initialization effect
+  useEffect(() => {
+    const init = async () => {
+      if (checkAuthentication()) {
+        const recipientId = await fetchProjects();
+        if (recipientId) {
+          await initializeChat(recipientId);
+          // REMOVED: No room joining for agents - they work directly via socket connection
+        }
+      }
+    };
+    init();
+  }, []);
+
+  // Socket listeners effect
+  useEffect(() => {
+    console.log('Setting up socket listeners...');
+    setupSocketListeners();
+    
+    return () => {
+      cleanupSocketListeners();
+    };
+  }, [dynamicRecipientId]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
+  // Send message function
   const handleSendMessage = () => {
     if (!inputValue.trim() || !isConnected || !dynamicRecipientId) return;
 
@@ -424,17 +568,23 @@ const ProjectManager = ({
     };
 
     setMessages(prev => [...prev, userMessage]);
+
     socket.emit('send_message', {
       message_content: inputValue.trim(),
       own_id: parseInt(userId),
       recipient_id: dynamicRecipientId,
     });
-    if (onMessageSent) onMessageSent(userMessage);
+    
+    if (onMessageSent) {
+      onMessageSent(userMessage);
+    }
+
     setInputValue('');
     setIsWaitingForResponse(true);
     setIsLoadingAnswer(true);
     setTimeout(() => setIsTyping(true), 500);
     setTimeout(() => inputRef.current?.focus(), 100);
+    setResponseTimeout();
   };
 
   const handleKeyPress = (e) => {
@@ -469,7 +619,7 @@ const ProjectManager = ({
   }
 
   return (
-    <div className={`flex flex-col h-full bg-gray-50 ${className}`}>
+    <div className={`flex flex-col h-full pt-6 bg-gray-50 ${className}`}>
       {/* Chat Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-3">
@@ -481,6 +631,7 @@ const ProjectManager = ({
             <p className="text-xs text-gray-500 flex items-center gap-1">
               <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></span>
               {isConnected ? 'Online' : 'Connecting...'} • {formatTime(new Date())}
+              {projectId && <span>• Project {projectId}</span>}
             </p>
           </div>
         </div>
@@ -530,8 +681,9 @@ const ProjectManager = ({
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="space-y-6">
           {messages.map((message) => {
-            const currentUserId = own_id || localStorage.getItem('user_id');
-            const isFromCurrentUser = String(message.sender_id) === String(currentUserId);
+            // Use message type for positioning instead of sender_id comparison
+            const isFromCurrentUser = message.type === 'user';
+            
             return (
               <div key={message.id} className={`flex gap-3 ${
                 message.isStatus ? 'justify-center' :
@@ -565,7 +717,7 @@ const ProjectManager = ({
                       <p className={`text-xs text-gray-500 mt-1 px-1 ${
                         isFromCurrentUser ? 'text-right' : 'text-left'
                       }`}>
-                        {formatTime(message.timestamp)}
+                        {formatTime(message.timestamp)} • {message.sender}
                       </p>
                     </div>
                     {isFromCurrentUser && (

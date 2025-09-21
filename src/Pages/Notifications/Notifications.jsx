@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle, Info, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import socket from '../../Components/socket'
+import socket, { isSocketConnected } from '../../Components/socket';
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -13,7 +13,7 @@ const Notifications = () => {
   // State to handle any errors during the API call
   const [error, setError] = useState(null);
   // State to track socket connection
-  const [socketConnected, setSocketConnected] = useState(false);
+  const [socketConnected, setSocketConnected] = useState(isSocketConnected());
 
   // Click handler for interview routing
   const handleNotificationClick = (notification) => {
@@ -70,29 +70,21 @@ const Notifications = () => {
       }
     };
 
-    // Initialize SocketIO connection using existing socket
-    const initializeSocket = () => {
-      const token = localStorage.getItem('access_jwt');
-      if (!token) return;
-
-      // Connect the socket (it's configured with autoConnect: false)
-      if (!socket.connected) {
-        socket.connect();
-      }
-
+    // Set up socket event listeners
+    const setupSocketListeners = () => {
       // Event handler functions
       const handleConnect = () => {
-        console.log('Socket connected:', socket.id);
+        console.log('Socket connected in Notifications:', socket.id);
         setSocketConnected(true);
       };
 
       const handleDisconnect = () => {
-        console.log('Socket disconnected');
+        console.log('Socket disconnected in Notifications');
         setSocketConnected(false);
       };
 
       const handleConnectError = (error) => {
-        console.error('Socket connection error:', error);
+        console.error('Socket connection error in Notifications:', error);
         setSocketConnected(false);
       };
 
@@ -125,7 +117,7 @@ const Notifications = () => {
       socket.on('connect_error', handleConnectError);
       socket.on('client_notification', handleClientNotification);
 
-      // Set initial connection state
+      // Set initial connection state based on current socket status
       setSocketConnected(socket.connected);
 
       // Return cleanup function
@@ -140,20 +132,21 @@ const Notifications = () => {
     // Initial API fetch
     fetchNotifications();
 
-    // Initialize real-time socket
-    const cleanupSocket = initializeSocket();
+    // Set up socket listeners (socket is already connected via socket.js)
+    const cleanupSocket = setupSocketListeners();
 
     // Request browser notification permission
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
 
-    // Cleanup function
+    // Cleanup function - only remove event listeners, don't disconnect socket
     return () => {
       if (cleanupSocket) {
         cleanupSocket();
       }
-      // Note: We don't disconnect the socket here since it might be used by other components
+      // Note: We don't disconnect the socket here since it's managed globally
+      // and might be used by other components
     };
   }, []);
 

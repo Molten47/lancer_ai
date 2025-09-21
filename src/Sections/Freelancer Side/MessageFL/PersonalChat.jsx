@@ -11,9 +11,13 @@ import socket, {
 const P2PChatComponent = ({ 
   ownId, 
   recipientId, 
-  recipientName = "Chat User",
+  recipientName,
   chatType = "human" 
 }) => {
+
+  console.log('🚀 P2PChatComponent loaded with props:', {
+    ownId, recipientId, recipientName, chatType
+  });
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -22,6 +26,7 @@ const P2PChatComponent = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+  
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -99,33 +104,32 @@ const P2PChatComponent = ({
       
       // FIXED: Check if message is for this conversation
       // Message should be FROM recipientId TO ownId
-const isForThisChat = (
-  // Message FROM recipientId TO ownId
-  (messageData.own_id === recipientId && messageData.recipient_id === ownId)
-) || (
-  // Message FROM ownId TO recipientId (echo back)
-  (messageData.own_id === ownId && messageData.recipient_id === recipientId)
-);
+      const isForThisChat = (
+        (messageData.sender === recipientId || messageData.from === recipientId) &&
+        (messageData.recipient === ownId || messageData.to === ownId)
+      ) || (
+        // Or FROM ownId TO recipientId (echo back from server)
+        (messageData.sender === ownId || messageData.from === ownId) &&
+        (messageData.recipient === recipientId || messageData.to === recipientId)
+      );
 
-console.log('🎯 Message routing check:', {
-  messageFrom: messageData.own_id,
-  messageTo: messageData.recipient_id,
-  expectedFrom: recipientId,
-  expectedTo: ownId,
-  isForThisChat
-});
-
+      console.log('🎯 Message routing check:', {
+        messageFrom: messageData.sender || messageData.from,
+        messageTo: messageData.recipient || messageData.to,
+        expectedFrom: recipientId,
+        expectedTo: ownId,
+        isForThisChat
+      });
       
-  if (isForThisChat) {
-    
-  const newMsg = {
-  id: messageData.id || messageData.message_id || Date.now(),
-  text: messageData.message_content,
-  sender: messageData.own_id,
-  recipient: messageData.recipient_id,
-  timestamp: messageData.timestamp || new Date().toISOString(),
-  delivered: true
-};
+      if (isForThisChat) {
+        const newMsg = {
+          id: messageData.id || messageData.message_id || Date.now(),
+          text: messageData.text || messageData.message || messageData.content || messageData.message_content,
+          sender: messageData.sender || messageData.from || messageData.own_id,
+          recipient: messageData.recipient || messageData.to || messageData.recipient_id,
+          timestamp: messageData.timestamp || messageData.created_at || new Date().toISOString(),
+          delivered: true
+        };
         
         console.log('✅ Adding message to chat:', newMsg);
         

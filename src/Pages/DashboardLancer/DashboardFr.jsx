@@ -5,40 +5,61 @@ import { Sidebar, Bell, User, Settings, Home, FileText,  MessageCircle, Download
 import { useSelector } from 'react-redux'
        
 import DashboardViews from '../../Sections/Freelancer Side/DashboardView/DashboardView'
-import TaskManagements from '../../Sections/Jobs/Task'
-import WalletViews from '../../Sections/Freelancer Side/Tools'
-import MessagesFrs from '../../Sections/Freelancer Side/MessageFL/MessageFr'
+//import TaskManagements from '../../Sections/Jobs/Task'
+//import WalletViews from '../../Sections/Freelancer Side/Tools'
+//import MessagesFrs from '../../Sections/Freelancer Side/MessageFL/PersonalChat'
+import ChatModal from '../../Sections/Freelancer Side/ChatModal'
 import Prosettingss from '../../Sections/Profile Settings/Prosettings'
 import GetHelps from '../../Sections/Gethelp/Help'
 import LogoutButton from '../../Components/Platform Users/Logout'
-import Analytics from '../../Sections/Analysis/Analytics'
+//import Analytics from '../../Sections/Analysis/Analytics'
 import Notifications from '../../Pages/Notifications/Notifications'
 import GroupChat from '../../Sections/Freelancer Side/FreeMessa/GroupChat'
 import JobsProjectManagerChat from '../../Sections/Freelancer Side/FreeMessa/ProjectManager'
-import ProfilePage from '../profile' // Add this import
+import JobTask from '../../Sections/Freelancer Side/DashboardView/Task'
+import ProfilePage from '../profile'
+import MessageList from '../../Sections/ChatSpace/ConversationList'
 
 // Mock components - replace with your actual components
 const DashboardView = () => <div className="p-6 bg-gray-50 min-h-full">
 <DashboardViews/>
 </div>
 
-const TaskManagement = () => <div className="p-6 bg-gray-50 min-h-full">
+const GroupChatView = () => <div className="p-6 bg-gray-50 min-h-full">
   <div className="bg-white rounded-lg p-8 shadow-sm">
     <GroupChat/>
-    {/*<JobsProjectManagerChat/>*/}
-   {/*<TaskManagements/>*/}
   </div>
 </div>
+//This is the first stage
+const MessagesView = () => {
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [selectedRecipient, setSelectedRecipient] = useState(null);
 
-const MessagesView = () => <div className="p-6 bg-gray-50 min-h-full">
-  <div className="bg-white rounded-lg p-8 shadow-sm">
-   <MessagesFrs/>
-  </div>
-</div>
+  const handleOpenChat = (senderId, senderName) => {
+    setSelectedRecipient({ id: senderId, name: senderName });
+    setShowChatModal(true);
+  };
 
-const WalletsView = () => <div className="p-6 bg-gray-50 min-h-full">
+  return (
+    <div className="p-6 bg-gray-50 min-h-full">
+      <div className="bg-white rounded-lg p-8 shadow-sm">
+        <MessageList onOpenChat={handleOpenChat} />
+      </div>
+
+      {/* Add the Chat Modal */}
+      <ChatModal
+        isOpen={showChatModal}
+        onClose={() => setShowChatModal(false)}
+        recipientId={selectedRecipient?.id}
+        recipientName={selectedRecipient?.name}
+      />
+    </div>
+  );
+};
+
+const ProjectManagerView = () => <div className="p-6 bg-gray-50 min-h-full">
   <div className="bg-white rounded-lg p-8 shadow-sm">
-    <WalletViews/>
+     <JobsProjectManagerChat/>
   </div>
 </div>
 
@@ -48,9 +69,9 @@ const SettingsView = () => <div className="p-6 bg-gray-50 min-h-full">
   </div>
 </div>
 
-const AnalyticalView = () => <div className="p-6 bg-gray-50 min-h-full">
+const JobTaskView = () => <div className="p-6 bg-gray-50 min-h-full">
   <div className="bg-white rounded-lg p-8 shadow-sm">
-  <Analytics/>
+  <JobTask/>
   </div>
 </div>
 
@@ -73,7 +94,16 @@ const ProfileView = () => <div className="p-6 bg-gray-50 min-h-full">
 
 const DashboardFr = () => {
   // State to track the active view
-  const [activeView, setActiveView] = useState('dashboard')
+  const location = useLocation();
+ const [activeView, setActiveView] = useState(() => {
+    const hash = location.hash.replace('#', '');
+    const validViews = [
+      'dashboard', 'group-chat', 'messages', 'pm-agent', 
+      'settings', 'help', 'notifications', 'jobs-task', 'profile'
+    ];
+    return validViews.includes(hash) ? hash : 'dashboard';
+  });
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(false) // Default closed
   // Add state to track screen size
   const [isMobile, setIsMobile] = useState(false)
@@ -91,6 +121,7 @@ const DashboardFr = () => {
   // Determine if the main "Jobs" link or its children are active
   const userData = useSelector(state => state.user.userData);
   const navigate = useNavigate();
+
 
   // Function to fetch profile data from API
   const fetchProfileData = async () => {
@@ -189,6 +220,25 @@ const DashboardFr = () => {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
+  useEffect(() => {
+    navigate(`#${activeView}`, { replace: true });
+  }, [activeView, navigate]);
+useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      const validViews = [
+        'dashboard', 'group-chat', 'messages', 'pm-agent', 
+        'settings', 'help', 'notifications', 'jobs-task', 'profile'
+      ];
+      if (validViews.includes(hash) && hash !== activeView) {
+        setActiveView(hash);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeView]);
+
   // Lock/unlock body scroll when sidebar opens/closes on mobile
   useEffect(() => {
     if (isMobile && isSidebarOpen) {
@@ -240,28 +290,28 @@ const DashboardFr = () => {
     setIsMetricsDropdownOpen(!isMetricsDropdownOpen); 
   };
 
-  const isJobsActive = activeView === 'task';
-  const isMetricsActive = activeView === 'analytics' || activeView === 'wallets';
+  const isJobsActive = activeView === 'group-chat' || activeView === 'messages';
+  const isMetricsActive = activeView === 'jobs-task' || activeView === 'pm-agent';
 
   // Function to render the appropriate view based on the active state
   const renderView = () => {
     switch(activeView) {
       case 'dashboard':
         return <DashboardView />;
-      case 'task': 
-        return <TaskManagement />;
+      case 'group-chat': 
+        return <GroupChatView />;
       case 'messages':
         return <MessagesView />;
-      case 'wallets':
-        return <WalletsView />;
+      case 'pm-agent':
+        return <ProjectManagerView />;
       case 'settings':
         return <SettingsView />;
       case 'help':
         return <HelpView />;
       case'notifications':
         return < NotificationsView/>
-      case 'analytics':
-        return <AnalyticalView/>
+      case 'jobs-task':
+        return <JobTaskView/>
       case 'profile':
         return <ProfileView />
       default:
@@ -282,7 +332,7 @@ const DashboardFr = () => {
           >
             <Sidebar size={20} />
           </button>
-          <h1 className="text-xl font-bold text-blue-600">Lancer AI</h1>
+          <h1 className="text-xl font-bold text-blue-600">Lancer</h1>
         </div>
 
         {/* Right side - Notifications and User */}
@@ -396,7 +446,7 @@ const DashboardFr = () => {
                 }`}
               >
                 <Building2 size={20} className="mr-3" />
-                <span className="flex-grow text-left">History</span>
+                <span className="flex-grow text-left">Chats</span>
                 <ChevronRight
                   size={16}
                   className={`transition-transform duration-200 ${
@@ -413,33 +463,39 @@ const DashboardFr = () => {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleMenuClick('task');
+                      handleMenuClick('group-chat');//This will open group caht
                     }}
                     className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
-                      activeView === 'task'
+                      activeView === 'group-chat'
                         ? 'bg-blue-100 text-cta font-semibold shadow-sm'
                         : 'text-gray-600 hover:bg-blue-50 hover:text-[#1447e6]'
                     }`}
                   >
-                    <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
-                    Jobs 
+                    <div className="w-2 h-2 bg-blue-400 rounded-full mr-3 
+                    
+                    "></div>
+                    Group-Chat
                   </a>
 
                   {/* Workspace History Link */}
+              
                   <a
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleMenuClick('task'); // You might want to create a separate 'workspace' view
+                      handleMenuClick('messages'); // You will open indidual chat space on click
                     }}
                     className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
-                      activeView === 'task' // Change this if you create a separate workspace view
+                      activeView === 'messages' // Change this if you create a separate workspace view
                         ? 'bg-blue-100 text-cta font-semibold shadow-sm'
                         : 'text-gray-600 hover:bg-blue-50 hover:text-[#1447e6]'
                     }`}
                   >
-                    <div className="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
-                    Workspaces
+                    <div className="w-2 h-2 bg-blue-400 rounded-full mr-3
+                    
+                    
+                    "></div>
+                    Individual Chat
                   </a>
                 </div>
               )}
@@ -457,7 +513,7 @@ const DashboardFr = () => {
                 }`}
               >
                 <TrendingUp size={20} className="mr-3" />
-                <span className="flex-grow text-left">Metrics</span>
+                <span className="flex-grow text-left">Utilities</span>
                 <ChevronRight
                   size={16}
                   className={`transition-transform duration-200 ${
@@ -474,10 +530,10 @@ const DashboardFr = () => {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleMenuClick('analytics');
+                      handleMenuClick('jobs-task');
                     }}
                     className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
-                      activeView === 'analytics'
+                      activeView === 'jobs-task'
                         ? 'bg-purple-100 text-primary font-semibold shadow-sm'
                         : 'text-gray-600 hover:bg-blue-50 hover:text-[#1447e6]'
                     }`}
@@ -491,10 +547,10 @@ const DashboardFr = () => {
                     href="#"
                     onClick={(e) => {
                       e.preventDefault();
-                      handleMenuClick('wallets');
+                      handleMenuClick('pm-agent');
                     }}
                     className={`flex items-center w-full px-4 py-2 rounded-md text-sm transition-colors duration-200 ${
-                      activeView === 'wallets'
+                      activeView === 'pm-agent'
                         ? 'bg-purple-100 text-purple-800 font-semibold shadow-sm'
                         : 'text-gray-600 hover:bg-purple-50 hover:text-[#1447e6]'
                     }`}

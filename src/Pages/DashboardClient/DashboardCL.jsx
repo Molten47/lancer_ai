@@ -16,23 +16,25 @@ const DashboardView = () => <div className="flex flex-col h-full basic-font">
   {/* AI chat assisant to be imported here*/}
   <AIAssistantChat/>
 </div>
-const ProjectOverview = () => <div className="p-6 bg-gray-50 min-h-full">
+const ProjectOverview = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
 <AssociatedJobs/>
 </div>
-const ProjectAnalytics = () => <div className="p-6 bg-gray-50 min-h-full">
+const ProjectAnalytics = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
   <Analytics/>
 </div>
-const AgentView = () => <div className="p-6 bg-gray-50 min-h-full">
+const AgentView = () => <div className="p-6 bg-gray-50  min-h-full h-screen overflow-hidden">
   <ProjectManagers/>
 </div>
-const HumanChatView = () => <div className="p-6 bg-gray-50 min-h-full">
+const HumanChatView = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
 <HumanChat/>
 </div>
-const GroupChatView = () => <div className="p-6 bg-gray-50 min-h-full">
-  <GroupChatSpace/>
+const GroupChatView = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
+  <GroupChatSpace userId={localStorage.getItem('user_id')} 
+  isClient={true}
+  className="custom-class"/>
 </div>
 
-const SettingsView = () => <div className="p-6 bg-gray-50 min-h-full">
+const SettingsView = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
   <div className="bg-white rounded-lg p-8 shadow-sm">
     <h3 className="text-xl font-semibold mb-4">Settings</h3>
     <p className="text-gray-600">Manage your account settings here.</p>
