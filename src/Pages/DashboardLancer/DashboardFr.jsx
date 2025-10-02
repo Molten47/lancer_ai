@@ -25,11 +25,74 @@ const DashboardView = () => <div className="p-6 bg-gray-50 min-h-full">
 <DashboardViews/>
 </div>
 
-const GroupChatView = () => <div className="p-6 bg-gray-50 min-h-full">
-  <div className="bg-white rounded-lg p-8 shadow-sm">
-    <GroupChat/>
-  </div>
-</div>
+const GroupChatView = () => {
+  const [projectId, setProjectId] = useState(null);
+  const [clientId, setClientId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJobInfo = async () => {
+      try {
+        const token = localStorage.getItem('access_jwt');
+        const API_URL = import.meta.env.VITE_API_URL;
+        const response = await fetch(`${API_URL}/api/jobs`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const data = await response.json();
+        
+        if (data.well_received && data.jobs.length > 0) {
+          // Get first active job or fallback to first job
+          let targetJob = data.jobs.find(job => job.status === 'active') || data.jobs[0];
+          
+          setProjectId(targetJob.project_id);
+          setClientId(targetJob.client_id);
+          
+          console.log(`Freelancer joining project ${targetJob.project_id}, client ${targetJob.client_id}`);
+        }
+      } catch (error) {
+        console.error('Error fetching job info:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchJobInfo();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!projectId || !clientId) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full h-screen flex items-center justify-center">
+        <p className="text-gray-600">No active jobs found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-full h-screen overflow-hidden">
+      <GroupChat 
+        userId={localStorage.getItem('user_id')} 
+        projectId={projectId}
+        clientId={clientId}
+        isClient={false}  // Important: false for freelancers
+      />
+    </div>
+  );
+};
 //This is the first stage
 const MessagesView = () => {
   const [showChatModal, setShowChatModal] = useState(false);
@@ -539,7 +602,7 @@ useEffect(() => {
                     }`}
                   >
                     <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
-                    Analytics 
+                    Submit Task here
                   </a>
 
                   {/* Earnings Link */}
@@ -556,7 +619,7 @@ useEffect(() => {
                     }`}
                   >
                     <div className="w-2 h-2 bg-purple-400 rounded-full mr-3"></div>
-                    Earnings
+                    Project assistant
                   </a>
                 </div>
               )}

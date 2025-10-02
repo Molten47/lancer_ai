@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, AlertCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import {useDispatch} from 'react-redux'
-import { setUserData } from '../../store/userSlice';
+import { setUserData, setAuthData } from '../../store/userSlice';
 import useAuthService from '../auth'
 
 const Signin = () => {
@@ -97,7 +97,7 @@ const Signin = () => {
       }
 
       // Dispatch user data to Redux store
-      dispatch(setUserData(data));
+      
            
       // Login successful - store tokens and user info with safe access
       const accessJwt = data?.access_jwt;
@@ -107,7 +107,18 @@ const Signin = () => {
       const firstname = data?.firstname;
       const lastname = data?.lastname;
       const username = data?.username;
+      
+dispatch(setUserData(data));
 
+// Now dispatch auth data (variables are declared above)
+dispatch(setAuthData({
+  user_id: userId,
+  tokens: { 
+    access: accessJwt, 
+    refresh: refreshJwt 
+  },
+  isAuthenticated: true
+}));
       // Validate required fields
       if (!accessJwt || !refreshJwt || !userId) {
         setApiError('Invalid response from server. Missing required authentication data.');

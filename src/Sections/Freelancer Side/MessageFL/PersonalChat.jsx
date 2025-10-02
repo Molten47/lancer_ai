@@ -1,4 +1,4 @@
-// P2PChatComponent.js - FIXED: Users join their own room, not P2P room
+// P2PChatComponent.js - FIXED: Message bubble alignment with normalized IDs
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, User, Circle, Phone, Video, MoreVertical, Smile } from 'lucide-react';
@@ -18,6 +18,7 @@ const P2PChatComponent = ({
   console.log('🚀 P2PChatComponent loaded with props:', {
     ownId, recipientId, recipientName, chatType
   });
+  
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -26,7 +27,11 @@ const P2PChatComponent = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  
+  IF
+  // Helper function to normalize IDs for consistent comparison
+  const normalizeId = (id) => {
+    return id ? String(id) : null;
+  };
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -64,11 +69,46 @@ const P2PChatComponent = ({
             }
           }
         );
-
-        if (response.ok) {
+        
+if (response.ok) {
           const chatData = await response.json();
           if (chatData.messages) {
-            setMessages(chatData.messages);
+            // Normalize message data when loading from history
+            const normalizedMessages = chatData.messages.map(msg => {
+              // Determine the actual sender based on the message direction
+              // If the message has sender_id, use that; otherwise infer from own_id and recipient_id
+              let actualSender;
+              if (msg.sender_id) {
+                actualSender = normalizeId(msg.sender_id);
+              } else if (msg.sender) {
+                actualSender = normalizeId(msg.sender);
+              } else if (msg.from_user_id) {
+                actualSender = normalizeId(msg.from_user_id);
+              } else if (msg.from) {
+                actualSender = normalizeId(msg.from);
+              } else {
+                // If none of the above, use own_id as fallback
+                actualSender = normalizeId(msg.own_id);
+              }
+
+              return {
+                id: msg.id || msg.message_id || Date.now(),
+                text: msg.text || msg.message || msg.content || msg.message_content,
+                sender: actualSender,
+                recipient: normalizeId(msg.recipient || msg.to || msg.recipient_id || msg.to_user_id),
+                timestamp: msg.timestamp || msg.created_at || new Date().toISOString(),
+                delivered: true
+              };
+            });
+            
+            console.log('📋 Loaded messages from history:', normalizedMessages.map(m => ({
+              id: m.id,
+              sender: m.sender,
+              recipient: m.recipient,
+              text: m.text.substring(0, 30)
+            })));
+            
+            setMessages(normalizedMessages);
           }
         } else {
           console.warn('Failed to fetch chat history:', response.status);
@@ -125,8 +165,8 @@ const P2PChatComponent = ({
         const newMsg = {
           id: messageData.id || messageData.message_id || Date.now(),
           text: messageData.text || messageData.message || messageData.content || messageData.message_content,
-          sender: messageData.sender || messageData.from || messageData.own_id,
-          recipient: messageData.recipient || messageData.to || messageData.recipient_id,
+          sender: normalizeId(messageData.sender || messageData.from || messageData.own_id),
+          recipient: normalizeId(messageData.recipient || messageData.to || messageData.recipient_id),
           timestamp: messageData.timestamp || messageData.created_at || new Date().toISOString(),
           delivered: true
         };
@@ -272,8 +312,8 @@ const P2PChatComponent = ({
     const localMessage = {
       id: tempId,
       text: newMessage.trim(),
-      sender: ownId,
-      recipient: recipientId,
+      sender: normalizeId(ownId),
+      recipient: normalizeId(recipientId),
       timestamp: new Date().toISOString(),
       delivered: false,
       pending: true,
@@ -401,34 +441,34 @@ const P2PChatComponent = ({
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.sender === ownId || message.sender == ownId ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.sender === normalizeId(ownId) ? 'justify-end' : 'justify-start'}`}
               >
                 <div className="flex items-end space-x-2 max-w-lg">
-                  {(message.sender !== ownId && message.sender != ownId) && (
+                  {message.sender !== normalizeId(ownId) && (
                     <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
                       <User size={16} />
                     </div>
                   )}
                   <div
                     className={`px-4 py-3 rounded-2xl max-w-sm lg:max-w-md ${
-                      (message.sender === ownId || message.sender == ownId)
+                      message.sender === normalizeId(ownId)
                         ? 'bg-blue-600 text-white rounded-br-md'
                         : 'bg-white text-gray-800 border rounded-bl-md shadow-sm'
                     } ${message.failed ? 'opacity-50 border-red-300' : ''}`}
                   >
                     <p className="text-sm leading-relaxed">{message.text}</p>
                     <div className="flex items-center justify-between mt-2">
-                      <span className={`text-xs ${(message.sender === ownId || message.sender == ownId) ? 'text-blue-100' : 'text-gray-500'}`}>
+                      <span className={`text-xs ${message.sender === normalizeId(ownId) ? 'text-blue-100' : 'text-gray-500'}`}>
                         {formatTime(message.timestamp)}
                       </span>
-                      {(message.sender === ownId || message.sender == ownId) && (
+                      {message.sender === normalizeId(ownId) && (
                         <span className="text-xs text-blue-100 ml-2">
                           {message.pending ? '⏳' : message.failed ? '❌' : message.delivered ? '✓✓' : '✓'}
                         </span>
                       )}
                     </div>
                   </div>
-                  {(message.sender === ownId || message.sender == ownId) && (
+                  {message.sender === normalizeId(ownId) && (
                     <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
                       <User size={16} className="text-white" />
                     </div>

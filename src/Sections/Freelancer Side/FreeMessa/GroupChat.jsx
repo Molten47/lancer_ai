@@ -1,205 +1,281 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Send, Users, Circle, Settings, RefreshCw, Smile } from 'lucide-react';
+
+// Import your actual socket
 import socket from '../../../Components/socket';
 
-// GroupChat component for project/job dashboards
-const GroupChat = ({ userId, isClient }) => {
+
+
+// Pass projectId and clientId as props OR extract from URL in parent component
+const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
   const [isConnected, setIsConnected] = useState(socket.connected);
-  const [groupChatTag, setGroupChatTag] = useState(null);
-  const [projectId, setProjectId] = useState(null);
-  const [clientId, setClientId] = useState(null); 
+  const [projectData, setProjectData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false)
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // Fetch jobs to get dynamic project_id and client_id
-  const fetchJobs = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const token = localStorage.getItem('access_jwt');
-      const API_URL = import.meta.env.VITE_API_URL
-      const response = await fetch(`${API_URL}/api/jobs`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (data.well_received) {
-        const jobs = data.jobs || [];
-        if (jobs.length > 0) {
-          let targetJob = null;
-          // Prioritize finding an 'active' job
-          for (const job of jobs) {
-            if (job.status === 'active') {
-              targetJob = job;
-              break;
-            }
+  // Build recipient_id from props - THIS IS THE ROOM NAME
+  const recipientId = projectId && clientId ? `group_chat_${projectId}_${clientId}` : null;
+  const groupChatTag = projectData?.group_chat || null;
+
+  // Calculate stats
+  const activeJobs = projectData?.jobs?.filter(job => job.status === 'active') || [];
+  const employedWorkers = new Set();
+  activeJobs.forEach(job => {
+    job.employed_worker_info?.forEach(worker => employedWorkers.add(worker.id));
+  });
+
+const fetchProjectData = async () => {
+  if (!projectId) return null;
+  
+  setIsLoading(true);
+  setError(null);
+  try {
+    const token = localStorage.getItem('access_jwt');
+    const API_URL = import.meta.env.VITE_API_URL;
+    
+    // Check if user is client or freelancer to determine endpoint
+    const endpoint = isClient ? '/api/projects' : '/api/jobs';
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    
+    const data = await response.json();
+    
+    if (data.well_received) {
+      let targetProject = null;
+      
+      if (isClient) {
+        // Client: search in projects array
+        const projects = data.projects || [];
+        for (const projectObj of projects) {
+          const projectKey = Object.keys(projectObj)[0];
+          const project = projectObj[projectKey];
+          if (String(project.id) === String(projectId)) {
+            targetProject = project;
+            break;
           }
-          // If no active job, default to the first one
-          if (!targetJob) {
-            targetJob = jobs[0];
-          }
-          setProjectId(targetJob.project_id);
-          setClientId(targetJob.client_id);
-          setGroupChatTag(targetJob.project_group_chat);
-        } else {
-          setError('No jobs found');
         }
       } else {
-        setError('Failed to fetch jobs');
+        // Freelancer: find job matching projectId, then construct project-like object
+        const jobs = data.jobs || [];
+        const matchingJob = jobs.find(job => String(job.project_id) === String(projectId));
+        
+        if (matchingJob) {
+          // Construct a project-like structure from job data
+          targetProject = {
+            id: matchingJob.project_id,
+            client_id: matchingJob.client_id,
+            project_title: `Project ${matchingJob.project_id}`,
+            group_chat: matchingJob.project_group_chat,
+            status: 'active',
+            jobs: [matchingJob] // Include just this job
+          };
+        }
       }
-    } catch (err) {
-      setError('Error fetching jobs: ' + err.message);
-    } finally {
-      setIsLoading(false);
+      
+      if (!targetProject) {
+        setError(`Project ${projectId} not found`);
+        return null;
+      }
+      
+      setProjectData(targetProject);
+      console.log(`Project: ${targetProject.project_title || `Project ${projectId}`} (ID: ${projectId})`);
+      console.log(`Group Chat: ${targetProject.group_chat || 'Not created'}`);
+      console.log(`Room: ${recipientId}`);
+      
+      return targetProject;
     }
-  };
+    return null;
+  } catch (err) {
+    setError('Error loading project: ' + err.message);
+    console.error('Error:', err);
+    return null;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-  // Fetch chat details using dynamic project_id and client_id
-  const fetchChat = async () => {
-    if (!projectId || !clientId) return; // Wait for both IDs
-    setIsLoading(true);
-    setError(null);
+  const fetchMessages = async () => {
+    if (!recipientId) return;
+    
     try {
       const token = localStorage.getItem('access_jwt');
-      const API_URL = import.meta.env.VITE_API_URL
-      // Construct the dynamic recipient ID for the API call
-      const recipientId = `group_chat_tag_${projectId}_${clientId}`; 
-      const response = await fetch(`${API_URL}/api/chat?chat_type=group&recipient_id=${recipientId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      
+      const response = await fetch(
+        `${API_URL}/api/chat?chat_type=group&recipient_id=${recipientId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      
+      if (response.status === 404) {
+        setMessages([]);
+        return;
       }
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
       const data = await response.json();
-      if (data.success) {
-        setGroupChatTag(data.group_chat_tag || null);
-        setMessages((data.messages || []).map(msg => ({
+      if (data.success && data.messages) {
+        const formattedMessages = data.messages.map((msg, idx) => ({
+          id: msg.id || `msg-${idx}`,
           content: msg.message_content,
           sender: msg.sender_tag,
           timestamp: msg.timestamp || new Date().toISOString(),
-        })));
-      } else {
-        setError('Failed to fetch chat details');
+          sender_id: msg.sender_id,
+          recipient_id: msg.recipient_id
+        }));
+        setMessages(formattedMessages);
+        console.log(`Loaded ${formattedMessages.length} messages`);
       }
     } catch (err) {
-      setError('Error fetching chat: ' + err.message);
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching messages:', err);
     }
   };
 
-  // Connect to Socket.IO and join rooms
-  useEffect(() => {
-    fetchJobs(); // Now fetching from the jobs endpoint
-
-    if (!socket.connected) {
-      socket.connect();
+  // Join the recipient_id room - ALL MEMBERS JOIN THIS SAME ROOM
+  const joinRoom = () => {
+    if (!recipientId || !userId || !socket.connected) {
+      console.log('Cannot join room');
+      return;
     }
     
-    // Listen for connection status changes from the shared socket instance
-    const handleConnect = () => {
-      setIsConnected(true);
-      console.log('Connected to Socket.IO server');
-      socket.emit('join', { room_name: String(userId), user: userId });
-      if (groupChatTag) {
-        socket.emit('join', { room_name: groupChatTag, user: userId });
-      }
+    socket.emit('join', { 
+      room_name: recipientId,
+      user: parseInt(userId) 
+    });
+    
+    console.log(`Joined room: ${recipientId}`);
+  };
+
+  useEffect(() => {
+    if (!projectId || !clientId) {
+      setError('Missing project or client ID');
+      return;
+    }
+
+    const init = async () => {
+      await fetchProjectData();
+      await fetchMessages();
+      if (socket.connected) joinRoom();
     };
     
-    const handleDisconnect = (reason) => {
-      setIsConnected(false);
-      console.log('Disconnected:', reason);
+    init();
+  }, [projectId, clientId]);
+
+  useEffect(() => {
+    const handleConnect = () => {
+      setIsConnected(true);
+      console.log('Socket connected');
+      joinRoom();
     };
 
-    const handleConnectError = (error) => {
-      console.error('Connection error:', error);
-      setError('Socket connection failed');
+    const handleDisconnect = () => {
+      setIsConnected(false);
+      console.log('Socket disconnected');
+    };
+
+    const handleNewMessage = (data) => {
+      console.log('Message received:', {
+        from: data.sender_tag,
+        to: data.recipient_id,
+        expected: recipientId
+      });
+      
+      if (String(data.recipient_id) !== String(recipientId)) {
+        console.log('Wrong room - ignored');
+        return;
+      }
+
+      const newMessage = {
+        id: data.id || `msg-${Date.now()}`,
+        content: data.message_content,
+        sender: data.sender_tag,
+        timestamp: data.timestamp || new Date().toISOString(),
+        sender_id: data.sender_id || data.own_id,
+        recipient_id: data.recipient_id
+      };
+
+      setMessages(prev => {
+        if (prev.some(m => m.id === newMessage.id)) return prev;
+        return [...prev, newMessage];
+      });
+    };
+
+    const handleNotification = (data) => {
+      if (data.type === 'group_chat_created' && String(data.message?.project_id) === String(projectId)) {
+        setTimeout(() => {
+          fetchProjectData();
+          fetchMessages();
+        }, 1000);
+      }
+    };
+
+    const handleStatusUpdate = (data) => {
+      if (data.update && (data.update.includes('job_activated') || data.update.includes('worker_hired'))) {
+        setTimeout(fetchProjectData, 1000);
+      }
     };
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
-    socket.on('connect_error', handleConnectError);
+    socket.on('new_message', handleNewMessage);
+    socket.on('notification', handleNotification);
+    socket.on('status_update', handleStatusUpdate);
 
-    socket.on('new_message', (data) => {
-      // The recipient_id in the message now needs to match the new format
-      const dynamicRecipientId = `group_chat_tag_${projectId}_${clientId}`;
-      if (data.recipient_id === dynamicRecipientId) { 
-        setMessages((prev) => [
-          ...prev,
-          {
-            content: data.message_content,
-            sender: data.sender_tag,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-      }
-    });
-
-    socket.on('notification', (data) => {
-      if (data.type === 'group_chat_created' && data.message.project_id === projectId) {
-        const newGroupChatTag = data.message.group_chat_tag;
-        setGroupChatTag(newGroupChatTag);
-        socket.emit('join', { room_name: newGroupChatTag, user: userId });
-      }
-    });
-
-    socket.on('status_update', (data) => {
-      console.log('Status update:', data.update);
-      if (data.update.includes('job_activated')) {
-        fetchChat();
-      }
-    });
-
-    socket.on('control_instruction', (data) => {
-      console.log('AI instruction:', data.command, data.data);
-    });
+    setIsConnected(socket.connected);
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
-      socket.off('connect_error', handleConnectError);
-      socket.off('new_message');
-      socket.off('notification');
-      socket.off('status_update');
-      socket.off('control_instruction');
+      socket.off('new_message', handleNewMessage);
+      socket.off('notification', handleNotification);
+      socket.off('status_update', handleStatusUpdate);
     };
-  }, [userId, groupChatTag, projectId, clientId]); // Add clientId to dependency array
+  }, [recipientId, projectId, userId]);
 
-  // Trigger fetchChat when projectId or clientId is set
-  useEffect(() => {
-    if (projectId && clientId) {
-      fetchChat();
-    }
-  }, [projectId, clientId]); // Dependency on both IDs
-
-  // Scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Send message to group chat
   const handleSendMessage = () => {
-    if (!messageInput.trim() || !groupChatTag || !projectId || !clientId) return;
-    const recipientId = `group_chat_tag_${projectId}_${clientId}`;
+    if (!messageInput.trim() || !recipientId || !isConnected) return;
+
+    console.log('Sending to room:', recipientId);
+
+    const userMessage = {
+      id: `temp-${Date.now()}`,
+      content: messageInput.trim(),
+      sender: `user_${userId}`,
+      timestamp: new Date().toISOString(),
+      sender_id: parseInt(userId),
+      recipient_id: recipientId
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    
     socket.emit('send_message', {
-      message_content: messageInput,
-      own_id: userId,
+      message_content: messageInput.trim(),
+      own_id: parseInt(userId),
       recipient_id: recipientId,
     });
+    
     setMessageInput('');
   };
 
-  // Handle Enter key for sending message
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -207,67 +283,244 @@ const GroupChat = ({ userId, isClient }) => {
     }
   };
 
-  return (
-    <div className="flex flex-col h-full max-w-md mx-auto bg-gray-100 rounded-lg shadow-md p-4">
-      <h2 className="text-lg font-semibold mb-4">
-        {groupChatTag ? `Group Chat: ${groupChatTag}` : 'Group Chat (Not Active)'}
-      </h2>
-      {isLoading ? (
-        <p className="text-gray-500">Loading group chat...</p>
-      ) : error ? (
-        <p className="text-red-500">{error}</p>
-      ) : groupChatTag ? (
-        <>
-          <div className="flex-1 overflow-y-auto p-4 bg-white rounded-lg mb-4 max-h-96">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`mb-2 ${
-                  msg.sender === String(userId) ? 'text-right' : 'text-left'
-                }`}
-              >
-                <span className="text-xs text-gray-500">{msg.sender}:</span>
-                <p
-                  className={`inline-block p-2 rounded-lg ${
-                    msg.sender === String(userId)
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200'
-                  }`}
-                >
-                  {msg.content}
-                </p>
-                <span className="text-xs text-gray-400">
-                  {new Date(msg.timestamp).toLocaleTimeString()}
-                </span>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getSenderDisplay = (sender, senderId) => {
+    if (String(senderId) === String(userId)) return 'You';
+    if (sender.includes('_fl_')) {
+      const flId = sender.split('_fl_').pop();
+      return `Freelancer ${flId}`;
+    }
+    if (sender.includes('project_manager')) return 'PM';
+    return 'Member';
+  };
+
+  if (isLoading && !projectData) {
+    return (
+      <div className={`flex flex-col h-screen bg-gray-50 ${className}`}>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading chat...</p>
           </div>
-          <div className="flex gap-2">
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col h-screen bg-white p-14 ${className}`}>
+      <div className="flex items-center justify-between p-6 bg-green-600 text-white border-b flex-shrink-0">
+        <div className="flex items-center space-x-4">
+          <div className="relative">
+            <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+              <Users size={24} />
+            </div>
+            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-green-400' : 'bg-gray-400'}`}></div>
+          </div>
+          <div>
+            <h3 className="font-semibold text-lg">
+              {projectData?.project_title || 'Project Group Chat'}
+            </h3>
+            <div className="flex items-center space-x-2 text-sm flex-wrap">
+              <div className="flex items-center">
+                <Circle size={8} className={`${isConnected ? 'text-green-300' : 'text-red-300'} fill-current mr-1`} />
+                <span className="opacity-90">{isConnected ? 'Connected' : 'Disconnected'}</span>
+              </div>
+              <span className="opacity-75">
+                • Project {projectId} • {activeJobs.length} jobs • {employedWorkers.size} members
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={() => {
+              fetchProjectData();
+              fetchMessages();
+            }}
+            className="p-3 hover:bg-green-700 rounded-full transition-colors"
+          >
+            <RefreshCw size={20} />
+          </button>
+          <button className="p-3 hover:bg-green-700 rounded-full transition-colors">
+            <Settings size={20} />
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800">
+          {error}
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+        {!groupChatTag ? (
+          <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="w-20 h-20 bg-gray-200 rounded-full mb-6 flex items-center justify-center">
+              <Users size={32} className="text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-600 mb-2">Group Chat Not Active</h3>
+            <p className="text-gray-500 max-w-md mb-4">
+              Activate jobs and onboard freelancers to enable group chat.
+            </p>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 max-w-2xl text-left shadow-sm">
+              <h4 className="font-semibold text-gray-900 mb-4">Current Status</h4>
+              
+              {/* Active Jobs */}
+              <div className="mb-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">Active Jobs ({activeJobs.length}):</p>
+                {activeJobs.length > 0 ? (
+                  <div className="space-y-2">
+                    {activeJobs.map((job) => (
+                      <div key={job.id} className="bg-blue-50 border border-blue-200 rounded p-3">
+                        <p className="text-sm font-medium text-blue-900">
+                          Job #{job.id}: {job.title}
+                        </p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          {job.metrics}
+                        </p>
+                        {job.employed_worker_info && job.employed_worker_info.length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-blue-200">
+                            <p className="text-xs text-blue-600 mb-1">Assigned Workers:</p>
+                            {job.employed_worker_info.map((worker) => (
+                              <div key={worker.id} className="text-xs text-blue-800 ml-2">
+                                • {worker.firstname} {worker.lastname} (@{worker.username}) - ID: {worker.id}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No active jobs</p>
+                )}
+              </div>
+
+              {/* Team Members Summary */}
+              <div className="mb-4">
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Team Members ({employedWorkers.size}):
+                </p>
+                {employedWorkers.size > 0 ? (
+                  <div className="bg-green-50 border border-green-200 rounded p-3">
+                    {Array.from(employedWorkers).map((workerId) => {
+                      // Find worker details
+                      let workerInfo = null;
+                      activeJobs.forEach(job => {
+                        const found = job.employed_worker_info?.find(w => w.id === workerId);
+                        if (found) workerInfo = found;
+                      });
+                      
+                      return workerInfo ? (
+                        <div key={workerId} className="text-sm text-green-800 mb-1">
+                          • {workerInfo.firstname} {workerInfo.lastname} ({workerInfo.skill}) - ID: {workerInfo.id}
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No team members yet</p>
+                )}
+              </div>
+
+              {/* Room Info */}
+              <div className="pt-3 border-t border-gray-200">
+                <p className="text-xs text-gray-600">
+                  <strong>Room:</strong> <code className="bg-gray-100 px-2 py-1 rounded">{recipientId}</code>
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  <strong>Group Chat Status:</strong> {groupChatTag || 'Not created'}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full mb-6 flex items-center justify-center">
+              <Users size={32} className="text-green-500" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-600 mb-2">No messages yet</h3>
+            <p className="text-gray-500 text-sm">
+              Room: <code className="bg-gray-100 px-2 py-1 rounded">{recipientId}</code>
+            </p>
+          </div>
+        ) : (
+          messages.map((msg) => {
+            const isFromUser = String(msg.sender_id) === String(userId);
+            return (
+              <div key={msg.id} className={`flex ${isFromUser ? 'justify-end' : 'justify-start'}`}>
+                <div className="flex items-end space-x-2 max-w-lg">
+                  {!isFromUser && (
+                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                      <span className="text-white text-xs font-semibold">
+                        {getSenderDisplay(msg.sender, msg.sender_id).substring(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div className={`px-4 py-3 rounded-2xl max-w-sm lg:max-w-md ${
+                    isFromUser
+                      ? 'bg-green-600 text-white rounded-br-md'
+                      : 'bg-white text-gray-800 border rounded-bl-md shadow-sm'
+                  }`}>
+                    {!isFromUser && (
+                      <p className="text-xs font-medium mb-1 text-green-600">
+                        {getSenderDisplay(msg.sender, msg.sender_id)}
+                      </p>
+                    )}
+                    <p className="text-sm leading-relaxed">{msg.content}</p>
+                    <span className={`text-xs mt-2 block ${isFromUser ? 'text-green-100' : 'text-gray-500'}`}>
+                      {formatTime(msg.timestamp)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      <div className="p-6 border-t bg-white flex-shrink-0">
+        {groupChatTag ? (
+          <div className="flex items-center space-x-3">
+            <button className="p-3 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100">
+              <Smile size={24} />
+            </button>
             <textarea
               value={messageInput}
               onChange={(e) => setMessageInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
-              className="flex-1 p-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows="2"
+              className="flex-1 px-6 py-4 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              rows="1"
+              style={{ minHeight: '56px', maxHeight: '120px' }}
+              disabled={!isConnected}
             />
             <button
               onClick={handleSendMessage}
-              disabled={!isConnected || !groupChatTag}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg disabled:bg-gray-400 hover:bg-blue-600"
+              disabled={!messageInput.trim() || !isConnected}
+              className={`p-3 rounded-full transition-colors ${
+                messageInput.trim() && isConnected
+                  ? 'bg-green-600 text-white hover:bg-green-700'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
             >
-              Send
+              <Send size={24} />
             </button>
           </div>
-        </>
-      ) : (
-        <p className="text-gray-500">
-          Waiting for group chat to be created. Onboard freelancers to start chatting.
-        </p>
-      )}
-      <div className="mt-2 text-sm text-gray-600">
-        Status: {isConnected ? 'Connected' : 'Disconnected'}
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-gray-500 text-sm">
+              Chat will be available once the group is active.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

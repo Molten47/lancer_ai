@@ -28,11 +28,87 @@ const AgentView = () => <div className="p-6 bg-gray-50  min-h-full h-screen over
 const HumanChatView = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
 <HumanChat/>
 </div>
-const GroupChatView = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
-  <GroupChatSpace userId={localStorage.getItem('user_id')} 
-  isClient={true}
-  className="custom-class"/>
-</div>
+const GroupChatView = () => {
+  const [projectId, setProjectId] = useState(null);
+  const [clientId, setClientId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProjectInfo = async () => {
+      try {
+        const token = localStorage.getItem('access_jwt');
+        const API_URL = import.meta.env.VITE_API_URL;
+        const response = await fetch(`${API_URL}/api/projects`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const data = await response.json();
+        
+        if (data.well_received && data.projects.length > 0) {
+          // Get first ongoing project or fallback to first project
+          let targetProject = null;
+          for (const projectObj of data.projects) {
+            const projectKey = Object.keys(projectObj)[0];
+            const project = projectObj[projectKey];
+            if (project.status === 'ongoing') {
+              targetProject = project;
+              break;
+            }
+          }
+          
+          if (!targetProject) {
+            const firstProjectObj = data.projects[0];
+            const projectKey = Object.keys(firstProjectObj)[0];
+            targetProject = firstProjectObj[projectKey];
+          }
+          
+          setProjectId(targetProject.id);
+          setClientId(targetProject.client_id);
+        }
+      } catch (error) {
+        console.error('Error fetching project info:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProjectInfo();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading chat...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!projectId || !clientId) {
+    return (
+      <div className="p-6 bg-gray-50 min-h-full h-screen flex items-center justify-center">
+        <p className="text-gray-600">No active projects found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-gray-50 min-h-full h-screen overflow-hidden">
+      <GroupChatSpace 
+        userId={localStorage.getItem('user_id')} 
+        projectId={projectId}
+        clientId={clientId}
+        isClient={true}
+        className="custom-class"
+      />
+    </div>
+  );
+};
 
 const SettingsView = () => <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
   <div className="bg-white rounded-lg p-8 shadow-sm">

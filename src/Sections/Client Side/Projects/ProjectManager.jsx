@@ -403,47 +403,91 @@ const ProjectManager = ({
       setSocketError('Connection error. Please try refreshing the page.');
     });
 
-    socket.on('new_message', (data, callback) => {
-      console.log('Received new message:', data);
-      
-      const userId = own_id || localStorage.getItem('user_id');
-      const messageFilter = createProjectManagerMessageFilter(userId, dynamicRecipientId);
-      
-      if (!messageFilter(data)) {
-        console.log('Message filtered out - not for this chat');
-        if (callback && typeof callback === 'function') callback();
-        return;
-      }
-      
-      const { message_content, sender_tag, own_id: socket_sender_id, recipient_id, sender_id } = data;
-      
-      const { type: messageType, sender: senderName } = determineMessageType({
-        sender_id: sender_id || socket_sender_id,
-        recipient_id: recipient_id,
-        sender_tag: sender_tag,
-        message_content: message_content
-      }, userId);
+// Replace your current new_message handler with this fixed version
+  socket.on('new_message', (data, callback) => {
+  // Get fresh values each time - don't rely on closure
+  const userId = own_id || localStorage.getItem('user_id');
+  const currentRecipientId = dynamicRecipientId; // Capture current value
+  
+  console.log('🔔 RAW new_message received:', {
+    sender_id: data.sender_id,
+    recipient_id: data.recipient_id,
+    sender_tag: data.sender_tag,
+    own_id: data.own_id,
+    content_preview: data.message_content?.substring(0, 50),
+    current_userId: userId,
+    current_dynamicRecipientId: currentRecipientId
+  });
+  
+  // CRITICAL FIX: Create filter with fresh values
+  const messageFilter = createProjectManagerMessageFilter(userId, currentRecipientId);
+  const filterResult = messageFilter(data);
+  
+  console.log('🔍 Filter result:', filterResult, {
+    hasUserId: !!userId,
+    hasRecipientId: !!currentRecipientId,
+    dataValid: !!(data.sender_id || data.own_id)
+  });
+  
+  if (!filterResult) {
+    console.warn('❌ Message FILTERED OUT:', data);
+    if (callback && typeof callback === 'function') callback();
+    return;
+  }
+  
+  // Extract message data
+  const { message_content, sender_tag, own_id: socket_sender_id, recipient_id, sender_id } = data;
+  
+  // CRITICAL FIX: Pass fresh userId to determineMessageType
+  const { type: messageType, sender: senderName } = determineMessageType({
+    sender_id: sender_id || socket_sender_id,
+    recipient_id: recipient_id,
+    sender_tag: sender_tag,
+    message_content: message_content
+  }, userId);
 
-      const newMessage = {
-        id: Date.now(),
-        type: messageType,
-        content: message_content,
-        timestamp: new Date(),
-        sender: senderName,
-        sender_id: sender_id || socket_sender_id,
-        recipient_id: recipient_id,
-        sender_tag: sender_tag,
-        isStatus: false
-      };
-      
-      setMessages(prev => [...prev, newMessage]);
-      
-      if (messageType === 'ai') {
-        clearLoadingStates();
-      }
+  const newMessage = {
+    id: Date.now(),
+    type: messageType,
+    content: message_content,
+    timestamp: new Date(),
+    sender: senderName,
+    sender_id: sender_id || socket_sender_id,
+    recipient_id: recipient_id,
+    sender_tag: sender_tag,
+    isStatus: false
+  };
+  
+  console.log('✅ Adding message to state:', {
+    type: newMessage.type,
+    sender: newMessage.sender,
+    preview: newMessage.content.substring(0, 50)
+  });
+  
+  // CRITICAL FIX: Use functional update to avoid stale state
+  setMessages(prev => {
+    // Check if message already exists (prevent duplicates)
+    const isDuplicate = prev.some(msg => 
+      msg.content === newMessage.content && 
+      Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000
+    );
+    
+    if (isDuplicate) {
+      console.log('⚠️ Duplicate message detected, skipping');
+      return prev;
+    }
+    
+    return [...prev, newMessage];
+  });
+  
+  if (messageType === 'ai') {
+    console.log('🤖 AI message detected, clearing loading states');
+    // CRITICAL FIX: Clear loading states immediately
+    clearLoadingStates();
+  }
 
-      if (callback && typeof callback === 'function') callback();
-    });
+  if (callback && typeof callback === 'function') callback();
+});
 
     socket.on('control_instruction', (data, callback) => {
       console.log('Received control instruction:', data);
@@ -536,56 +580,88 @@ const ProjectManager = ({
     init();
   }, []);
 
-  // Socket listeners effect
-  useEffect(() => {
-    console.log('Setting up socket listeners...');
-    setupSocketListeners();
-    
-    return () => {
-      cleanupSocketListeners();
-    };
-  }, [dynamicRecipientId]);
+// socket listeners effect:
+useEffect(() => {
+  if (!dynamicRecipientId) {
+    console.log('⏸️ Skipping socket setup - no recipient ID yet');
+    return;
+  }
+  
+  console.log('Setting up socket listeners for:', dynamicRecipientId);
+  setupSocketListeners();
+  
+  return () => {
+    console.log('Cleaning up socket listeners');
+    cleanupSocketListeners();
+  };
+}, [dynamicRecipientId]); // Only re-run when dynamicRecipientId changes
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Send message function
-  const handleSendMessage = () => {
-    if (!inputValue.trim() || !isConnected || !dynamicRecipientId) return;
-
-    const userId = own_id || localStorage.getItem('user_id');
-    const userMessage = {
-      id: Date.now(),
-      type: 'user',
-      content: inputValue.trim(),
-      timestamp: new Date(),
-      sender: 'You',
-      sender_id: userId,
-      recipient_id: dynamicRecipientId,
-      isStatus: false
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-
-    socket.emit('send_message', {
-      message_content: inputValue.trim(),
-      own_id: parseInt(userId),
-      recipient_id: dynamicRecipientId,
-    });
-    
-    if (onMessageSent) {
-      onMessageSent(userMessage);
-    }
-
-    setInputValue('');
-    setIsWaitingForResponse(true);
-    setIsLoadingAnswer(true);
-    setTimeout(() => setIsTyping(true), 500);
-    setTimeout(() => inputRef.current?.focus(), 100);
-    setResponseTimeout();
+  // Add after your other useEffects
+useEffect(() => {
+  const logAllEvents = (eventName, ...args) => {
+    console.log(`🔔 [SOCKET EVENT] ${eventName}:`, args);
   };
+  
+  socket.onAny(logAllEvents);
+  
+  return () => socket.offAny(logAllEvents);
+}, []);
+
+  // Send message function
+const handleSendMessage = () => {
+  if (!inputValue.trim() || !isConnected || !dynamicRecipientId) {
+    console.warn('Cannot send - missing requirements:', {
+      hasInput: !!inputValue.trim(),
+      isConnected,
+      hasDynamicRecipientId: !!dynamicRecipientId
+    });
+    return;
+  }
+
+  const userId = own_id || localStorage.getItem('user_id');
+  const userMessage = {
+    id: Date.now(),
+    type: 'user',
+    content: inputValue.trim(),
+    timestamp: new Date(),
+    sender: 'You',
+    sender_id: userId,
+    recipient_id: dynamicRecipientId,
+    isStatus: false
+  };
+
+  setMessages(prev => [...prev, userMessage]);
+
+  const messagePayload = {
+    message_content: inputValue.trim(),
+    own_id: parseInt(userId),
+    recipient_id: dynamicRecipientId,
+    chat_type: chat_type,
+    timestamp: new Date().toISOString()
+  };
+
+  console.log('📤 Sending message:', messagePayload);
+
+  // Emit without callback - backend doesn't send acknowledgments
+  socket.emit('send_message', messagePayload);
+  console.log('✅ Message emitted to backend');
+  
+  if (onMessageSent) {
+    onMessageSent(userMessage);
+  }
+
+  setInputValue('');
+  setIsWaitingForResponse(true);
+  setIsLoadingAnswer(true);
+  setTimeout(() => setIsTyping(true), 500);
+  setTimeout(() => inputRef.current?.focus(), 100);
+  setResponseTimeout();
+};
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {

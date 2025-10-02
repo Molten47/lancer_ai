@@ -1,8 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { clearAuthData } from '../store/userSlice';
+import { initializeSocket } from './socket';
+
 
 const useAuthService = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch()
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!(localStorage.getItem('access_jwt') || localStorage.getItem('access_token'))
   );
@@ -11,6 +16,11 @@ const useAuthService = () => {
     localStorage.setItem('access_jwt', accessJwt);
     localStorage.setItem('refresh_jwt', refreshJwt);
     setIsAuthenticated(true);
+     // Initialize socket connection after authentication
+
+    initializeSocket().catch(error => {
+    console.error('Failed to initialize socket after authentication:', error);
+  });
   };
 
   const clearTokens = () => {
@@ -24,6 +34,11 @@ const useAuthService = () => {
     localStorage.removeItem('profileCompleted');
     localStorage.removeItem('showSignupSuccess');
     localStorage.removeItem('fromProfileSetup');
+
+
+    //State to clear Redux auth state
+    dispatch(clearAuthData());
+
     setIsAuthenticated(false);
     navigate('/login', { replace: true });
   };
