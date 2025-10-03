@@ -67,14 +67,14 @@ const Unique = () => {
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <div className="bg-white rounded-xl p-4">
                   {/* Icon and Title Section */}
-                  <span className="flex flex-row bg-[#DBEAFE] items-center w-1/2 justify-between rounded-lg mb-3 py-2 px-3">
-                    <h3 className="text-[1rem] font-medium text-primary">
-                      {feature.title}
-                    </h3>
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0">
-                      {feature.icon}
-                    </div>
-                  </span>
+                <span className="flex flex-row bg-[#DBEAFE] items-center w-full sm:w-auto justify-between rounded-lg mb-3 py-2 px-3 gap-2">
+                 <h3 className="text-sm sm:text-[1rem] font-medium text-primary leading-tight">
+                  {feature.title}
+                </h3>
+               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0">
+               {feature.icon}
+               </div>
+               </span>
 
                   {/* Description */}
                   <p className="text-[#4B5563] text-sm leading-relaxed">

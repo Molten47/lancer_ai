@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Users, Circle, Settings, RefreshCw, Smile } from 'lucide-react';
-
-// Import your actual socket
 import socket from '../../../Components/socket';
 
 

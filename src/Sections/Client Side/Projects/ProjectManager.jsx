@@ -32,7 +32,8 @@ const ProjectManager = ({
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
-  
+  const dynamicRecipientIdRef = useRef(null);
+ const ownIdRef = useRef(own_id);
   // New state variables for dynamic ID
   const [projectId, setProjectId] = useState(null);
   const [dynamicRecipientId, setDynamicRecipientId] = useState(null);
@@ -203,6 +204,8 @@ const ProjectManager = ({
         setProjectId(fetchedProjectId);
         const recipientId = `project_manager_${fetchedProjectId}`;
         setDynamicRecipientId(recipientId);
+        dynamicRecipientIdRef.current = recipientId;
+         ownIdRef.current = own_id; 
         console.log(`✅ Project Manager initialized with ID: ${recipientId}`);
         return recipientId;
       } else {
@@ -326,24 +329,6 @@ const ProjectManager = ({
     }
   };
 
-  // Helper function to create message filter
-  const createProjectManagerMessageFilter = (currentUserId, assistantId) => {
-    return (messageData) => {
-      if (!messageData || !currentUserId || !assistantId) return false;
-      const { own_id, recipient_id, sender_tag, sender_id } = messageData;
-      const currentUserStr = String(currentUserId);
-      const senderStr = String(sender_id || own_id);
-      const recipientStr = String(recipient_id);
-      const assistantStr = String(assistantId);
-      
-      const isUserToAssistant = senderStr === currentUserStr && recipientStr === assistantStr;
-      const isAssistantToUser = senderStr === assistantStr && recipientStr === currentUserStr;
-      const isAIFromAssistant = sender_tag === 'ai' && (senderStr === assistantStr || recipientStr === currentUserStr);
-      
-      return isUserToAssistant || isAssistantToUser || isAIFromAssistant;
-    };
-  };
-
   // Authorization Checker
   const handleAuthError = (message, route, delay = 1500) => {
     setSocketError(message);
@@ -403,91 +388,84 @@ const ProjectManager = ({
       setSocketError('Connection error. Please try refreshing the page.');
     });
 
-// Replace your current new_message handler with this fixed version
+  // ✅ SINGLE new_message handler - DELETE any other new_message handlers
   socket.on('new_message', (data, callback) => {
-  // Get fresh values each time - don't rely on closure
-  const userId = own_id || localStorage.getItem('user_id');
-  const currentRecipientId = dynamicRecipientId; // Capture current value
-  
-  console.log('🔔 RAW new_message received:', {
-    sender_id: data.sender_id,
-    recipient_id: data.recipient_id,
-    sender_tag: data.sender_tag,
-    own_id: data.own_id,
-    content_preview: data.message_content?.substring(0, 50),
-    current_userId: userId,
-    current_dynamicRecipientId: currentRecipientId
-  });
-  
-  // CRITICAL FIX: Create filter with fresh values
-  const messageFilter = createProjectManagerMessageFilter(userId, currentRecipientId);
-  const filterResult = messageFilter(data);
-  
-  console.log('🔍 Filter result:', filterResult, {
-    hasUserId: !!userId,
-    hasRecipientId: !!currentRecipientId,
-    dataValid: !!(data.sender_id || data.own_id)
-  });
-  
-  if (!filterResult) {
-    console.warn('❌ Message FILTERED OUT:', data);
-    if (callback && typeof callback === 'function') callback();
-    return;
-  }
-  
-  // Extract message data
-  const { message_content, sender_tag, own_id: socket_sender_id, recipient_id, sender_id } = data;
-  
-  // CRITICAL FIX: Pass fresh userId to determineMessageType
-  const { type: messageType, sender: senderName } = determineMessageType({
-    sender_id: sender_id || socket_sender_id,
-    recipient_id: recipient_id,
-    sender_tag: sender_tag,
-    message_content: message_content
-  }, userId);
-
-  const newMessage = {
-    id: Date.now(),
-    type: messageType,
-    content: message_content,
-    timestamp: new Date(),
-    sender: senderName,
-    sender_id: sender_id || socket_sender_id,
-    recipient_id: recipient_id,
-    sender_tag: sender_tag,
-    isStatus: false
-  };
-  
-  console.log('✅ Adding message to state:', {
-    type: newMessage.type,
-    sender: newMessage.sender,
-    preview: newMessage.content.substring(0, 50)
-  });
-  
-  // CRITICAL FIX: Use functional update to avoid stale state
-  setMessages(prev => {
-    // Check if message already exists (prevent duplicates)
-    const isDuplicate = prev.some(msg => 
-      msg.content === newMessage.content && 
-      Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000
-    );
+    const userId = ownIdRef.current || localStorage.getItem('user_id');
+    const currentRecipientId = dynamicRecipientIdRef.current;
     
-    if (isDuplicate) {
-      console.log('⚠️ Duplicate message detected, skipping');
-      return prev;
+    console.log('🔔 new_message received:', {
+      sender_id: data.sender_id,
+      recipient_id: data.recipient_id,
+      sender_tag: data.sender_tag,
+      own_id: data.own_id,
+      currentRecipientId,
+      userId,
+      preview: data.message_content?.substring(0, 50)
+    });
+    
+    // Simple filter - accept if any of these conditions are true
+    const isRelevant = 
+      data.sender_tag === 'ai' || 
+      String(data.sender_id) === String(currentRecipientId) || 
+      String(data.recipient_id) === String(currentRecipientId) ||
+      String(data.sender_id).includes('project_manager') ||
+      String(data.recipient_id).includes('project_manager');
+    
+    if (!isRelevant) {
+      console.log('❌ Filtered: Not relevant to PM chat');
+      if (callback) callback();
+      return;
     }
     
-    return [...prev, newMessage];
-  });
-  
-  if (messageType === 'ai') {
-    console.log('🤖 AI message detected, clearing loading states');
-    // CRITICAL FIX: Clear loading states immediately
-    clearLoadingStates();
-  }
+    console.log('✅ Message accepted');
+    
+    // Determine message type
+    const { type: messageType, sender: senderName } = determineMessageType({
+      sender_id: data.sender_id,
+      recipient_id: data.recipient_id,
+      sender_tag: data.sender_tag,
+      message_content: data.message_content
+    }, userId);
 
-  if (callback && typeof callback === 'function') callback();
-});
+    const newMessage = {
+      id: Date.now() + Math.random(), // Ensure unique ID
+      type: messageType,
+      content: data.message_content,
+      timestamp: new Date(),
+      sender: senderName,
+      sender_id: data.sender_id,
+      recipient_id: data.recipient_id,
+      isStatus: false
+    };
+    
+    console.log('📝 Adding message:', {
+      type: newMessage.type,
+      sender: newMessage.sender,
+      preview: newMessage.content.substring(0, 30)
+    });
+    
+    setMessages(prev => {
+      // Prevent duplicates
+      const isDuplicate = prev.some(msg => 
+        msg.content === newMessage.content && 
+        Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 2000
+      );
+      
+      if (isDuplicate) {
+        console.log('⚠️ Duplicate detected, skipping');
+        return prev;
+      }
+      
+      return [...prev, newMessage];
+    });
+    
+    if (messageType === 'ai') {
+      console.log('🤖 AI response - clearing loading');
+      clearLoadingStates();
+    }
+
+    if (callback) callback();
+  });
 
     socket.on('control_instruction', (data, callback) => {
       console.log('Received control instruction:', data);
@@ -587,14 +565,19 @@ useEffect(() => {
     return;
   }
   
-  console.log('Setting up socket listeners for:', dynamicRecipientId);
+  console.log('🔌 Setting up socket listeners for:', dynamicRecipientId);
+  
+  // ADD THIS: Clean up existing listeners BEFORE setting up new ones
+  cleanupSocketListeners();
+  
+  // Then set up fresh listeners
   setupSocketListeners();
   
   return () => {
-    console.log('Cleaning up socket listeners');
+    console.log('🧹 Cleaning up socket listeners');
     cleanupSocketListeners();
   };
-}, [dynamicRecipientId]); // Only re-run when dynamicRecipientId changes
+}, [dynamicRecipientId]); //Only re-run when dynamicRecipientId changes
 
   // Auto-scroll to bottom
   useEffect(() => {

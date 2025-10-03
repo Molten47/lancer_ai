@@ -27,7 +27,7 @@ const P2PChatComponent = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
-  IF
+  
   // Helper function to normalize IDs for consistent comparison
   const normalizeId = (id) => {
     return id ? String(id) : null;
@@ -72,11 +72,26 @@ const P2PChatComponent = ({
         
 if (response.ok) {
           const chatData = await response.json();
+          console.log('📦 Full API Response:', chatData); 
           if (chatData.messages) {
             // Normalize message data when loading from history
             const normalizedMessages = chatData.messages.map(msg => {
+              console.log('📩 Raw message from API:', {
+        id: msg.id,
+        sender_id: msg.sender_id,
+        sender: msg.sender,
+        own_id: msg.own_id,
+        recipient_id: msg.recipient_id,
+        recipient: msg.recipient,
+        timestamp: msg.timestamp,
+        created_at: msg.created_at,
+        message_content: msg.message_content,
+        allKeys: Object.keys(msg)
+      });
               // Determine the actual sender based on the message direction
               // If the message has sender_id, use that; otherwise infer from own_id and recipient_id
+
+
               let actualSender;
               if (msg.sender_id) {
                 actualSender = normalizeId(msg.sender_id);
@@ -99,6 +114,9 @@ if (response.ok) {
                 timestamp: msg.timestamp || msg.created_at || new Date().toISOString(),
                 delivered: true
               };
+
+
+              
             });
             
             console.log('📋 Loaded messages from history:', normalizedMessages.map(m => ({

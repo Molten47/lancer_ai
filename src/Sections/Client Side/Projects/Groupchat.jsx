@@ -233,16 +233,6 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
 
     console.log('Sending to room:', recipientId);
 
-    const userMessage = {
-      id: `temp-${Date.now()}`,
-      content: messageInput.trim(),
-      sender: `user_${userId}`,
-      timestamp: new Date().toISOString(),
-      sender_id: parseInt(userId),
-      recipient_id: recipientId
-    };
-
-    setMessages(prev => [...prev, userMessage]);
     
     socket.emit('send_message', {
       message_content: messageInput.trim(),

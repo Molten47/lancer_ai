@@ -46,18 +46,19 @@ const services = [
 
 
   return (
-   <div className={`w-full ${isMobile ? 'min-h-[70vh] ' : 'min-h-[160vh]'} bg-white basic-font py-14 flex flex-col items-center`}>
+   <div className={`w-full ${isMobile ? 'min-h-[70vh]' : 'min-h-[160vh]'} bg-white basic-font py-10 sm:py-14 flex flex-col items-center px-4`}>
       {/* Header Section */}
-      <div className="text-center mb-12 bg-white z-30">
+      <div className="text-center mb-8 sm:mb-12 bg-white z-30">
         <span 
-          className={`text-[#151B25] p-4 bg-[#F3F4F6] border-2 border-[#E5E7EB] rounded-lg font-normal ${isMobile ? 'text-[16px]' : 'text-[16px]'} mb-`}
+          className="text-[#151B25] px-4 py-2 sm:p-4 bg-[#F3F4F6] border-2 border-[#E5E7EB] rounded-lg font-normal text-sm sm:text-base"
         >
           Our Services
         </span>
         <p 
-          className="text-[#151B25] text-lg max-w-2xl mx-auto mt-6 px-4"
+          className="text-[#151B25] text-base sm:text-lg max-w-2xl mx-auto mt-4 sm:mt-6 px-4"
         >
-          Comprehensive solutions for founders, businesses <br />and freelancers
+          Comprehensive solutions for founders, businesses <br className="hidden sm:block" />
+          <span className="sm:hidden"> </span>and freelancers
         </p>
       </div>
 
@@ -72,31 +73,31 @@ const services = [
               key={service.id}
               className={`
                 sticky top-0 
-                flex flex-col w-3/4 max-w-6xl mt-4
+                flex flex-col w-full sm:w-11/12 md:w-5/6 lg:w-3/4 max-w-6xl mt-3 sm:mt-4
                 ${zIndex}
             `}
             >
-              <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex h-120">
-                {/* Color Block Left Side */}
-                <div className={`w-1/2 ${service.color} flex items-center justify-center`}>
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row min-h-[400px] sm:h-auto">
+                {/* Color Block - Top on mobile, Left on desktop */}
+                <div className={`w-full md:w-1/2 ${service.color} flex items-center justify-center min-h-[120px] sm:min-h-[150px] md:min-h-0`}>
                 </div>
                 
-                {/* Content Right Side */}
-                <div className="w-1/2 p-8 flex flex-col justify-start">
+                {/* Content - Bottom on mobile, Right on desktop */}
+                <div className="w-full md:w-1/2 p-5 sm:p-6 md:p-8 flex flex-col justify-start">
                   <div>
-                    <h3 className="text-2xl font-bold text-[#151B25] mb-6">
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#151B25] mb-3 sm:mb-4 md:mb-6">
                       {service.title}
                     </h3>
-                    <p className="text-[#4B5563] text-sm leading-relaxed mb-6">
+                    <p className="text-[#4B5563] text-sm sm:text-base leading-relaxed mb-4 sm:mb-5 md:mb-6">
                       {service.description}
                     </p>
                       {/* Keywords with checkmarks */}
                   {service.keywords && (
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {service.keywords.split(', ').map((keyword, idx) => (
                         <div key={idx} className="flex items-center">
-                          <CheckCircle className="text-[#22C55E] w-4 h-4 mr-3" />
-                          <span className="text-sm text-[#4B5563]">{keyword}</span>
+                          <CheckCircle className="text-[#22C55E] w-4 h-4 mr-2 sm:mr-3 flex-shrink-0" />
+                          <span className="text-xs sm:text-sm text-[#4B5563]">{keyword}</span>
                         </div>
                       ))}
                     </div>
