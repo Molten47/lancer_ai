@@ -42,7 +42,7 @@ const Navbar = () => {
             href="https://forms.gle/BPQ4XXApoRNbRBXR7" 
             className='text-white text-xs md:text-sm text-center  transition-all duration-200'
           >
-            <span className='font-semibold'>🙋🏻‍♂️</span> Get to be part of our first time users now by 
+            <span className='font-semibold'>🙋🏻‍♂️</span> Get to be part of our early testers now by 
             <span className='font-semibold ml-1 hover:underline'>Joining the waiting list →</span>
           </a>
         </div>

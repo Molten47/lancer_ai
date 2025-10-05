@@ -52,7 +52,7 @@ const Hero = ({ onExplore }) => {
 
   return (
     <div 
-      className='hero-container  basic-font w-full min-h-[90vh] flex flex-col lg:flex-row justify-center items-center z-1 p-4 sm:p-6 md:p-8 lg:p-16 md:px-8 lg:px-20 bg-gradient-to-br from-[#111827] from-0% via-[#0e4283] via-50% to-[#3f2286] to-100% relative'>
+      className='hero-container  basic-font w-full min-h-[90vh] flex flex-col lg:flex-row justify-center items-center z-1 p-4  sm:p-6 md:p-8 lg:p-16 md:px-8 lg:px-20 lg:pt-18 bg-gradient-to-br from-[#111827] from-0% via-[#0e4283] via-50% to-[#3f2286] to-100% relative'>
       
       {/* Content Section */}
       <div className='w-full lg:w-1/2 z-50 relative flex justify-center lg:justify-start'>
