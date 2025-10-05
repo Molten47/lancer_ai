@@ -1,8 +1,8 @@
 import React from 'react';
 import { Rocket, Building, PaletteIcon, ArrowUpRight } from 'lucide-react';
-import Frame1 from '../../assets/Images/Target1.jpg';
-import Frame2 from '../../assets/Images/Target2.jpg';
-import Frame3 from '../../assets/Images/Target3.jpg';
+import Frame1 from '../../assets/Images/fatemeh.jpg';
+import Frame2 from '../../assets/Images/property-3.jpg';
+import Frame3 from '../../assets/Images/may-gauthier.jpg';
 
 const Unique = () => {
   const features = [

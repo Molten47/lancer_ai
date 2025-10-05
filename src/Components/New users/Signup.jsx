@@ -1,14 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 const Signup = () => {
-  // State to manage form data, initialized to be completely empty
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  // Get preselected role from navigation state
+  const preselectedRole = location.state?.preselectedRole || '';
+
+  // State to manage form data, with preselected role if available
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirm_password: '',
-    role: ''
+    role: preselectedRole
   });
 
   const [errors, setErrors] = useState({});
@@ -16,7 +22,16 @@ const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const navigate = useNavigate();
+
+  // Update role if preselectedRole changes (in case user navigates back and forth)
+  useEffect(() => {
+    if (preselectedRole) {
+      setFormData(prev => ({
+        ...prev,
+        role: preselectedRole
+      }));
+    }
+  }, [preselectedRole]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -113,8 +128,6 @@ const Signup = () => {
           localStorage.setItem('access_token', data.access_jwt);
           localStorage.setItem('refresh_token', data.refresh_jwt);
           localStorage.setItem('userRole', formData.role);
-          // showSignupSuccess is not part of the provided documentation,
-          // but kept for the navigation logic to work as intended
           localStorage.setItem('showSignupSuccess', 'true'); 
         } catch (e) {
           console.error('Failed to save to localStorage:', e);
@@ -147,9 +160,6 @@ const Signup = () => {
   const handleGoogleSignIn = () => {
     console.log('Google sign-in initiated - COMMENTED OUT FOR DEBUG');
     // GOOGLE SIGN-IN BACKEND CALLS COMMENTED OUT
-    /*
-    // Google sign-in logic would go here
-    */
   };
 
   const togglePasswordVisibility = (field) => {
@@ -165,7 +175,9 @@ const Signup = () => {
       <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
         <div className="text-center mb-8">
           <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome to Lancer.ai</h1>
-          <p className="mt-2 text-[#6B7280] basic-font">Sign up to get started with your new account</p>
+          <p className="mt-2 text-[#6B7280] basic-font">
+            Sign up to get started as {formData.role ? `a ${formData.role}` : 'with your new account'}
+          </p>
         </div>
 
         {apiError && (

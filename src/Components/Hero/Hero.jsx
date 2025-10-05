@@ -1,7 +1,10 @@
 import React from 'react';
 import { ArrowRight, Brain, Rocket, Layers} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Hero = ({ onExplore }) => {
+
+  const navigate = useNavigate()
   const heroCarousels = [
     {
       id: 1,
@@ -27,16 +30,25 @@ const Hero = ({ onExplore }) => {
     }
   ];
 
+  // Navigate to signup with client role pre-selected
   const startProject = () => {
-    console.log('Navigate to signup');
+    navigate('/signup', { 
+      state: { 
+        preselectedRole: 'client' 
+      } 
+    });
   };
 
-  const handleExploreClick = (e) => {
-    e.preventDefault();
-    if (onExplore) {
-      onExplore();
-    }
+  // Navigate to signup with freelancer role pre-selected
+  const getHired = () => {
+    navigate('/signup', { 
+      state: { 
+        preselectedRole: 'freelancer' 
+      } 
+    });
   };
+
+
 
   return (
     <div 
@@ -69,10 +81,10 @@ const Hero = ({ onExplore }) => {
               <ArrowRight size={18} className="w-4 h-4 lg:w-5 lg:h-5" />
             </button>
             <button 
-              onClick={handleExploreClick}
+              onClick={getHired}
               className='py-3 px-6 md:py-2.5 md:px-6 lg:py-3 lg:px-8 bg-white text-[#2255d7] font-semibold rounded-lg shadow-xl hover:bg-[#f1f1f1] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-sm md:text-sm lg:text-base w-full sm:w-auto'
             >
-              Learn More
+              Get Hired
             </button>
           </div>
         </div>

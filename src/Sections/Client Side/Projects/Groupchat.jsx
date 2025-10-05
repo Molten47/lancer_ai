@@ -4,9 +4,6 @@ import { Send, Users, Circle, Settings, RefreshCw, Smile } from 'lucide-react';
 // Import your actual socket
 import socket from '../../../Components/socket';
 
-
-
-// Pass projectId and clientId as props OR extract from URL in parent component
 const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
   const [messages, setMessages] = useState([]);
   const [messageInput, setMessageInput] = useState('');
@@ -14,9 +11,10 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
   const [projectData, setProjectData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [userMap, setUserMap] = useState(new Map());
+  const [senderProfile, setSenderProfile] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // Build recipient_id from props - THIS IS THE ROOM NAME
   const recipientId = projectId && clientId ? `group_chat_${projectId}_${clientId}` : null;
   const groupChatTag = projectData?.group_chat || null;
 
@@ -26,6 +24,108 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
   activeJobs.forEach(job => {
     job.employed_worker_info?.forEach(worker => employedWorkers.add(worker.id));
   });
+
+  // Build user map from project data
+  const buildUserMap = (project, senderProfileData) => {
+    const map = new Map();
+    
+    // Add sender's profile (the logged-in user)
+    if (senderProfileData) {
+      map.set(String(senderProfileData.id), {
+        id: senderProfileData.id,
+        username: senderProfileData.username || `${senderProfileData.firstname}${senderProfileData.lastname}`,
+        firstname: senderProfileData.firstname,
+        lastname: senderProfileData.lastname,
+        initials: getInitials(senderProfileData.firstname, senderProfileData.lastname),
+        skill: senderProfileData.skill,
+        email: senderProfileData.email
+      });
+    }
+    
+    // Add all employed workers from all jobs
+    project?.jobs?.forEach(job => {
+      job.employed_worker_info?.forEach(worker => {
+        if (!map.has(String(worker.id))) {
+          map.set(String(worker.id), {
+            id: worker.id,
+            username: worker.username,
+            firstname: worker.firstname,
+            lastname: worker.lastname,
+            initials: getInitials(worker.firstname, worker.lastname),
+            skill: worker.skill
+          });
+        }
+      });
+    });
+    
+    console.log('User map built with', map.size, 'members');
+    return map;
+  };
+
+  // Get initials from name
+  const getInitials = (firstname, lastname) => {
+    const first = firstname?.charAt(0)?.toUpperCase() || '';
+    const last = lastname?.charAt(0)?.toUpperCase() || '';
+    return first + last || '??';
+  };
+
+  // Get user info from map
+  const getUserInfo = (senderId) => {
+    const user = userMap.get(String(senderId));
+    if (user) return user;
+    
+    // Fallback for unknown users
+    return {
+      id: senderId,
+      username: `User ${senderId}`,
+      initials: 'U' + String(senderId).charAt(0)
+    };
+  };
+
+  // Get avatar color based on user ID
+  const getAvatarColor = (senderId) => {
+    const colors = [
+      'bg-blue-500',
+      'bg-green-500', 
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-indigo-500',
+      'bg-orange-500',
+      'bg-teal-500',
+      'bg-cyan-500'
+    ];
+    const index = parseInt(senderId) % colors.length;
+    return colors[index];
+  };
+
+  const fetchSenderProfile = async () => {
+    if (!userId) return null;
+    
+    try {
+      const token = localStorage.getItem('access_jwt');
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_URL}/api/profile`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const data = await response.json();
+      
+      if (data.well_received && data.profile_data) {
+        setSenderProfile(data.profile_data);
+        console.log('Sender profile loaded:', data.profile_data.firstname, data.profile_data.lastname);
+        return data.profile_data;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error fetching sender profile:', err);
+      return null;
+    }
+  };
 
   const fetchProjectData = async () => {
     if (!projectId) return null;
@@ -65,9 +165,15 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
         }
         
         setProjectData(targetProject);
+        
+        // Build user map from the project data and sender profile
+        const newUserMap = buildUserMap(targetProject, senderProfile);
+        setUserMap(newUserMap);
+        
         console.log(`Project: ${targetProject.project_title} (ID: ${projectId})`);
         console.log(`Group Chat: ${targetProject.group_chat || 'Not created'}`);
         console.log(`Room: ${recipientId}`);
+        console.log('Team members mapped:', newUserMap.size);
         
         return targetProject;
       }
@@ -145,6 +251,7 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
     }
 
     const init = async () => {
+      await fetchSenderProfile();
       await fetchProjectData();
       await fetchMessages();
       if (socket.connected) joinRoom();
@@ -168,6 +275,7 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
     const handleNewMessage = (data) => {
       console.log('Message received:', {
         from: data.sender_tag,
+        sender_id: data.sender_id,
         to: data.recipient_id,
         expected: recipientId
       });
@@ -203,7 +311,9 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
 
     const handleStatusUpdate = (data) => {
       if (data.update && (data.update.includes('job_activated') || data.update.includes('worker_hired'))) {
-        setTimeout(fetchProjectData, 1000);
+        setTimeout(() => {
+          fetchProjectData(); // This will rebuild the user map with new workers
+        }, 1000);
       }
     };
 
@@ -232,7 +342,6 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
     if (!messageInput.trim() || !recipientId || !isConnected) return;
 
     console.log('Sending to room:', recipientId);
-
     
     socket.emit('send_message', {
       message_content: messageInput.trim(),
@@ -255,14 +364,43 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const getSenderDisplay = (sender, senderId) => {
-    if (String(senderId) === String(userId)) return 'You';
-    if (sender.includes('_fl_')) {
-      const flId = sender.split('_fl_').pop();
-      return `Freelancer ${flId}`;
+  const formatDateHeader = (timestamp) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    // Reset time to start of day for comparison
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+    
+    if (dateOnly.getTime() === todayOnly.getTime()) {
+      return 'Today';
+    } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString([], { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
     }
-    if (sender.includes('project_manager')) return 'PM';
-    return 'Member';
+  };
+
+  const groupMessagesByDate = (messages) => {
+    const grouped = {};
+    
+    messages.forEach(msg => {
+      const dateKey = new Date(msg.timestamp).toDateString();
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(msg);
+    });
+    
+    return grouped;
   };
 
   if (isLoading && !projectData) {
@@ -418,37 +556,66 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
             </p>
           </div>
         ) : (
-          messages.map((msg) => {
-            const isFromUser = String(msg.sender_id) === String(userId);
-            return (
-              <div key={msg.id} className={`flex ${isFromUser ? 'justify-end' : 'justify-start'}`}>
-                <div className="flex items-end space-x-2 max-w-lg">
-                  {!isFromUser && (
-                    <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
-                      <span className="text-white text-xs font-semibold">
-                        {getSenderDisplay(msg.sender, msg.sender_id).substring(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <div className={`px-4 py-3 rounded-2xl max-w-sm lg:max-w-md ${
-                    isFromUser
-                      ? 'bg-green-600 text-white rounded-br-md'
-                      : 'bg-white text-gray-800 border rounded-bl-md shadow-sm'
-                  }`}>
-                    {!isFromUser && (
-                      <p className="text-xs font-medium mb-1 text-green-600">
-                        {getSenderDisplay(msg.sender, msg.sender_id)}
-                      </p>
-                    )}
-                    <p className="text-sm leading-relaxed">{msg.content}</p>
-                    <span className={`text-xs mt-2 block ${isFromUser ? 'text-green-100' : 'text-gray-500'}`}>
-                      {formatTime(msg.timestamp)}
-                    </span>
+          (() => {
+            const groupedMessages = groupMessagesByDate(messages);
+            const dateKeys = Object.keys(groupedMessages).sort((a, b) => 
+              new Date(a).getTime() - new Date(b).getTime()
+            );
+            
+            return dateKeys.map((dateKey) => (
+              <div key={dateKey} className="space-y-4">
+                {/* Date Header */}
+                <div className="flex items-center justify-center my-6">
+                  <div className="bg-gray-200 text-gray-600 text-xs font-medium px-4 py-2 rounded-full shadow-sm">
+                    {formatDateHeader(new Date(dateKey))}
                   </div>
                 </div>
+                
+                {/* Messages for this date */}
+                {groupedMessages[dateKey].map((msg) => {
+                  const isFromUser = String(msg.sender_id) === String(userId);
+                  const userInfo = getUserInfo(msg.sender_id);
+                  const avatarColor = getAvatarColor(msg.sender_id);
+                  
+                  return (
+                    <div key={msg.id} className={`flex ${isFromUser ? 'justify-end' : 'justify-start'}`}>
+                      <div className="flex items-end space-x-2 max-w-lg">
+                        {!isFromUser && (
+                          <div className={`w-8 h-8 ${avatarColor} rounded-full flex items-center justify-center flex-shrink-0 mb-1`}>
+                            <span className="text-white text-xs font-semibold">
+                              {userInfo.initials}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`px-4 py-3 rounded-2xl max-w-sm lg:max-w-md ${
+                          isFromUser
+                            ? 'bg-green-600 text-white rounded-br-md'
+                            : 'bg-white text-gray-800 border rounded-bl-md shadow-sm'
+                        }`}>
+                          {!isFromUser && (
+                            <p className="text-xs font-medium mb-1 text-green-600">
+                              {userInfo.username}
+                            </p>
+                          )}
+                          <p className="text-sm leading-relaxed">{msg.content}</p>
+                          <span className={`text-xs mt-2 block ${isFromUser ? 'text-green-100' : 'text-gray-500'}`}>
+                            {formatTime(msg.timestamp)}
+                          </span>
+                        </div>
+                        {isFromUser && (
+                          <div className="w-8 h-8 bg-green-700 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                            <span className="text-white text-xs font-semibold">
+                              {userInfo.initials}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })
+            ));
+          })()
         )}
         <div ref={messagesEndRef} />
       </div>

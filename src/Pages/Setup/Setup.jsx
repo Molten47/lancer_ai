@@ -122,26 +122,28 @@ const Setup = () => {
 
   // Common skills for freelancers
   const freelancerSkills = [
-    "Web Development",
+    "frontend development",
+    "backend development",
     "Mobile App Development",
     "graphics designer",
     "UI/UX Design",
-    "Content Writing",
+    "creative Writing",
+    "ebook writing",
     "copy writter",
     "Digital Marketing",
     "seo expert",
     "Social Media Management",
     "Data Analysis",
-    "Virtual Assistant",
+    "data engineering",
     "Customer Service",
-    "Translation",
-    "Video Editing",
-    "Photography",
-    "Accounting",
-    "Bookkeeping",
-    "Project Management",
-    "Consulting",
-    "Teaching/Tutoring"
+    "content stategy",
+    "video editing",
+    "shopify marketing",
+    "ml engineering",
+    "qa engineering",
+    "cloud computing",
+    "devops engineering",
+    "cyber security"
   ];
 
  
