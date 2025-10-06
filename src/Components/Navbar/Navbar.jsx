@@ -36,7 +36,7 @@ const Navbar = () => {
   return (
     <>
       {/* Notification Banner */}
-      <div className='w-full bg-primary py-2 px-3 md:px-6 lg:px-8 fixed top-0 left-0 z-50 basic-font '>
+      <div className='w-full bg-primary py-2 px-3 md:px-6 lg:px-8 fixed top-0 left-0 z-50 basic-font mb-8 '>
         <div className='flex items-center justify-center'>
           <a 
             href="https://forms.gle/BPQ4XXApoRNbRBXR7" 

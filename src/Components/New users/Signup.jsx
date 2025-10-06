@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+// ADMIN SECRET PASSWORD - Replace with your actual secret
+
 
 const Signup = () => {
   const location = useLocation();
   const navigate = useNavigate();
+
+  const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET; // <-- You fill this
+  console.log('ADMIN_SECRET loaded:', ADMIN_SECRET); // Debug line
+  console.log('Env check:', import.meta.env.VITE_ADMIN_SECRET); 
   
   // Get preselected role from navigation state
   const preselectedRole = location.state?.preselectedRole || '';
@@ -22,6 +28,7 @@ const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
 
   // Update role if preselectedRole changes (in case user navigates back and forth)
   useEffect(() => {
@@ -82,7 +89,17 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
-    const validationErrors = validate();
+  
+  // CHECK ADMIN PASSWORD FIRST - before any other validation
+  if (formData.password !== ADMIN_SECRET) {
+    setErrors({
+      password: "Contact Admin for access"
+    });
+    return; // Stop form submission
+  }
+  
+  ///Checker Ends
+   const validationErrors = validate();
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -174,7 +191,7 @@ const Signup = () => {
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
       <div className="bg-white rounded-lg shadow-lg p-8 w-full sm:max-w-md md:max-w-lg lg:max-w-xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome to Lancer.ai</h1>
+          <h1 className="text-3xl sm:text-2xl font-bold text-primary basic-font">Welcome to Lancer</h1>
           <p className="mt-2 text-[#6B7280] basic-font">
             Sign up to get started as {formData.role ? `a ${formData.role}` : 'with your new account'}
           </p>
