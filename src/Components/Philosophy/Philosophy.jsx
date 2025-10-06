@@ -22,7 +22,7 @@ const Philosophy = () => {
   const services = [
     {
       id: 1,
-      title: "Project Spaces",
+      title: "Project Space",
       description: "Projects are a way for founders, small business owners and creative entrepreneurs to work on contracts with a short to medium term lifespan. Setup a Project, efficiently hire freelancers, assign tasks, manage workflows, track overall project progress and monitor freelancer working performance all with the power of Agentic AI.",
       icon: <CheckCircle className='text-[#22C55E]'/>,
       keywords: 'Efficient hiring, Task assignment, Workflow management, Performance tracking',
