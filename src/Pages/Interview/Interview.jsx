@@ -348,7 +348,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
   if (isLoadingAuth) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center basic-font">
         <Loader2 className="h-16 w-16 text-blue-600 mb-4 animate-spin" />
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Setting Up Interview</h2>
         <p className="text-gray-600">Please wait while we prepare your interview...</p>
@@ -358,7 +358,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
   if (socketError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center basic-font">
         <XCircle className="h-16 w-16 text-red-500 mb-4" />
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           {socketError.includes('Authentication') || socketError.includes('sign in')
