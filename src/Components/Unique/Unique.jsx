@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { Rocket, Building, PaletteIcon, ArrowUpRight } from 'lucide-react';
 import Frame1 from '../../assets/Images/fatemeh.jpg';
 import Frame2 from '../../assets/Images/property-3.jpg';
@@ -29,6 +30,30 @@ const Unique = () => {
     }
   ];
 
+  // Container animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2
+      }
+    }
+  };
+
+  // Card animation variants
+  const cardVariants = {
+    hidden: { opacity: 0, y: 50 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { 
+        duration: 0.6,
+        ease: "easeOut"
+      }
+    }
+  };
+
   return (
     <div className="bg-[#F9FAFB] basic-font py-16 px-4">
       <div className="max-w-7xl mx-auto">
@@ -48,10 +73,23 @@ const Unique = () => {
         </div>
 
         {/* Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <motion.div 
+          className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12"
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+        >
           {features.map((feature) => (
-            <div
+            <motion.div
               key={feature.id}
+              variants={cardVariants}
+              whileHover={{ 
+                scale: 1.03,
+                y: -8,
+                transition: { duration: 0.3 }
+              }}
+              whileTap={{ scale: 0.98 }}
               className="rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 group relative h-180"
               style={{ backgroundImage: `url(${feature.bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
             >
@@ -82,15 +120,19 @@ const Unique = () => {
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Get Started Button */}
         <div className="text-center">
-          <button className="bg-[#2255D7] hover:bg-[#1E4AC7] text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl">
-            Get Started
-          </button>
+          <a 
+          href='https://forms.gle/BPQ4XXApoRNbRBXR7'
+          target="_blank" // Opens in new tab
+          rel="noopener noreferrer"
+          className="bg-[#2255D7] hover:bg-[#1E4AC7] text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-xl">
+            Join waitlist
+          </a>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, MessageSquare, Send, XCircle } from 'lucide-react';
 import socket, { initializeSocket, cleanup } from '../../Components/socket';
@@ -14,9 +14,10 @@ const STATUS_MESSAGE_MAP = {
 const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const own_id = localStorage.getItem('user_id'); // FIXED: Removed typo 'z'
+  const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
-  const isMountedRef = useRef(true); // ADDED: Track if component is mounted
+  const isMountedRef = useRef(true);
+  const listenersSetupRef = useRef(false); // FIXED: Track if listeners are already set up
 
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -66,7 +67,6 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     return true;
   };
 
-  // FIXED: Now properly uses initializeSocket and waits for connection
   const initializeChat = async () => {
     try {
       setIsLoadingQuestion(true);
@@ -100,7 +100,6 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         chatData = await response.json();
       } catch (jsonError) {
         if (import.meta.env.DEV) {
-          // FIXED: Use initializeSocket instead of direct connect
           await initializeSocket();
           return;
         }
@@ -131,7 +130,6 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         }
       }
 
-      // FIXED: Properly initialize socket connection and wait for it
       await initializeSocket();
 
     } catch (error) {
@@ -164,122 +162,159 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     }
   };
 
-  // FIXED: Removed duplicate room joining - socket.js handles this automatically
-  const setupSocketListeners = () => {
+  // FIXED: Use useCallback to memoize handlers and prevent recreating them
+  const handleNewMessage = useCallback((data, callback) => {
+    console.log('📨 Received new_message:', data);
+    
+    const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
+    const newMessage = {
+      id: Date.now() + Math.random(), // FIXED: Ensure unique IDs
+      sender_id: senderOwnId || 'ai',
+      message_content: message_content,
+      sender_tag: sender_tag || 'ai',
+      recipient_id: recipient_id,
+      timestamp: new Date().toISOString(),
+      questionNumber: data.questionNumber,
+      totalQuestions: data.totalQuestions,
+      isStatus: false
+    };
+
+    setMessages(prev => [...prev, newMessage]);
+    setIsWaitingForResponse(true);
+    setIsLoadingQuestion(false);
+    setStatusMessage('');
+
+    // FIXED: Always acknowledge immediately
+    if (callback && typeof callback === 'function') {
+      callback({ status: 'received' });
+    }
+  }, []); // No dependencies needed since we use functional state updates
+
+  const handleControlInstruction = useCallback((data, callback) => {
+    console.log('🎮 Received control_instruction:', data);
+    
+    const { command, data: instructionData } = data;
+    switch (command) {
+      case 'interview_complete':
+        setInterviewComplete(true);
+        setIsWaitingForResponse(false);
+        setIsLoadingQuestion(false);
+        setStatusMessage('Interview finished!');
+        break;
+      case 'next_question':
+        setIsWaitingForResponse(true);
+        break;
+      case 'error':
+        setSocketError(instructionData?.message || 'An error occurred');
+        setIsLoadingQuestion(false);
+        setStatusMessage('');
+        break;
+      case 'redirect':
+        if (instructionData?.type === 'url' && instructionData.content) {
+          navigate(instructionData.content);
+        } else if (instructionData?.type === 'external_url' && instructionData.content) {
+          window.location.href = instructionData.content;
+        }
+        break;
+      default:
+        console.log('Unknown command:', command);
+    }
+    
+    if (callback && typeof callback === 'function') {
+      callback({ status: 'processed' });
+    }
+  }, [navigate]);
+
+  const handleStatusUpdate = useCallback((data, callback) => {
+    console.log('📊 Received status_update:', data);
+    
+    if (data.update) {
+      const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
+      const statusMessage = {
+        id: Date.now() + Math.random(),
+        sender_id: 'status',
+        message_content: customMessage,
+        timestamp: new Date().toISOString(),
+        isStatus: true
+      };
+      setMessages(prev => [...prev, statusMessage]);
+    }
+    
+    if (callback && typeof callback === 'function') {
+      callback({ status: 'received' });
+    }
+  }, []);
+
+  const handleNotification = useCallback((data, callback) => {
+    console.log('🔔 Received notification:', data);
+    
+    const { message, type } = data;
+    if (type === 'error') {
+      setSocketError(message);
+    } else if (type === 'warning') {
+      console.warn('Notification warning:', message);
+    } else if (type === 'info') {
+      console.info('Notification info:', message);
+    }
+    
+    if (callback && typeof callback === 'function') {
+      callback({ status: 'received' });
+    }
+  }, []);
+
+  // FIXED: Setup listeners only once
+  const setupSocketListeners = useCallback(() => {
+    // FIXED: Prevent duplicate listener setup
+    if (listenersSetupRef.current) {
+      console.log('⚠️ Listeners already set up, skipping...');
+      return;
+    }
+
+    console.log('🔧 Setting up socket listeners...');
+    listenersSetupRef.current = true;
+
     socket.on('connect', () => {
+      console.log('✅ Socket connected');
       setIsConnected(true);
       setSocketError('');
-      // REMOVED: socket.emit('join', ...) - socket.js already does this
     });
 
     socket.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
       setIsConnected(false);
     });
 
     socket.on('connect_error', (error) => {
+      console.error('❌ Socket connect_error:', error);
       setSocketError('Failed to connect to interview server');
       setIsConnected(false);
       setIsLoadingQuestion(false);
       setStatusMessage('');
     });
 
-    socket.on('new_message', (data, callback) => {
-      const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
-      const newMessage = {
-        id: Date.now(),
-        sender_id: senderOwnId || 'ai',
-        message_content: message_content,
-        sender_tag: sender_tag || 'ai',
-        recipient_id: recipient_id,
-        timestamp: new Date().toISOString(),
-        questionNumber: data.questionNumber,
-        totalQuestions: data.totalQuestions,
-        isStatus: false
-      };
+    // FIXED: Use the memoized handlers
+    socket.on('new_message', handleNewMessage);
+    socket.on('control_instruction', handleControlInstruction);
+    socket.on('status_update', handleStatusUpdate);
+    socket.on('notification', handleNotification);
 
-      setMessages(prev => [...prev, newMessage]);
-      setIsWaitingForResponse(true);
-      setIsLoadingQuestion(false);
-      setStatusMessage('');
+    console.log('✅ Socket listeners set up successfully');
+  }, [handleNewMessage, handleControlInstruction, handleStatusUpdate, handleNotification]);
 
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
-
-    socket.on('control_instruction', (data, callback) => {
-      const { command, data: instructionData } = data;
-      switch (command) {
-        case 'interview_complete':
-          setInterviewComplete(true);
-          setIsWaitingForResponse(false);
-          setIsLoadingQuestion(false);
-          setStatusMessage('Interview finished!');
-          break;
-        case 'next_question':
-          setIsWaitingForResponse(true);
-          break;
-        case 'error':
-          setSocketError(instructionData?.message || 'An error occurred');
-          setIsLoadingQuestion(false);
-          setStatusMessage('');
-          break;
-        case 'redirect':
-          if (instructionData?.type === 'url' && instructionData.content) {
-            navigate(instructionData.content);
-          } else if (instructionData?.type === 'external_url' && instructionData.content) {
-            window.location.href = instructionData.content;
-          }
-          break;
-        default:
-          console.log('Unknown command:', command);
-      }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
-
-    socket.on('status_update', (data, callback) => {
-      if (data.update) {
-        const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
-        const statusMessage = {
-          id: Date.now(),
-          sender_id: 'status',
-          message_content: customMessage,
-          timestamp: new Date().toISOString(),
-          isStatus: true
-        };
-        setMessages(prev => [...prev, statusMessage]);
-      }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
-
-    socket.on('notification', (data, callback) => {
-      const { message, type } = data;
-      if (type === 'error') {
-        setSocketError(message);
-      } else if (type === 'warning') {
-        console.warn('Notification warning:', message);
-      } else if (type === 'info') {
-        console.info('Notification info:', message);
-      }
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
-  };
-
-  const cleanupSocketListeners = () => {
+  const cleanupSocketListeners = useCallback(() => {
+    console.log('🧹 Cleaning up socket listeners...');
+    
     socket.off('connect');
     socket.off('disconnect');
     socket.off('connect_error');
-    socket.off('new_message');
-    socket.off('control_instruction');
-    socket.off('status_update');
-    socket.off('notification');
-  };
+    socket.off('new_message', handleNewMessage);
+    socket.off('control_instruction', handleControlInstruction);
+    socket.off('status_update', handleStatusUpdate);
+    socket.off('notification', handleNotification);
+    
+    listenersSetupRef.current = false;
+    console.log('✅ Socket listeners cleaned up');
+  }, [handleNewMessage, handleControlInstruction, handleStatusUpdate, handleNotification]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -297,7 +332,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     }
 
     const userMessage = {
-      id: Date.now(),
+      id: Date.now() + Math.random(),
       sender_id: parseInt(own_id),
       message_content: currentInput.trim(),
       sender_tag: 'user',
@@ -307,6 +342,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
     setMessages(prev => [...prev, userMessage]);
 
+    console.log('📤 Sending message:', currentInput.trim());
     socket.emit('send_message', {
       message_content: currentInput.trim(),
       own_id: parseInt(own_id || localStorage.getItem('user_id')),
@@ -323,7 +359,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     navigate('/task');
   };
 
-  // FIXED: Proper cleanup including mounted ref
+  // FIXED: Simplified useEffect with proper cleanup
   useEffect(() => {
     isMountedRef.current = true;
 
@@ -331,16 +367,17 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
       return;
     }
     
-    initializeChat();
+    // Setup listeners first
     setupSocketListeners();
+    
+    // Then initialize chat
+    initializeChat();
     
     return () => {
       isMountedRef.current = false;
       cleanupSocketListeners();
-      // Optionally cleanup socket connection when component unmounts
-      // cleanup(); // Uncomment if you want to disconnect on unmount
     };
-  }, [navigate, own_id, chat_type, location.state]);
+  }, []); // FIXED: Empty dependency array - only run once on mount
 
   useEffect(() => {
     scrollToBottom();

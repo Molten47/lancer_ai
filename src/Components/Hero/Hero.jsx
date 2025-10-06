@@ -26,7 +26,7 @@ const Hero = ({ onExplore }) => {
     },
     {
       id: 4,
-      cta: 'Get Started'
+      cta: 'Join waitlist'
     }
   ];
 
@@ -107,12 +107,15 @@ className='hero-container  basic-font w-full min-h-[90vh] flex flex-col lg:flex-
               {carousel.cta ? (
                 // CTA Card (bottom right)
                 <div className="flex items-center justify-center h-full">
-                  <button 
-                    onClick={startProject}
+                  <a
+                    href='https://forms.gle/BPQ4XXApoRNbRBXR7'
+                    target="_blank" // Opens in new tab
+                     rel="noopener noreferrer" // Security best practice for external links
                     className="bg-[#9333EA] hover:bg-purple-700 text-white font-semibold py-2.5 px-6 lg:py-3 lg:px-8 rounded-lg transition-all duration-300 ease-in-out hover:scale-105 focus:outline-none text-sm lg:text-base"
                   >
+                    
                     {carousel.cta}
-                  </button>
+                  </a>
                 </div>
               ) : (
                 // Regular feature cards
