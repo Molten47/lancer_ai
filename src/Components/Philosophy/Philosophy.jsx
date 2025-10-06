@@ -31,19 +31,22 @@ const Philosophy = () => {
     {
       id: 2,
       title: "For Freelancers", 
-      description: "Lancer connects you and professionals like yourself with founders, early stage startups and bsusinesses that are in need of your skills and expertise for either short or medium terms contracts (Projects) or a full employment package (Business Spaces). Lancer enforces a fair pay baseline and also uses an automated pay standardization system which tracks your work history and associated metrics to determine a favorable compensation range to be shown to your current or potential employers.",
+      description: "Lancer connects you and professionals like yourself with founders, early stage startups and businesses that are in need of your skills and expertise for either short or medium terms contracts (Projects) or a full employment package (Business Spaces). Lancer enforces a fair pay baseline and also uses an automated pay standardization system which tracks your work history and associated metrics to determine a favorable compensation range to be shown to your current or potential employers.",
       icon: <CheckCircle className='text-[#22C55E]'/>,
       keywords: 'Short-term contracts, Fairpay standards, Full employment options, Performance tracking',
       image: image2
     },
-    {
-      id: 3,
-      title: "Business Spaces",
-      description: "Business spaces aren't duration bound and offer a broader, more holistic business process automation and management experience. For aspiring founders, through automated business formalization, AI-powered hiring and general onboarding framework, a Business Space helps you with everything you need to to bring your statup idea into the real world.  For early stage startups and businessess, Business Spaces offer a way to automate your business process, hire new talent, efficiently manage internal workflows, track individual employee productivity and develop a robust Business Analytics framework as you grow.",
-      icon: null,
-      keywords: '',
-      image: image3
-    }
+ {
+  id: 3,
+  title: "Business Spaces",
+  description: [
+    "Business spaces aren't duration bound and offer a broader, more holistic business process automation and management experience. For aspiring founders, through automated business formalization, AI-powered hiring and general onboarding framework, a Business Space helps you with everything you need to bring your startup idea into the real world.",
+    "For early stage startups and businesses, Business Spaces offer a way to automate your business process, hire new talent, efficiently manage internal workflows, track individual employee productivity and develop a robust Business Analytics framework as you grow."
+  ],
+  icon: null,
+  keywords: '',
+  image: image3
+}
   ];
 
   return (
@@ -94,9 +97,18 @@ const Philosophy = () => {
                     <h3 className="text-xl sm:text-2xl font-bold text-[#151B25] mb-3 sm:mb-4 md:mb-6">
                       {service.title}
                     </h3>
-                    <p className="text-[#4B5563] text-sm sm:text-base leading-relaxed mb-4 sm:mb-5 md:mb-6">
-                      {service.description}
-                    </p>
+                   <p className="text-[#4B5563] text-sm sm:text-base leading-relaxed mb-4 sm:mb-5 md:mb-6">
+  {Array.isArray(service.description) ? (
+    service.description.map((paragraph, idx) => (
+      <span key={idx}>
+        {paragraph}
+        {idx < service.description.length - 1 && <><br /><br /></>}
+      </span>
+    ))
+  ) : (
+    service.description
+  )}
+</p>
                       {/* Keywords with checkmarks */}
                   {service.keywords && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
