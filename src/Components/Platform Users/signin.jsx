@@ -153,7 +153,7 @@ dispatch(setAuthData({
 
       // Navigate based on the user's role
       if (role === 'freelancer') {
-        navigate('/interview', { replace: true });
+        navigate('/freelancer-dashboard', { replace: true });
       } else if (role === 'client') {
         navigate('/client-dashboard', { replace: true });
       } else if (role) {
