@@ -4,6 +4,7 @@ import { Loader2, MessageSquare, Send, XCircle } from 'lucide-react';
 import socket from '../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
+
 // Define a map for custom status messages
 const STATUS_MESSAGE_MAP = {
   'Recording provisional chat performance for freelancer 100': 'Recording chat performance...',
@@ -22,7 +23,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   // State declarations
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
-  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  //const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [socketError, setSocketError] = useState('');
@@ -31,9 +32,8 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const [interviewId, setInterviewId] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-  // Authentication check (no changes here)
+  // Authentication check
   const checkAuthentication = () => {
-    // ... existing authentication logic
     const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
     const userId = localStorage.getItem('user_id');
     const userRole = localStorage.getItem('userRole');
@@ -73,9 +73,8 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     return true;
   };
 
-  // Initialize chat (no changes here)
+  // Initialize chat
   const initializeChat = async () => {
-    // ... existing initialization logic
     try {
       setIsLoadingQuestion(true);
       setStatusMessage('Initializing interview...');
@@ -212,7 +211,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         isStatus: false
       };
       setMessages(prev => [...prev, newMessage]);
-      setIsWaitingForResponse(true);
+      //setIsWaitingForResponse(true);
       setIsLoadingQuestion(false);
       setStatusMessage('');
 
@@ -221,34 +220,29 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
       }
     });
 
-  socket.on('control_instruction', (data, callback) => {
-    const { command, data: instructionData } = data;
+    socket.on('control_instruction', (data, callback) => {
+      const { command, data: instructionData } = data;
 
-    switch (command) {
-        // ... other cases like 'interview_complete', 'next_question', 'error'
-
+      switch (command) {
         case 'redirect':
-            if (instructionData?.type === 'url' && instructionData.content) {
-                // For internal React Router URLs
-                navigate(instructionData.content); 
-            } else if (instructionData?.type === 'external_url' && instructionData.content) {
-                // For external websites, a full page reload is required
-                window.location.href = instructionData.content;
-            }
-            break;
+          if (instructionData?.type === 'url' && instructionData.content) {
+            navigate(instructionData.content); 
+          } else if (instructionData?.type === 'external_url' && instructionData.content) {
+            window.location.href = instructionData.content;
+          }
+          break;
 
         default:
-            console.log('Unknown command:', command);
-    }
+          console.log('Unknown command:', command);
+      }
 
-    if (callback && typeof callback === 'function') {
+      if (callback && typeof callback === 'function') {
         callback();
-    }
-});
+      }
+    });
 
     socket.on('status_update', (data, callback) => {
       if (data.update) {
-        // Look up the custom message, fall back to original if not found
         const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
         
         const statusMessage = {
@@ -280,7 +274,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     });
   };
 
-  // Cleanup socket listeners (no changes here)
+  // Cleanup socket listeners
   const cleanupSocketListeners = () => {
     socket.off('connect');
     socket.off('disconnect');
@@ -291,7 +285,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     socket.off('notification');
   };
 
-  // Utility functions (no changes here)
+  // Utility functions
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -303,7 +297,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (currentInput.trim() === '' || !isWaitingForResponse || !isConnected) {
+    if (currentInput.trim() === '' || isLoadingQuestion || !isConnected) {
       return;
     }
 
@@ -326,7 +320,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     });
 
     setCurrentInput('');
-    setIsWaitingForResponse(false);
+  //setIsWaitingForResponse(false);
     setIsLoadingQuestion(true);
     setStatusMessage('Processing your answer...');
   };
@@ -335,7 +329,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     navigate('/task');
   };
 
-  // Effects (no changes here)
+  // Effects
   useEffect(() => {
     if (!checkAuthentication()) {
       return;
@@ -349,7 +343,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     scrollToBottom();
   }, [messages]);
 
-  // Loading state (no changes here)
+  // Loading state
   if (isLoadingAuth) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
@@ -360,7 +354,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     );
   }
 
-  // Error state (no changes here)
+  // Error state
   if (socketError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
@@ -412,7 +406,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     );
   }
 
-  // Main interview interface (no changes here)
+  // Main interview interface
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex justify-center py-12">
       <div className="w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl">
@@ -463,10 +457,15 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             {messages.map((message) => (
               <div key={message.id}>
                 {message.isStatus ? (
-                  // Status bubble
-                  <div className="flex justify-center">
-                    <div className="bg-gray-200 text-gray-700 text-xs py-1 px-3 rounded-full shadow-sm max-w-[75%] text-center">
-                      {message.message_content}
+                  // Claude-style status update: icon on left, text beside it
+                  <div className="flex items-start gap-3 px-2 py-1">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600 leading-relaxed">
+                        {message.message_content}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -493,9 +492,12 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             ))}
             {/* Loading indicator */}
             {isLoadingQuestion && (
-              <div className="flex justify-start">
-                <div className="max-w-[75%] p-4 rounded-xl shadow-sm bg-white text-gray-800 rounded-bl-none border border-gray-200">
-                  <p className="text-sm md:text-base animate-pulse">
+              <div className="flex items-start gap-3 px-2 py-1">
+                <div className="flex-shrink-0 mt-0.5">
+                  <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600 leading-relaxed">
                     {STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'AI is thinking...'}
                   </p>
                 </div>
@@ -511,24 +513,22 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
                 <TextareaAutosize
                   value={currentInput}
                   onChange={handleInputChange}
-                  disabled={!isConnected || !isWaitingForResponse || isLoadingQuestion}
+                 disabled={!isConnected || isLoadingQuestion}
                   className="flex-1 resize-none border border-gray-300 rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 h-12 overflow-hidden"
-                  placeholder={
-                    !isConnected
-                      ? 'Connecting...'
-                      : isLoadingQuestion
-                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'AI is thinking...'
-                        : isWaitingForResponse
-                          ? 'Type your response...'
-                          : 'Please wait...'
-                  }
+               placeholder={
+                    !isConnected
+                      ? 'Connecting...'
+                      : isLoadingQuestion
+                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'AI is thinking...'
+                        : 'Type your response...' // Input is ready
+                  }
                   rows={1}
                   minRows={1}
                   maxRows={6}
                 />
                 <button
                   type="submit"
-                  disabled={!isConnected || !isWaitingForResponse || currentInput.trim() === '' || isLoadingQuestion}
+                  disabled={!isConnected || currentInput.trim() === '' || isLoadingQuestion}
                   className="bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 m-4 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="h-5 w-5" />
