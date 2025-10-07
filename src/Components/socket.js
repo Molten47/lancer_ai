@@ -6,37 +6,45 @@ const API_URL = import.meta.env.VITE_API_URL;
 // Track connection state
 let isConnected = false;
 let userJoined = false;
-let connectionPromise = null; // Track connection attempts
-let isConnecting = false; // NEW: Track if currently connecting
+let connectionPromise = null;
+let isConnecting = false;
+let socket = null;
 
-// Create socket with proper configuration
-const socket = io(API_URL, {
-  // Manual connection control
-  autoConnect: true,
-  
-  // Default namespace
-  namespace: "/",
-  
-  // Transport options as specified
-  transports: ['websocket', 'polling'],
-  
-  // Wait timeout as specified
-  timeout: 30000,  // 30 seconds
-  
-  // Reconnection settings
-  reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  
-  // Add authentication if needed
-  auth: (cb) => {
-    const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
-    cb({
-      token: token
-    });
+// FIXED: Function to create socket instance (called only once)
+const createSocket = () => {
+  if (socket) {
+    console.log('⚠️ Socket already exists, reusing instance');
+    return socket;
   }
-});
+
+  console.log('🏗️ Creating new socket instance');
+  socket = io(API_URL, {
+    autoConnect: false,
+    path: "/socket.io/",
+    transports: ['websocket', 'polling'],
+    timeout: 30000,
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    
+    auth: (cb) => {
+      const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+      const userId = localStorage.getItem('user_id');
+      
+      console.log('🔐 Socket auth callback - Token:', token ? 'Present' : 'Missing', 'UserId:', userId);
+      
+      cb({
+        token: token,
+        user_id: userId
+      });
+    }
+  });
+
+  setupBaseHandlers();
+  
+  return socket;
+};
 
 // Function to get user ID
 const getUserData = () => {
@@ -49,129 +57,220 @@ const getUserData = () => {
   }
 };
 
-// Function to join user's room automatically
+// FIXED: Function to join user's room with proper error handling
 const joinUserRoom = () => {
   const userId = getUserData();
   
-  if (userId && isConnected && !userJoined) {
-    const roomData = {
-      room_name: String(userId),
-      user: parseInt(userId)
-    };
-    
-    console.log('Joining room with data:', roomData);
-    socket.emit('join', roomData);
-    userJoined = true;
+  if (!userId) {
+    console.warn('⚠️ Cannot join room: No user ID found');
+    return false;
   }
+
+  if (!isConnected || !socket?.connected) {
+    console.warn('⚠️ Cannot join room: Socket not connected');
+    return false;
+  }
+
+  if (userJoined) {
+    console.log('ℹ️ User already joined room, skipping');
+    return true;
+  }
+  
+  const roomData = {
+    room_name: String(userId),
+    user: parseInt(userId)
+  };
+  
+  console.log('🚪 Attempting to join room with data:', roomData);
+  
+  // CRITICAL: Emit with acknowledgment callback
+  socket.emit('join', roomData, (response) => {
+    if (response?.success) {
+      console.log('✅ Join acknowledged by server:', response);
+      userJoined = true;
+    } else {
+      console.error('❌ Join failed:', response);
+    }
+  });
+  
+  // Set a timeout to mark as joined even without server ack
+  setTimeout(() => {
+    if (!userJoined) {
+      console.log('⏱️ Join timeout - marking as joined anyway');
+      userJoined = true;
+    }
+  }, 2000);
+  
+  return true;
 };
 
-// Connection event handlers
-socket.on('connect', () => {
-  console.log('Connected to server:', socket.id);
-  isConnected = true;
-  isConnecting = false; // FIXED: Reset connecting state
-  
-  // Automatically join user's room upon connection
-  joinUserRoom();
-});
+// FIXED: Setup base handlers with proper room joining
+const setupBaseHandlers = () => {
+  if (!socket) return;
 
-socket.on('disconnect', (reason) => {
-  console.log('Disconnected from server:', reason);
-  isConnected = false;
-  userJoined = false;
-  isConnecting = false; // FIXED: Reset connecting state
-});
+  socket.removeAllListeners('connect');
+  socket.removeAllListeners('disconnect');
+  socket.removeAllListeners('connect_error');
+  socket.removeAllListeners('reconnect');
+  socket.removeAllListeners('joined');
+  socket.removeAllListeners('join_error');
 
-socket.on('connect_error', (error) => {
-  console.error('Connection error:', error);
-  isConnected = false;
-  isConnecting = false; // FIXED: Reset connecting state
-  connectionPromise = null; // FIXED: Reset promise on error
-});
+  socket.on('connect', () => {
+    console.log('✅ Connected to server:', socket.id);
+    isConnected = true;
+    isConnecting = false;
+    
+    // FIXED: Use nextTick to ensure socket is fully ready
+    setTimeout(() => {
+      const joined = joinUserRoom();
+      if (!joined) {
+        console.error('❌ Failed to initiate room join');
+      }
+    }, 100);
+  });
 
-socket.on('reconnect', () => {
-  console.log('Reconnected to server');
-  isConnected = true;
-  userJoined = false;
-  isConnecting = false; // FIXED: Reset connecting state
-  joinUserRoom();
-});
+  socket.on('disconnect', (reason) => {
+    console.log('❌ Disconnected from server:', reason);
+    isConnected = false;
+    userJoined = false;
+    isConnecting = false;
+  });
 
-socket.on('joined', (data) => {
-  console.log('Successfully joined room:', data);
-});
+  socket.on('connect_error', (error) => {
+    console.error('❌ Connection error:', error);
+    isConnected = false;
+    isConnecting = false;
+    connectionPromise = null;
+  });
 
-socket.on('join_error', (error) => {
-  console.error('Error joining room:', error);
-  userJoined = false;
-});
+  socket.on('reconnect', () => {
+    console.log('🔄 Reconnected to server');
+    isConnected = true;
+    userJoined = false;
+    isConnecting = false;
+    
+    setTimeout(() => {
+      joinUserRoom();
+    }, 100);
+  });
 
-// FIXED: Initialize socket connection when user is authenticated
+  socket.on('joined', (data) => {
+    console.log('✅ Successfully joined room (server confirmation):', data);
+    userJoined = true;
+  });
+
+  socket.on('join_error', (error) => {
+    console.error('❌ Error joining room:', error);
+    userJoined = false;
+    
+    // Retry once after 1 second
+    setTimeout(() => {
+      console.log('🔄 Retrying room join...');
+      joinUserRoom();
+    }, 1000);
+  });
+};
+
+// FIXED: Initialize socket connection with better promise handling
 export const initializeSocket = () => {
   return new Promise((resolve, reject) => {
     console.log('🔧 InitializeSocket called - Current states:', {
-      socketConnected: socket.connected,
+      socketExists: !!socket,
+      socketConnected: socket?.connected || false,
       isConnected,
       isConnecting,
+      userJoined,
       connectionPromise: !!connectionPromise
     });
 
-    // If already connected, resolve immediately
-    if (socket.connected && isConnected) {
-      console.log('✅ Socket already connected');
+    if (!socket) {
+      createSocket();
+    }
+
+    // FIXED: Check both socket.connected AND isConnected AND userJoined
+    if (socket.connected && isConnected && userJoined) {
+      console.log('✅ Socket already fully connected and room joined');
       resolve();
       return;
     }
+
+    // If connected but not joined, try joining
+    if (socket.connected && isConnected && !userJoined) {
+      console.log('🔄 Socket connected but not joined, attempting join...');
+      joinUserRoom();
+      // Wait a bit for join to complete
+      setTimeout(() => {
+        resolve();
+      }, 500);
+      return;
+    }
     
-    // If already connecting, return the existing promise
     if (isConnecting && connectionPromise) {
       console.log('⏳ Already connecting, returning existing promise');
       return connectionPromise;
     }
     
-    console.log('🚀 Initializing socket connection...');
-    isConnecting = true; // FIXED: Set connecting state
+    console.log('🚀 Starting socket connection...');
+    isConnecting = true;
     
     connectionPromise = new Promise((promiseResolve, promiseReject) => {
       const connectTimeout = setTimeout(() => {
-        console.error('❌ Socket connection timeout');
+        console.error('❌ Socket connection timeout after 15s');
         isConnecting = false;
         connectionPromise = null;
         promiseReject(new Error('Socket connection timeout'));
-      }, 10000);
+      }, 15000);
       
       const onConnect = () => {
-        console.log('✅ Socket connect event fired');
-        clearTimeout(connectTimeout);
-        socket.off('connect', onConnect);
-        socket.off('connect_error', onConnectError);
-        isConnecting = false;
-        connectionPromise = null;
-        console.log('Socket initialized successfully');
-        promiseResolve();
+        console.log('✅ Socket connect event fired in promise handler');
+        
+        // FIXED: Wait for room join before resolving
+        const checkJoined = setInterval(() => {
+          if (userJoined) {
+            clearInterval(checkJoined);
+            clearTimeout(connectTimeout);
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onConnectError);
+            isConnecting = false;
+            connectionPromise = null;
+            console.log('✅ Socket initialized and room joined - ready for messages');
+            promiseResolve();
+          }
+        }, 100);
+        
+        // Timeout for room join
+        setTimeout(() => {
+          clearInterval(checkJoined);
+          if (!userJoined) {
+            console.warn('⚠️ Room join taking too long, resolving anyway');
+            clearTimeout(connectTimeout);
+            socket.off('connect', onConnect);
+            socket.off('connect_error', onConnectError);
+            isConnecting = false;
+            connectionPromise = null;
+            promiseResolve();
+          }
+        }, 3000);
       };
       
       const onConnectError = (error) => {
-        console.error('❌ Socket connect_error event fired:', error);
+        console.error('❌ Socket connect_error in promise handler:', error);
         clearTimeout(connectTimeout);
         socket.off('connect', onConnect);
         socket.off('connect_error', onConnectError);
         isConnecting = false;
         connectionPromise = null;
-        console.error('Socket initialization failed:', error);
         promiseReject(error);
       };
       
-      socket.on('connect', onConnect);
-      socket.on('connect_error', onConnectError);
+      socket.once('connect', onConnect);
+      socket.once('connect_error', onConnectError);
       
-      // FIXED: Only connect if not already connected
       if (!socket.connected) {
         console.log('🔌 Calling socket.connect()');
         socket.connect();
       } else {
-        // If somehow already connected but we missed it
-        console.log('🔄 Socket already connected, triggering connect handler');
+        console.log('🔄 Socket already connected, triggering handler');
         onConnect();
       }
     });
@@ -182,7 +281,7 @@ export const initializeSocket = () => {
 
 // Function to manually trigger room joining
 export const rejoinRooms = () => {
-  if (isConnected) {
+  if (isConnected && socket) {
     userJoined = false;
     joinUserRoom();
   }
@@ -190,29 +289,34 @@ export const rejoinRooms = () => {
 
 // Function to join additional rooms programmatically
 export const joinRoom = (roomName, userId) => {
-  if (isConnected) {
+  if (isConnected && socket) {
     const roomData = {
       room_name: String(roomName),
       user: userId
     };
+    console.log('🚪 Joining additional room:', roomData);
     socket.emit('join', roomData);
   }
 };
 
-// FIXED: Connection status with connecting state
+// Connection status
 export const getConnectionStatus = () => ({
   isConnected,
   userJoined,
-  isConnecting, // NEW: Include connecting state
-  socketId: socket.id
+  isConnecting,
+  socketId: socket?.id || null
 });
 
-// FIXED: Cleanup with proper state reset
+// Cleanup
 export const cleanup = () => {
   console.log('🧹 Cleaning up socket connection');
-  if (socket.connected) {
-    socket.disconnect();
+  
+  if (socket) {
+    if (socket.connected) {
+      socket.disconnect();
+    }
   }
+  
   isConnected = false;
   userJoined = false;
   isConnecting = false;
@@ -221,6 +325,10 @@ export const cleanup = () => {
 
 // Manual socket connection controls
 export const connectSocket = () => {
+  if (!socket) {
+    createSocket();
+  }
+  
   if (!socket.connected && !isConnecting) {
     console.log('🔌 Manually connecting socket...');
     isConnecting = true;
@@ -229,7 +337,7 @@ export const connectSocket = () => {
 };
 
 export const disconnectSocket = () => {
-  if (socket.connected) {
+  if (socket?.connected) {
     console.log('🔌 Manually disconnecting socket...');
     socket.disconnect();
   }
@@ -239,13 +347,19 @@ export const disconnectSocket = () => {
   connectionPromise = null;
 };
 
-// Enhanced connection status check
-export const isSocketConnected = () => socket.connected && isConnected;
-
-// FIXED: New function to check if currently connecting
+// Connection status checks
+export const isSocketConnected = () => socket?.connected && isConnected;
 export const isSocketConnecting = () => isConnecting;
+export const hasJoinedRoom = () => userJoined;
 
-// Export API_URL for use in components
+// Get socket instance (for event listeners in components)
+export const getSocket = () => {
+  if (!socket) {
+    createSocket();
+  }
+  return socket;
+};
+
 export const getAPIUrl = () => API_URL;
 
-export default socket;
+export default getSocket();

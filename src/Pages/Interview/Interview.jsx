@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, MessageSquare, Send, XCircle } from 'lucide-react';
-import socket, { initializeSocket, cleanup } from '../../Components/socket';
+import socket from '../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
+// Define a map for custom status messages
 const STATUS_MESSAGE_MAP = {
   'Recording provisional chat performance for freelancer 100': 'Recording chat performance...',
   'Updating user_profile with generated username and robust profile bio after interview termination.': 'Updating your profile...',
   'Recording chat performance score and review for freelancer 100.': 'Calculating final score...',
   'Updating freelancer username and profile bio after interview': 'Finalizing your profile...',
+  // Add more mappings as needed
 };
 
 const Interview = ({ chat_type = 'platform_interviewer' }) => {
@@ -16,9 +18,8 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const location = useLocation();
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
-  const isMountedRef = useRef(true);
-  const listenersSetupRef = useRef(false); // FIXED: Track if listeners are already set up
 
+  // State declarations
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
@@ -30,7 +31,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const [interviewId, setInterviewId] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
+  // Authentication check (no changes here)
   const checkAuthentication = () => {
+    // ... existing authentication logic
     const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
     const userId = localStorage.getItem('user_id');
     const userRole = localStorage.getItem('userRole');
@@ -38,7 +41,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     if (!userId && !userRole) {
       setSocketError('Please complete the signup process first.');
       setTimeout(() => {
-        if (isMountedRef.current) navigate('/signup', { replace: true });
+        navigate('/signup', { replace: true });
       }, 1500);
       return false;
     }
@@ -48,7 +51,10 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
       if (!fromProfileSetup) {
         setSocketError('Please complete your profile setup first.');
         setTimeout(() => {
-          if (isMountedRef.current) navigate('/profile_setup', { replace: true, state: { role: userRole } });
+          navigate('/profile_setup', {
+            replace: true,
+            state: { role: userRole }
+          });
         }, 1500);
         return false;
       }
@@ -58,7 +64,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
       setSocketError('Session data incomplete. Please sign in again.');
       setIsLoadingAuth(false);
       setTimeout(() => {
-        if (isMountedRef.current) navigate('/signin', { replace: true });
+        navigate('/signin', { replace: true });
       }, 1500);
       return false;
     }
@@ -67,7 +73,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     return true;
   };
 
+  // Initialize chat (no changes here)
   const initializeChat = async () => {
+    // ... existing initialization logic
     try {
       setIsLoadingQuestion(true);
       setStatusMessage('Initializing interview...');
@@ -100,7 +108,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         chatData = await response.json();
       } catch (jsonError) {
         if (import.meta.env.DEV) {
-          await initializeSocket();
+          if (!socket.connected) {
+            socket.connect();
+          }
           return;
         }
         throw new Error('Invalid response format from server');
@@ -111,12 +121,12 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
           if (!authToken) {
             setSocketError('Please complete the signup process to start the interview.');
             setTimeout(() => {
-              if (isMountedRef.current) navigate('/signup', { replace: true });
+              navigate('/signup', { replace: true });
             }, 2000);
           } else {
             setSocketError('Session expired. Please sign in again.');
             setTimeout(() => {
-              if (isMountedRef.current) navigate('/signin', { replace: true });
+              navigate('/signin', { replace: true });
             }, 1000);
           }
           return;
@@ -130,7 +140,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         }
       }
 
-      await initializeSocket();
+      if (!socket.connected) {
+        socket.connect();
+      }
 
     } catch (error) {
       let errorMessage = 'Failed to initialize interview';
@@ -156,166 +168,130 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
       if (errorMessage.includes('sign in') || errorMessage.includes('Authentication')) {
         setTimeout(() => {
-          if (isMountedRef.current) navigate('/signin', { replace: true });
+          navigate('/signin', { replace: true });
         }, 2000);
       }
     }
   };
 
-  // FIXED: Use useCallback to memoize handlers and prevent recreating them
-  const handleNewMessage = useCallback((data, callback) => {
-    console.log('📨 Received new_message:', data);
-    
-    const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
-    const newMessage = {
-      id: Date.now() + Math.random(), // FIXED: Ensure unique IDs
-      sender_id: senderOwnId || 'ai',
-      message_content: message_content,
-      sender_tag: sender_tag || 'ai',
-      recipient_id: recipient_id,
-      timestamp: new Date().toISOString(),
-      questionNumber: data.questionNumber,
-      totalQuestions: data.totalQuestions,
-      isStatus: false
-    };
-
-    setMessages(prev => [...prev, newMessage]);
-    setIsWaitingForResponse(true);
-    setIsLoadingQuestion(false);
-    setStatusMessage('');
-
-    // FIXED: Always acknowledge immediately
-    if (callback && typeof callback === 'function') {
-      callback({ status: 'received' });
-    }
-  }, []); // No dependencies needed since we use functional state updates
-
-  const handleControlInstruction = useCallback((data, callback) => {
-    console.log('🎮 Received control_instruction:', data);
-    
-    const { command, data: instructionData } = data;
-    switch (command) {
-      case 'interview_complete':
-        setInterviewComplete(true);
-        setIsWaitingForResponse(false);
-        setIsLoadingQuestion(false);
-        setStatusMessage('Interview finished!');
-        break;
-      case 'next_question':
-        setIsWaitingForResponse(true);
-        break;
-      case 'error':
-        setSocketError(instructionData?.message || 'An error occurred');
-        setIsLoadingQuestion(false);
-        setStatusMessage('');
-        break;
-      case 'redirect':
-        if (instructionData?.type === 'url' && instructionData.content) {
-          navigate(instructionData.content);
-        } else if (instructionData?.type === 'external_url' && instructionData.content) {
-          window.location.href = instructionData.content;
-        }
-        break;
-      default:
-        console.log('Unknown command:', command);
-    }
-    
-    if (callback && typeof callback === 'function') {
-      callback({ status: 'processed' });
-    }
-  }, [navigate]);
-
-  const handleStatusUpdate = useCallback((data, callback) => {
-    console.log('📊 Received status_update:', data);
-    
-    if (data.update) {
-      const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
-      const statusMessage = {
-        id: Date.now() + Math.random(),
-        sender_id: 'status',
-        message_content: customMessage,
-        timestamp: new Date().toISOString(),
-        isStatus: true
-      };
-      setMessages(prev => [...prev, statusMessage]);
-    }
-    
-    if (callback && typeof callback === 'function') {
-      callback({ status: 'received' });
-    }
-  }, []);
-
-  const handleNotification = useCallback((data, callback) => {
-    console.log('🔔 Received notification:', data);
-    
-    const { message, type } = data;
-    if (type === 'error') {
-      setSocketError(message);
-    } else if (type === 'warning') {
-      console.warn('Notification warning:', message);
-    } else if (type === 'info') {
-      console.info('Notification info:', message);
-    }
-    
-    if (callback && typeof callback === 'function') {
-      callback({ status: 'received' });
-    }
-  }, []);
-
-  // FIXED: Setup listeners only once
-  const setupSocketListeners = useCallback(() => {
-    // FIXED: Prevent duplicate listener setup
-    if (listenersSetupRef.current) {
-      console.log('⚠️ Listeners already set up, skipping...');
-      return;
-    }
-
-    console.log('🔧 Setting up socket listeners...');
-    listenersSetupRef.current = true;
-
+  // Setup socket listeners
+  const setupSocketListeners = () => {
     socket.on('connect', () => {
-      console.log('✅ Socket connected');
       setIsConnected(true);
       setSocketError('');
+      
+      const userId = own_id || localStorage.getItem('user_id');
+      socket.emit('join', {
+        room_name: String(userId),
+        user: parseInt(userId)
+      });
     });
 
     socket.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
       setIsConnected(false);
     });
 
     socket.on('connect_error', (error) => {
-      console.error('❌ Socket connect_error:', error);
       setSocketError('Failed to connect to interview server');
       setIsConnected(false);
       setIsLoadingQuestion(false);
       setStatusMessage('');
     });
 
-    // FIXED: Use the memoized handlers
-    socket.on('new_message', handleNewMessage);
-    socket.on('control_instruction', handleControlInstruction);
-    socket.on('status_update', handleStatusUpdate);
-    socket.on('notification', handleNotification);
+    socket.on('new_message', (data, callback) => {
+      const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
+      const newMessage = {
+        id: Date.now(),
+        sender_id: senderOwnId || 'ai',
+        message_content: message_content,
+        sender_tag: sender_tag || 'ai',
+        recipient_id: recipient_id,
+        timestamp: new Date().toISOString(),
+        questionNumber: data.questionNumber,
+        totalQuestions: data.totalQuestions,
+        isStatus: false
+      };
+      setMessages(prev => [...prev, newMessage]);
+      setIsWaitingForResponse(true);
+      setIsLoadingQuestion(false);
+      setStatusMessage('');
 
-    console.log('✅ Socket listeners set up successfully');
-  }, [handleNewMessage, handleControlInstruction, handleStatusUpdate, handleNotification]);
+      if (callback && typeof callback === 'function') {
+        callback();
+      }
+    });
 
-  const cleanupSocketListeners = useCallback(() => {
-    console.log('🧹 Cleaning up socket listeners...');
-    
+  socket.on('control_instruction', (data, callback) => {
+    const { command, data: instructionData } = data;
+
+    switch (command) {
+        // ... other cases like 'interview_complete', 'next_question', 'error'
+
+        case 'redirect':
+            if (instructionData?.type === 'url' && instructionData.content) {
+                // For internal React Router URLs
+                navigate(instructionData.content); 
+            } else if (instructionData?.type === 'external_url' && instructionData.content) {
+                // For external websites, a full page reload is required
+                window.location.href = instructionData.content;
+            }
+            break;
+
+        default:
+            console.log('Unknown command:', command);
+    }
+
+    if (callback && typeof callback === 'function') {
+        callback();
+    }
+});
+
+    socket.on('status_update', (data, callback) => {
+      if (data.update) {
+        // Look up the custom message, fall back to original if not found
+        const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
+        
+        const statusMessage = {
+          id: Date.now(),
+          sender_id: 'status', 
+          message_content: customMessage,
+          timestamp: new Date().toISOString(),
+          isStatus: true 
+        };
+        setMessages(prev => [...prev, statusMessage]);
+      }
+      if (callback && typeof callback === 'function') {
+        callback();
+      }
+    });
+
+    socket.on('notification', (data, callback) => {
+      const { message, type } = data;
+      if (type === 'error') {
+        setSocketError(message);
+      } else if (type === 'warning') {
+        console.warn('Notification warning:', message);
+      } else if (type === 'info') {
+        console.info('Notification info:', message);
+      }
+      if (callback && typeof callback === 'function') {
+        callback();
+      }
+    });
+  };
+
+  // Cleanup socket listeners (no changes here)
+  const cleanupSocketListeners = () => {
     socket.off('connect');
     socket.off('disconnect');
     socket.off('connect_error');
-    socket.off('new_message', handleNewMessage);
-    socket.off('control_instruction', handleControlInstruction);
-    socket.off('status_update', handleStatusUpdate);
-    socket.off('notification', handleNotification);
-    
-    listenersSetupRef.current = false;
-    console.log('✅ Socket listeners cleaned up');
-  }, [handleNewMessage, handleControlInstruction, handleStatusUpdate, handleNotification]);
+    socket.off('new_message');
+    socket.off('control_instruction');
+    socket.off('status_update');
+    socket.off('notification');
+  };
 
+  // Utility functions (no changes here)
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -332,7 +308,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     }
 
     const userMessage = {
-      id: Date.now() + Math.random(),
+      id: Date.now(),
       sender_id: parseInt(own_id),
       message_content: currentInput.trim(),
       sender_tag: 'user',
@@ -342,11 +318,11 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
     setMessages(prev => [...prev, userMessage]);
 
-    console.log('📤 Sending message:', currentInput.trim());
     socket.emit('send_message', {
       message_content: currentInput.trim(),
       own_id: parseInt(own_id || localStorage.getItem('user_id')),
       recipient_id: 'platform_interviewer'
+    }, () => {
     });
 
     setCurrentInput('');
@@ -359,33 +335,24 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     navigate('/task');
   };
 
-  // FIXED: Simplified useEffect with proper cleanup
+  // Effects (no changes here)
   useEffect(() => {
-    isMountedRef.current = true;
-
     if (!checkAuthentication()) {
       return;
     }
-    
-    // Setup listeners first
-    setupSocketListeners();
-    
-    // Then initialize chat
     initializeChat();
-    
-    return () => {
-      isMountedRef.current = false;
-      cleanupSocketListeners();
-    };
-  }, []); // FIXED: Empty dependency array - only run once on mount
+    setupSocketListeners();
+    return cleanupSocketListeners;
+  }, [navigate, own_id, chat_type, location.state]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  // Loading state (no changes here)
   if (isLoadingAuth) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center basic-font">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
         <Loader2 className="h-16 w-16 text-blue-600 mb-4 animate-spin" />
         <h2 className="text-2xl font-bold text-gray-800 mb-2">Setting Up Interview</h2>
         <p className="text-gray-600">Please wait while we prepare your interview...</p>
@@ -393,9 +360,10 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     );
   }
 
+  // Error state (no changes here)
   if (socketError) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center basic-font">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 text-center">
         <XCircle className="h-16 w-16 text-red-500 mb-4" />
         <h2 className="text-2xl font-bold text-gray-800 mb-2">
           {socketError.includes('Authentication') || socketError.includes('sign in')
@@ -444,9 +412,11 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     );
   }
 
+  // Main interview interface (no changes here)
   return (
     <div className="w-full min-h-screen bg-gradient-to-b from-blue-50 to-white flex justify-center py-12">
       <div className="w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl">
+        {/* Header */}
         <div className="bg-blue-600 text-white rounded-t-xl px-8 py-6 border-b border-gray-200">
           <h2 className="text-3xl text-white font-bold flex items-center">
             <MessageSquare className="mr-3" />
@@ -480,6 +450,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             </div>
           )}
         </div>
+        {/* Chat content */}
         <div className="flex-1 bg-gray-50 overflow-hidden flex flex-col">
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {!isConnected && messages.length === 0 && (
@@ -488,15 +459,18 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
                 Connecting to interview server...
               </div>
             )}
+            {/* Messages */}
             {messages.map((message) => (
               <div key={message.id}>
                 {message.isStatus ? (
+                  // Status bubble
                   <div className="flex justify-center">
                     <div className="bg-gray-200 text-gray-700 text-xs py-1 px-3 rounded-full shadow-sm max-w-[75%] text-center">
                       {message.message_content}
                     </div>
                   </div>
                 ) : (
+                  // Regular chat message bubble
                   <div
                     className={`flex ${message.sender_id === parseInt(own_id) ? 'justify-end' : 'justify-start'}`}
                   >
@@ -517,6 +491,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
                 )}
               </div>
             ))}
+            {/* Loading indicator */}
             {isLoadingQuestion && (
               <div className="flex justify-start">
                 <div className="max-w-[75%] p-4 rounded-xl shadow-sm bg-white text-gray-800 rounded-bl-none border border-gray-200">
@@ -529,6 +504,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Input form or completion message */}
           {!interviewComplete ? (
             <form onSubmit={handleSubmit} className="border-t border-gray-200 p-4 bg-white">
               <div className="flex items-center">

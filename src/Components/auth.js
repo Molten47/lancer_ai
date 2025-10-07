@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { clearAuthData } from '../store/userSlice';
-import { initializeSocket } from './socket';
+// REMOVED: Don't import initializeSocket here - App.jsx handles it
 
 
 const useAuthService = () => {
@@ -16,11 +16,9 @@ const useAuthService = () => {
     localStorage.setItem('access_jwt', accessJwt);
     localStorage.setItem('refresh_jwt', refreshJwt);
     setIsAuthenticated(true);
-     // Initialize socket connection after authentication
-
-    initializeSocket().catch(error => {
-    console.error('Failed to initialize socket after authentication:', error);
-  });
+    
+    // REMOVED: Socket initialization - let App.jsx handle it via Redux state change
+    // The socket will be initialized automatically when App.jsx detects auth state change
   };
 
   const clearTokens = () => {
