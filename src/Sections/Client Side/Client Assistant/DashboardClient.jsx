@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Settings, MessageSquare } from 'lucide-react';
+import { Send, Settings, MessageSquare, Minimize, X, CirclePlus, Paperclip, Smile   } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import socket, { isSocketConnected } from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -13,7 +13,7 @@ const STATUS_MESSAGE_MAP = {
 
 const AIAssistantChat = ({ 
   chat_type = 'client_assistant',
-  assistantName = 'AI Assistant',
+  assistantName = 'Client Assistant',
   assistantAvatar = 'AI',
   className = '',
   onMessageSent
@@ -25,6 +25,7 @@ const AIAssistantChat = ({
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [messages, setMessages] = useState([]);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [socketError, setSocketError] = useState('');
@@ -36,6 +37,7 @@ const AIAssistantChat = ({
   const [userProfile, setUserProfile] = useState(null);
   const [userAvatar, setUserAvatar] = useState('U');
   const [userName, setSenderName] = useState('You');
+  const [attachments, setAttachments] = useState([]);
 
   // Add timeout ref to handle response timeouts
   const responseTimeoutRef = useRef(null);
@@ -513,6 +515,17 @@ const AIAssistantChat = ({
     socket.off('notification');
   };
 
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    setAttachments(prev => [...prev, ...files]);
+  };
+
+  // Remove attachment
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
@@ -642,6 +655,7 @@ const AIAssistantChat = ({
 
     // Clear input and show loading state
     setInputValue('');
+    setAttachments([]);
     setIsWaitingForResponse(true);
     setIsLoadingAnswer(true);
     
@@ -682,27 +696,23 @@ const AIAssistantChat = ({
   }
 
   return (
-    <div className={`flex flex-col h-full bg-gray-50 ${className}`}>
+    <div className={`flex flex-col h-full bg-white ${className} third-font`}>
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-primary">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">{assistantAvatar}</span>
+          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+            <CirclePlus className='text-light size-7' />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">{assistantName}</h3>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></span>
-              {isConnected ? 'Online' : 'Connecting...'} • {formatTime(new Date())}
-            </p>
+            <h3 className="font-semibold text-white">{assistantName}</h3>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100">
-            <MessageSquare size={20} />
+          <button className="p-2 text-white hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100">
+            <Minimize size={20} />
           </button>
-          <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100">
-            <Settings size={20} />
+          <button className="p-2 text-white hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100">
+            <X size={20} />
           </button>
         </div>
       </div>
@@ -744,8 +754,8 @@ const AIAssistantChat = ({
       )}
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="space-y-4 max-w-4xl mx-auto">
           {messages.map((message) => {
             const isFromCurrentUser = message.type === 'user';
             const isAIMessage = message.type === 'ai';
@@ -771,14 +781,14 @@ const AIAssistantChat = ({
                 <div className={`flex flex-col ${isFromCurrentUser ? 'items-end' : 'items-start'} max-w-[70%] lg:max-w-[60%]`}>
                   <div className={`rounded-2xl px-4 py-3 shadow-sm ${
                     isFromCurrentUser 
-                      ? 'bg-blue-500 text-white rounded-br-md' 
-                      : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
+                      ? 'bg-primary text-white rounded-br-md' 
+                      : 'bg-messages text-primary border border-gray-200 rounded-bl-md'
                   }`}>
                     <p className="whitespace-pre-wrap leading-relaxed text-sm">{message.content}</p>
+                    <p className={`text-xs mt-2 ${isFromCurrentUser ? 'text-blue-100' : 'text-gray-500'}`}>
+                      {formatTime(message.timestamp)}
+                    </p>
                   </div>
-                  <p className={`text-xs text-gray-500 mt-1 px-1 ${isFromCurrentUser ? 'text-right' : 'text-left'}`}>
-                    {formatTime(message.timestamp)} • {message.sender}
-                  </p>
                 </div>
 
                 {isFromCurrentUser && (
@@ -815,40 +825,100 @@ const AIAssistantChat = ({
       </div>
 
       {/* Chat Input */}
-      <div className="p-4 bg-white border-t border-gray-200">
-        <div className="flex gap-3 max-w-5xl mx-auto items-end">
-          <div className="flex-1 relative">
-            <TextareaAutosize
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="What do you want to get done?"
-              disabled={!isConnected || isLoadingAnswer}
-              className="w-full px-6 py-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all text-sm resize-none"
-              minRows={1}
-              maxRows={6}
-            />
-            {inputValue && (
-              <button 
-                onClick={() => setInputValue('')}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <button 
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer}
-            className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md flex-shrink-0"
-          >
-            {isLoadingAnswer ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-            ) : (
-              <Send size={20} className="text-white ml-0.5" />
-            )}
-          </button>
+      <div className="p-6 bg-white border-t border-gray-200">
+        <div className="flex flex-col gap-3 max-w-5xl mx-auto">
+          {/* Attachments Preview */}
+          {attachments.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((file, index) => (
+                <div key={index} className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-lg border border-gray-200">
+                  <Paperclip size={14} className="text-gray-400" />
+                  <span className="text-xs text-gray-600 max-w-[150px] truncate">{file.name}</span>
+                  <button
+                    onClick={() => removeAttachment(index)}
+                    className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Input Area */}
+          <input className="flex gap-3 items-end">
+            <div className="flex-1 relative">
+              <TextareaAutosize
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyPress}
+                placeholder="Type a message..."
+                disabled={!isConnected || isLoadingAnswer}
+                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all text-sm resize-none"
+                minRows={2}
+                maxRows={6}
+              />
+              
+              {/* Icons inside input */}
+              <div className="absolute left-3 top-1/2 transform translate-y-1/2 flex items-center gap-2">
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!isConnected || isLoadingAnswer}
+                  className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                  title="Attach file"
+                >
+                  <Paperclip size={16} />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="*"
+                />
+                
+                <button 
+                  className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                  title="Add emoji"
+                  disabled={!isConnected || isLoadingAnswer}
+                >
+                  <Smile size={16} />
+                </button>
+              </div>
+
+              {inputValue && (
+                <button 
+                  onClick={() => setInputValue('')}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+
+            {/* Send Button */}
+            <button 
+              onClick={handleSendMessage}
+              disabled={!inputValue.trim() || !isConnected || isLoadingAnswer}
+              className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md"
+            >
+              {isLoadingAnswer ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <Send size={18} className="text-white" />
+              )}
+            </button>
+          </input>
+
+          {/* Help Text */}
+          <article className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="w-4 h-4 flex items-center justify-center text-blue-500">
+              ⚡
+            </div>
+            <p>The AI will help you define your project scope, required assets, and suggest tasks.</p>
+          </article>
         </div>
         
         {/* Connection Status */}

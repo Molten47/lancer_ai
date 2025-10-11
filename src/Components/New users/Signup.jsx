@@ -8,9 +8,9 @@ const Signup = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET; // <-- You fill this
-  console.log('ADMIN_SECRET loaded:', ADMIN_SECRET); // Debug line
-  console.log('Env check:', import.meta.env.VITE_ADMIN_SECRET); 
+  const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET; 
+  //console.log('ADMIN_SECRET loaded:', ADMIN_SECRET); // Debug line
+  //console.log('Env check:', import.meta.env.VITE_ADMIN_SECRET); 
   
   // Get preselected role from navigation state
   const preselectedRole = location.state?.preselectedRole || '';
@@ -90,12 +90,12 @@ const Signup = () => {
     e.preventDefault();
     setApiError('');
   
-  // CHECK ADMIN PASSWORD FIRST - before any other validation
+  // CHECK ADMIN PASSWORD FIRST, before any other validation
   if (formData.password !== ADMIN_SECRET) {
     setErrors({
       password: "Contact Admin for access"
     });
-    return; // Stop form submission
+    return; // Stop form submission if the user does not use lancer_00
   }
   
   ///Checker Ends

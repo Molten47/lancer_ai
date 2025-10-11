@@ -21,6 +21,8 @@
  --color-six:#9CA3AF;
  --color-seven:#6B7280;
  --color-texts:#111827;
+ 
+ 
 
  /* -Card colors and Icons- */
 
@@ -34,6 +36,7 @@
 
   --basic-font:'Sora', sans-serif;
   --sub-font: 'Inter', sans-serif;
+  --third-font: 'Funnel Display', sans-serif;
  
 }
 
@@ -85,6 +88,9 @@ body {
     .bg-updated{
       background-color: var(--updated-background);
     }
+    .bg-messages {
+      background-color: var(--color-five);
+    }
 
   /*text-colors*/
 
@@ -109,6 +115,9 @@ body {
     .text-jobs{
       color: var(--jobs-cor);
     }
+    .text-time{
+      color: var(--color-six);
+    }
 
     /*brand-fonts*/
 
@@ -117,6 +126,9 @@ body {
     }
     .new-font{
       font-family: var(--sub-font);
+    }
+    .third-font{
+      font-family: var(--third-font);
     }
  
 

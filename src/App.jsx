@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { connectSocket, disconnectSocket } from './Components/socket'; // Adjust path if needed
+import { HelmetProvider } from 'react-helmet-async'
+import { connectSocket, disconnectSocket } from './Components/socket';
 import Signup from './Components/New users/Signup';
 import Signin from './Components/Platform Users/signin';
 import Landhome from './Components/Landing Page/home';
@@ -14,47 +15,44 @@ import ThreePanelWorkspace from './Sections/Client Side/Projects/ProjectDashboar
 import Interviewee from './Sections/Freelancer Side/Interview/jobInterview';
 
 const App = () => {
-    // Get auth state from Redux
     const { auth } = useSelector(state => state.user);
     
-    // Socket connection management
     useEffect(() => {
         console.log('Auth state changed:', auth);
         
         if (auth.isAuthenticated && auth.user_id && auth.tokens.access) {
-            // User is fully authenticated - connect socket
             console.log('Connecting socket for user:', auth.user_id);
             connectSocket();
         } else {
-            // User is not authenticated - disconnect socket
             console.log('Disconnecting socket - user not authenticated');
             disconnectSocket();
         }
         
-        // Cleanup on unmount
         return () => {
             disconnectSocket();
         };
     }, [auth.isAuthenticated, auth.user_id, auth.tokens.access]);
 
     return (
-        <Router> 
-            <div>
-                <Routes>
-                    <Route path="/" element={<Landhome />} /> 
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/login" element={<Signin />} />
-                    <Route path="/profile_setup" element={<Setup/>} />
-                    <Route path="/interview" element={<Interview/>}/>
-                    <Route path="/task" element={<LancerTaskPage/>}/>
-                    <Route path="/client-dashboard" element={<DashboardCl/>}/>
-                    <Route path="/job-interview" element={<Interviewee />} />
-                    <Route path="/workspace" element={<ThreePanelWorkspace />} />
-                    <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </div>
-        </Router>
+        <HelmetProvider>
+            <Router> 
+                <div>
+                    <Routes>
+                        <Route path="/" element={<Landhome />} /> 
+                        <Route path="/signup" element={<Signup />} />
+                        <Route path="/login" element={<Signin />} />
+                        <Route path="/profile_setup" element={<Setup/>} />
+                        <Route path="/interview" element={<Interview/>}/>
+                        <Route path="/task" element={<LancerTaskPage/>}/>
+                        <Route path="/client-dashboard" element={<DashboardCl/>}/>
+                        <Route path="/job-interview" element={<Interviewee />} />
+                        <Route path="/workspace" element={<ThreePanelWorkspace />} />
+                        <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
+                        <Route path="*" element={<Navigate to="/" replace />} />
+                    </Routes>
+                </div>
+            </Router>
+        </HelmetProvider>
     );
 };
 

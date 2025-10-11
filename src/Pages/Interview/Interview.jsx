@@ -329,7 +329,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     navigate('/task');
   };
 
-  // Effects
+  // Use Effects
   useEffect(() => {
     if (!checkAuthentication()) {
       return;
@@ -457,7 +457,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             {messages.map((message) => (
               <div key={message.id}>
                 {message.isStatus ? (
-                  // Claude-style status update: icon on left, text beside it
+                  // AI-style type of texting, text beside it
                   <div className="flex items-start gap-3 px-2 py-1">
                     <div className="flex-shrink-0 mt-0.5">
                       <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
