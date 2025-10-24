@@ -96,22 +96,25 @@ const P2PChatComponent = ({
 
     const handleNewMessage = (messageData) => {
       console.log('📨 Received message:', messageData);
+
+     const currentOwnId = parseInt(ownId);
+     const currentRecipientId = parseInt(recipientId);
       
       // FIXED: Check if message is for this conversation
       // Message should be FROM recipientId TO ownId
-const isForThisChat = (
-  // Message FROM recipientId TO ownId
-  (messageData.own_id === recipientId && messageData.recipient_id === ownId)
+  const isForThisChat = (
+// Message FROM recipientId TO ownId
+(messageData.own_id == recipientId && messageData.recipient_id == ownId)
 ) || (
-  // Message FROM ownId TO recipientId (echo back)
-  (messageData.own_id === ownId && messageData.recipient_id === recipientId)
+// Message FROM ownId TO recipientId (echo back)
+(messageData.own_id == ownId && messageData.recipient_id == recipientId)
 );
 
 console.log('🎯 Message routing check:', {
   messageFrom: messageData.own_id,
   messageTo: messageData.recipient_id,
-  expectedFrom: recipientId,
-  expectedTo: ownId,
+  expectedFrom: currentRecipientId, // Changed from 'recipientId' (string)
+  expectedTo: currentOwnId,
   isForThisChat
 });
 
@@ -343,7 +346,7 @@ console.log('🎯 Message routing check:', {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-white basic-font">
+    <div className="flex flex-col h-full w-full bg-white third-font">
       {/* Chat Header */}
       <div className="flex items-center justify-between p-6 bg-blue-600 text-white border-b flex-shrink-0">
         <div className="flex items-center space-x-4">

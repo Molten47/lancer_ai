@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Users, Circle, Settings, RefreshCw, Smile } from 'lucide-react';
-import socket from '../../../Components/socket';
+import socket from '../../Components/socket';
 
 const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
   const [messages, setMessages] = useState([]);
@@ -403,7 +403,7 @@ const GroupChat = ({ userId, projectId, clientId, className = '' }) => {
   }
 
   return (
-    <div className={`flex flex-col h-screen bg-white p-14 ${className}`}>
+    <div className={`flex flex-col h-screen bg-white p-14 third-font ${className}`}>
       <div className="flex items-center justify-between p-6 bg-green-600 text-white border-b flex-shrink-0">
         <div className="flex items-center space-x-4">
           <div className="relative">

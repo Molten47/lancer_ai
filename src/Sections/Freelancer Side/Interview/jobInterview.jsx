@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Loader2, MessageSquare, Send, XCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, MessageSquare, Send, XCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import socket from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
@@ -41,7 +41,7 @@ const JobInterview = () => {
   // --- State declarations ---
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
-  const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
+  //const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [socketError, setSocketError] = useState('');
@@ -50,6 +50,22 @@ const JobInterview = () => {
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
 
   console.log('📊 Initial state setup complete');
+
+  // Helper function to mark last status message as complete
+  const markLastStatusComplete = () => {
+    setMessages(prev => {
+      const lastStatusIndex = prev.map((msg, idx) => msg.isStatus ? idx : -1)
+        .filter(idx => idx !== -1)
+        .pop();
+      
+      if (lastStatusIndex !== undefined && lastStatusIndex >= 0) {
+        const updated = [...prev];
+        updated[lastStatusIndex] = { ...updated[lastStatusIndex], isComplete: true };
+        return updated;
+      }
+      return prev;
+    });
+  };
 
   useEffect(() => {
     console.log('🔄 Main useEffect triggered (Agent Mode)');
@@ -143,15 +159,7 @@ const JobInterview = () => {
           setIsLoading(false);
           setStatusMessage('Connected. Awaiting first question...');
           
-          // Notify server about interview session start (without room joining)
-          if (socket.connected) {
-            console.log('📤 Notifying server about interview start');
-            socket.emit('interview_session_start', {
-              recipient_id: recipient_id,
-              own_id: parseInt(own_id),
-              chat_type: chat_type
-            });
-          }
+       
         }
 
       } catch (error) {
@@ -184,12 +192,27 @@ const JobInterview = () => {
           setSocketError('');
           setStatusMessage('Connected to interview agent...');
           
-          // Notify about session start if we have interview data
           if (recipient_id && own_id) {
+            // 🔑 Join room using own_id first (standard pattern)
+            const userId = parseInt(own_id);
+            console.log('🚪 Joining user room:', userId);
+            socket.emit('join', {
+              room_name: String(userId),
+              user: userId
+            });
+            
+            // 🔑 ALSO join the interview-specific room
+            console.log('🚪 Joining interview room:', recipient_id);
+            socket.emit('join', {
+              room_name: String(recipient_id),
+              user: userId
+            });
+            
+            // 📤 Notify server about interview session start
             console.log('📤 Notifying server about interview session');
             socket.emit('interview_session_start', {
               recipient_id: recipient_id,
-              own_id: parseInt(own_id),
+              own_id: userId,
               chat_type: chat_type
             });
           }
@@ -227,6 +250,9 @@ const JobInterview = () => {
       socket.on('new_message', (data, callback) => {
         console.log('💬 New message received:', data);
         if (isMounted) {
+          // Mark the last status message as complete before adding new message
+          markLastStatusComplete();
+
           const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
           const newMessage = {
             id: Date.now(),
@@ -246,7 +272,7 @@ const JobInterview = () => {
             console.log('📚 Updated messages count:', updated.length);
             return updated;
           });
-          setIsWaitingForResponse(true);
+          //setIsWaitingForResponse(true);
           setIsLoading(false);
           setIsLoadingQuestion(false);
           setStatusMessage('');
@@ -267,15 +293,16 @@ const JobInterview = () => {
           switch (command) {
             case 'interview_complete':
               console.log('🏁 Interview completed');
+              markLastStatusComplete(); // Mark any pending status as complete
               setInterviewComplete(true);
-              setIsWaitingForResponse(false);
+              //setIsWaitingForResponse(false);
               setIsLoading(false);
               setIsLoadingQuestion(false);
               setStatusMessage('Interview finished!');
               break;
             case 'next_question':
               console.log('❓ Next question command received');
-              setIsWaitingForResponse(true);
+              //setIsWaitingForResponse(true);
               setIsLoading(false);
               setIsLoadingQuestion(false);
               break;
@@ -306,6 +333,9 @@ const JobInterview = () => {
       socket.on('status_update', (data, callback) => {
         console.log('📊 Status update received:', data);
         if (isMounted && data.update) {
+          // Mark the previous status message as complete before adding new one
+          markLastStatusComplete();
+
           const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
           console.log('📢 Custom status message:', customMessage);
           const statusMessage = {
@@ -313,7 +343,8 @@ const JobInterview = () => {
             sender_id: 'status',
             message_content: customMessage,
             timestamp: new Date().toISOString(),
-            isStatus: true
+            isStatus: true,
+            isComplete: false  // New status starts as incomplete
           };
           console.log('📝 Adding status message to state:', statusMessage);
           setMessages(prev => [...prev, statusMessage]);
@@ -402,17 +433,20 @@ const JobInterview = () => {
     e.preventDefault();
     console.log('📤 Form submission attempted');
     console.log('📤 Current input:', currentInput.trim());
-    console.log('📤 Is waiting for response:', isWaitingForResponse);
+    //console.log('📤 Is waiting for response:', isWaitingForResponse);
     console.log('📤 Is connected:', isConnected);
     console.log('📤 Is loading question:', isLoadingQuestion);
     
-    if (currentInput.trim() === '' || !isWaitingForResponse || !isConnected) {
+    if (currentInput.trim() === '' || isLoadingQuestion || !isConnected) {
       console.log('❌ Form submission blocked - conditions not met');
       console.log('   - Empty input:', currentInput.trim() === '');
-      console.log('   - Not waiting for response:', !isWaitingForResponse);
+      //console.log('   - Not waiting for response:', !isWaitingForResponse);
       console.log('   - Not connected:', !isConnected);
       return;
     }
+
+    // Mark last status as complete when user sends a message
+    markLastStatusComplete();
     
     const userMessage = {
       id: Date.now(),
@@ -443,11 +477,11 @@ const JobInterview = () => {
     console.log('🔌 Socket ID:', socket.id);
     
     // Use specific event for interview responses (not generic send_message)
-    socket.emit('interview_response', messagePayload);
+    socket.emit('send_message', messagePayload);
     
     console.log('✅ Response emitted, updating UI state');
     setCurrentInput('');
-    setIsWaitingForResponse(false);
+    //setIsWaitingForResponse(false);
     setIsLoadingQuestion(true);
     setStatusMessage('Processing your answer...');
     console.log('🔄 UI state updated after response send');
@@ -468,7 +502,7 @@ const JobInterview = () => {
     messagesCount: messages.length,
     isLoading,
     isConnected,
-    isWaitingForResponse,
+    //isWaitingForResponse,
     interviewComplete,
     isLoadingQuestion,
     socketError,
@@ -576,10 +610,19 @@ const JobInterview = () => {
             {messages.map((message) => (
               <div key={message.id}>
                 {message.isStatus ? (
-                  // Status bubble
-                  <div className="flex justify-center">
-                    <div className="bg-gray-200 text-gray-700 text-xs py-1 px-3 rounded-full shadow-sm max-w-[75%] text-center">
-                      {message.message_content}
+                  // Status message with conditional spinner/checkmark
+                  <div className="flex items-start gap-3 px-2 py-1">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {!message.isComplete ? (
+                        <Loader2 className="h-4 w-4 text-green-600 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm leading-relaxed ${message.isComplete ? 'text-gray-500' : 'text-gray-600'}`}>
+                        {message.message_content}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -607,9 +650,12 @@ const JobInterview = () => {
             
             {/* Loading indicator */}
             {isLoadingQuestion && (
-              <div className="flex justify-start">
-                <div className="max-w-[75%] p-4 rounded-xl shadow-sm bg-white text-gray-800 rounded-bl-none border border-gray-200">
-                  <p className="text-sm md:text-base animate-pulse">
+              <div className="flex items-start gap-3 px-2 py-1">
+                <div className="flex-shrink-0 mt-0.5">
+                  <Loader2 className="h-4 w-4 text-green-600 animate-spin" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-gray-600 leading-relaxed">
                     {STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'Interview agent is preparing...'}
                   </p>
                 </div>
@@ -625,24 +671,22 @@ const JobInterview = () => {
                 <TextareaAutosize
                   value={currentInput}
                   onChange={handleInputChange}
-                  disabled={!isConnected || !isWaitingForResponse || isLoadingQuestion}
+                  disabled={!isConnected ||isLoadingQuestion}
                   className="flex-1 resize-none border border-gray-300 rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-green-500 h-12 overflow-hidden"
                   placeholder={
-                    !isConnected
-                      ? 'Connecting...'
-                      : isLoadingQuestion
-                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'Interview agent is working...'
-                        : isWaitingForResponse
-                          ? 'Type your response...'
-                          : 'Please wait...'
-                  }
+                    !isConnected
+                      ? 'Connecting...'
+                      : isLoadingQuestion
+                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'Interview agent is working...'
+                        : 'Type your response...' // <-- SIMPLIFIED: No longer needs isWaitingForResponse
+                  }
                   rows={1}
                   minRows={1}
                   maxRows={6}
                 />
                 <button
                   type="submit"
-                  disabled={!isConnected || !isWaitingForResponse || currentInput.trim() === '' || isLoadingQuestion}
+                  disabled={!isConnected || currentInput.trim() === '' || isLoadingQuestion}
                   className="bg-green-600 hover:bg-green-700 text-white py-3 px-6 m-4 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="h-5 w-5" />

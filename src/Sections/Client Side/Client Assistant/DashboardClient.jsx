@@ -39,8 +39,7 @@ const AIAssistantChat = ({
   const [userName, setSenderName] = useState('You');
   const [attachments, setAttachments] = useState([]);
 
-  // Add timeout ref to handle response timeouts
-  const responseTimeoutRef = useRef(null);
+
 
   // FIXED: Consistent message type detection function
   const determineMessageType = (messageData, currentUserId) => {
@@ -146,28 +145,9 @@ const AIAssistantChat = ({
     setIsLoadingAnswer(false);
     setIsWaitingForResponse(false);
     setStatusMessage('');
-    
-    // Clear any pending timeout
-    if (responseTimeoutRef.current) {
-      clearTimeout(responseTimeoutRef.current);
-      responseTimeoutRef.current = null;
-    }
+  
   };
 
-  // FIXED: Set response timeout
-  const setResponseTimeout = () => {
-    // Clear any existing timeout
-    if (responseTimeoutRef.current) {
-      clearTimeout(responseTimeoutRef.current);
-    }
-    
-    // Set new timeout (30 seconds)
-    responseTimeoutRef.current = setTimeout(() => {
-      console.warn('Response timeout - clearing loading states');
-      clearLoadingStates();
-      setSocketError('Response timeout. The AI assistant may be experiencing issues. Please try again.');
-    }, 30000);
-  };
 
   // Message filter for this chat type
   const createClientAssistantMessageFilter = (currentUserId, assistantId = 'client_assistant') => {
@@ -529,9 +509,7 @@ const AIAssistantChat = ({
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
-      if (responseTimeoutRef.current) {
-        clearTimeout(responseTimeoutRef.current);
-      }
+
     };
   }, []);
 
@@ -661,7 +639,7 @@ const AIAssistantChat = ({
     
     // Show typing indicator and set timeout
     setTimeout(() => setIsTyping(true), 500);
-    setResponseTimeout(); // Set timeout to clear states if no response
+    //setResponseTimeout(); // Set timeout to clear states if no response
     
     setTimeout(() => inputRef.current?.focus(), 100);
   };
@@ -696,7 +674,7 @@ const AIAssistantChat = ({
   }
 
   return (
-    <div className={`flex flex-col h-full bg-white ${className} third-font`}>
+    <div className={`flex flex-col h-full bg-white ${className} third-font pt-12`}>
       {/* Chat Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-primary">
         <div className="flex items-center gap-3">
@@ -846,7 +824,7 @@ const AIAssistantChat = ({
           )}
 
           {/* Input Area */}
-          <input className="flex gap-3 items-end">
+          <div className="flex gap-3 items-end">
             <div className="flex-1 relative">
               <TextareaAutosize
                 ref={inputRef}
@@ -902,7 +880,7 @@ const AIAssistantChat = ({
             <button 
               onClick={handleSendMessage}
               disabled={!inputValue.trim() || !isConnected || isLoadingAnswer}
-              className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md"
+              className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md"
             >
               {isLoadingAnswer ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -910,15 +888,15 @@ const AIAssistantChat = ({
                 <Send size={18} className="text-white" />
               )}
             </button>
-          </input>
+          </div>
 
           {/* Help Text */}
-          <article className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
             <div className="w-4 h-4 flex items-center justify-center text-blue-500">
               ⚡
             </div>
             <p>The AI will help you define your project scope, required assets, and suggest tasks.</p>
-          </article>
+          </div>
         </div>
         
         {/* Connection Status */}

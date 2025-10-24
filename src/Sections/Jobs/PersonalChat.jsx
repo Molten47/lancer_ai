@@ -6,7 +6,7 @@ import socket, {
   isSocketConnected, 
   getConnectionStatus, 
   getAPIUrl
-} from '../../../Components/socket';
+} from '../../Components/socket';
 
 const P2PChatComponent = ({ 
   ownId, 
@@ -158,26 +158,31 @@ if (response.ok) {
     };
 
     const handleNewMessage = (messageData) => {
-      console.log('📨 Received message:', messageData);
-      
-      // FIXED: Check if message is for this conversation
-      // Message should be FROM recipientId TO ownId
-      const isForThisChat = (
-        (messageData.sender === recipientId || messageData.from === recipientId) &&
-        (messageData.recipient === ownId || messageData.to === ownId)
-      ) || (
-        // Or FROM ownId TO recipientId (echo back from server)
-        (messageData.sender === ownId || messageData.from === ownId) &&
-        (messageData.recipient === recipientId || messageData.to === recipientId)
-      );
+     console.log('📨 Received message:', messageData);
+      
+      // ADDED: Normalize IDs from the incoming message, checking new keys
+      const msgSender = normalizeId(messageData.sender || messageData.from || messageData.own_id); // The sender of the message
+      const msgRecipient = normalizeId(messageData.recipient || messageData.to || messageData.recipient_id); // The intended recipient of the message
 
-      console.log('🎯 Message routing check:', {
-        messageFrom: messageData.sender || messageData.from,
-        messageTo: messageData.recipient || messageData.to,
-        expectedFrom: recipientId,
-        expectedTo: ownId,
-        isForThisChat
-      });
+      // Normalized chat IDs for comparison
+      const normalizedOwnId = normalizeId(ownId);
+      const normalizedRecipientId = normalizeId(recipientId);
+
+      // FIXED: Check if message is for this conversation
+      const isForThisChat = (
+        // Case 1: Message is FROM the recipient TO me (I am the receiver)
+        (msgSender === normalizedRecipientId && msgRecipient === normalizedOwnId) ||
+        // Case 2: Message is FROM me TO the recipient (Server echo of my sent message)
+        (msgSender === normalizedOwnId && msgRecipient === normalizedRecipientId)
+      );
+
+      console.log('🎯 Message routing check:', {
+        messageFrom: msgSender,
+        messageTo: msgRecipient,
+        expectedFrom: normalizedRecipientId,
+        expectedTo: normalizedOwnId,
+        isForThisChat
+      });
       
       if (isForThisChat) {
         const newMsg = {
@@ -405,7 +410,7 @@ if (response.ok) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-white basic-font">
+    <div className="flex flex-col h-full w-full bg-white third-font">
       {/* Chat Header */}
       <div className="flex items-center justify-between p-6 bg-blue-600 text-white border-b flex-shrink-0">
         <div className="flex items-center space-x-4">
@@ -455,41 +460,42 @@ if (response.ok) {
             </p>
           </div>
         ) : (
-          <>
-            {messages.map((message) => (
+          <>{messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${message.sender === normalizeId(ownId) ? 'justify-end' : 'justify-start'}`}
+                className={`flex flex-col ${message.sender === normalizeId(ownId) ? 'items-end' : 'items-start'}`}
               >
-                <div className="flex items-end space-x-2 max-w-lg">
+                <div className="flex items-start space-x-3 max-w-lg">
                   {message.sender !== normalizeId(ownId) && (
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
-                      <User size={16} />
+                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User size={20} />
                     </div>
                   )}
-                  <div
-                    className={`px-4 py-3 rounded-2xl max-w-sm lg:max-w-md ${
-                      message.sender === normalizeId(ownId)
-                        ? 'bg-blue-600 text-white rounded-br-md'
-                        : 'bg-white text-gray-800 border rounded-bl-md shadow-sm'
-                    } ${message.failed ? 'opacity-50 border-red-300' : ''}`}
-                  >
-                    <p className="text-sm leading-relaxed">{message.text}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className={`text-xs ${message.sender === normalizeId(ownId) ? 'text-blue-100' : 'text-gray-500'}`}>
-                        {formatTime(message.timestamp)}
-                      </span>
-                      {message.sender === normalizeId(ownId) && (
-                        <span className="text-xs text-blue-100 ml-2">
-                          {message.pending ? '⏳' : message.failed ? '❌' : message.delivered ? '✓✓' : '✓'}
-                        </span>
-                      )}
+                  <div className="flex flex-col">
+                    <div
+                      className={`px-5 py-3 max-w-sm lg:max-w-md ${
+                        message.sender === normalizeId(ownId)
+                          ? 'bg-[#2255D7] text-white rounded-2xl rounded-tr-sm'
+                          : 'bg-[#F3F4F6] text-[#151B25] rounded-2xl rounded-tl-sm'
+                      } ${message.failed ? 'opacity-50 border-red-300' : ''}`}
+                    >
+                      <p className="text-[15px] leading-relaxed">{message.text}</p>
                     </div>
                   </div>
                   {message.sender === normalizeId(ownId) && (
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
-                      <User size={16} className="text-white" />
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <User size={20} className="text-white" />
                     </div>
+                  )}
+                </div>
+                <div className={`flex items-center space-x-2 mt-1 ${message.sender === normalizeId(ownId) ? 'mr-14' : 'ml-14'}`}>
+                  <span className="text-xs text-gray-500">
+                    {formatTime(message.timestamp)}
+                  </span>
+                  {message.sender === normalizeId(ownId) && (
+                    <span className="text-xs text-gray-500">
+                      {message.pending ? '⏳' : message.failed ? '❌' : message.delivered ? '✓✓' : '✓'}
+                    </span>
                   )}
                 </div>
               </div>

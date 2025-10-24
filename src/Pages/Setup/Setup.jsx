@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Check, AlertCircle, Loader2, Globe, Building } from 'lucide-react';
+import { Check, AlertCircle, Loader2, Globe, Building, Mail, Link2, Briefcase } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 // Input field component with consistent styling
-const FormInput = ({ label, id, name, value, onChange, placeholder, type = "text", error, className = "" }) => {
+const FormInput = ({ label, id, name, value, onChange, placeholder, type = "text", error, className = "", required = false }) => {
   return (
     <div className={`flex-1 ${className}`}>
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2 basic-font">
-        {label}
+        {label} {required && <span className="text-red-500">*</span>}
       </label>
       <input
         type={type}
@@ -24,11 +24,11 @@ const FormInput = ({ label, id, name, value, onChange, placeholder, type = "text
 };
 
 // Select component for dropdowns
-const FormSelect = ({ label, id, name, value, onChange, options, placeholder, error, icon }) => {
+const FormSelect = ({ label, id, name, value, onChange, options, placeholder, error, icon, required = false }) => {
   return (
     <div className="flex-1">
       <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2 basic-font">
-        {label}
+        {label} {required && <span className="text-red-500">*</span>}
       </label>
       <div className="relative">
         {icon && (
@@ -61,6 +61,27 @@ const FormSelect = ({ label, id, name, value, onChange, options, placeholder, er
   );
 };
 
+// Textarea component
+const FormTextarea = ({ label, id, name, value, onChange, placeholder, error, required = false }) => {
+  return (
+    <div className="flex-1">
+      <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-2 basic-font">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <textarea
+        id={id}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows="4"
+        className={`w-full px-4 py-3 border ${error ? 'border-red-300' : 'border-gray-200'} rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ease-in-out text-gray-700 bg-white resize-none`}
+      />
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+  );
+};
+
 const Setup = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,7 +96,6 @@ const Setup = () => {
       const savedData = localStorage.getItem(FORM_STORAGE_KEY);
       if (savedData) {
         const parsedData = JSON.parse(savedData);
-        // Convert old skills array to single skill if needed
         if (initialRole === 'freelancer' && Array.isArray(parsedData.skills)) {
           parsedData.skill = parsedData.skills.length > 0 ? parsedData.skills[0] : '';
           delete parsedData.skills;
@@ -90,21 +110,30 @@ const Setup = () => {
     return null;
   };
 
-  const getInitialFormData = () => {
-    const persistedData = loadPersistedFormData();
-    if (persistedData) {
-      return persistedData;
-    }
-    
-    return {
-      firstname: '',
-      lastname: '',
-      country: '',
-      state: '',
-      skill: '', // Changed from skills array to single skill
-     
-    };
+const getInitialFormData = () => {
+  const persistedData = loadPersistedFormData();
+  if (persistedData) {
+    return persistedData;
+  }
+  
+  const baseData = {
+    firstname: '',
+    lastname: '',
+    country: '',
+    state: '',
+    user_mail: '',           // Add this
+    business_name: '',       // Add this
+    description: '',         // Add this
+    industry_category: '',   // Add this
+    address: '',             // Add this
+    contact_email: '',       // Add this
+    website_link: '',        // Add this
+    operational_role: '',    // Add this
+    skill: '',               // Add this
   };
+
+  return baseData;
+};
 
   const [formData, setFormData] = useState(getInitialFormData);
   const [countryData, setCountryData] = useState({});
@@ -116,11 +145,11 @@ const Setup = () => {
   const [profileSaved, setProfileSaved] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(location.state?.showSuccessAlert || false);
   const [showDataRestored, setShowDataRestored] = useState(false);
+  
   const isFreelancer = selectedRole === 'freelancer';
   const countries = Object.keys(countryData);
   const availableStates = formData.country ? countryData[formData.country] || [] : [];
 
-  // Common skills for freelancers
   const freelancerSkills = [
     "frontend development",
     "backend development",
@@ -146,7 +175,23 @@ const Setup = () => {
     "cyber security"
   ];
 
- 
+  const industryCategories = [
+    "Software as a Service", 
+    "Design as a Service",
+    "Digital Marketting and Advertising", 
+    "Business Intelligence and Data Analytics", 
+    "IT infrastructure Design and Consulting", 
+    "Digital Content and Media", "E-commerce", 
+    "Financial Technology","Education Technology", 
+    "Healthcare Technology", 
+    "Enterprise AI/ML consulting", 
+    "other..."
+  ];
+
+  const operationalRoles = [
+ "CEO", "CTO", "CPO", "CMO", "CFO", "Director", "Manager", "other.."
+  ];
+
   const saveFormDataToStorage = (data) => {
     try {
       localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(data));
@@ -167,13 +212,7 @@ const Setup = () => {
   useEffect(() => {
     const persistedData = loadPersistedFormData();
     if (persistedData && !location.state?.showSuccessAlert) {
-      const hasContent = persistedData.firstname?.trim() || 
-                         persistedData.lastname?.trim() || 
-                         persistedData.country?.trim() || 
-                         persistedData.state?.trim() ||
-                         persistedData.skill?.trim() 
-                        
-      
+      const hasContent = Object.values(persistedData).some(val => val?.toString().trim());
       if (hasContent) {
         setShowDataRestored(true);
         setTimeout(() => {
@@ -227,20 +266,43 @@ const Setup = () => {
     }
   }, [signupSuccess]);
 
+const validateForm = () => {
+  const newErrors = {};
+  
+  // Helper function to safely check if a field is empty
+  const isEmpty = (value) => !value || value.toString().trim() === '';
+  
+  // Common validations
+  if (isEmpty(formData.firstname)) newErrors.firstname = 'First name is required';
+  if (isEmpty(formData.lastname)) newErrors.lastname = 'Last name is required';
+  if (isEmpty(formData.country)) newErrors.country = 'Country is required';
+  if (isEmpty(formData.state)) newErrors.state = 'State/Province is required';
+
+  if (isFreelancer) {
+    if (isEmpty(formData.skill)) newErrors.skill = 'Please select a skill';
+  } else {
+    // Client validations
+    if (isEmpty(formData.user_mail)) newErrors.user_mail = 'Email is required';
+    if (isEmpty(formData.business_name)) newErrors.business_name = 'Business name is required';
+    if (isEmpty(formData.description)) newErrors.description = 'Business description is required';
+    if (isEmpty(formData.industry_category)) newErrors.industry_category = 'Industry category is required';
+    if (isEmpty(formData.address)) newErrors.address = 'Address is required';
+    if (isEmpty(formData.contact_email)) newErrors.contact_email = 'Contact email is required';
+    if (isEmpty(formData.contact_email) || !formData.contact_email.includes('@')) {
+      newErrors.contact_email = 'Valid email is required';
+    }
+    if (isEmpty(formData.operational_role)) newErrors.operational_role = 'Operational role is required';
+  }
+
+  return newErrors;
+};
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setApiError('');
-    setErrors({});
-
-    const newErrors = {};
-    if (!formData.firstname.trim()) newErrors.firstname = 'First name is required';
-    if (!formData.lastname.trim()) newErrors.lastname = 'Last name is required';
-    if (!formData.country.trim()) newErrors.country = 'Country is required';
-    if (!formData.state.trim()) newErrors.state = 'State/Province is required';
-    // Check for single skill if freelancer
-    if (isFreelancer && !formData.skill.trim()) newErrors.skill = 'Please select a skill';
     
-
+    const newErrors = validateForm();
+    
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -256,16 +318,35 @@ const Setup = () => {
         return;
       }
 
-      const requestBody = {
-        firstname: formData.firstname.trim(),
-        lastname: formData.lastname.trim(),
-        country: formData.country,
-        state: formData.state,
-        // Send single skill as expected by API
-        skill: isFreelancer ? formData.skill : null
-      };
+      let requestBody;
+      
+      if (isFreelancer) {
+        requestBody = {
+          firstname: formData.firstname.trim(),
+          lastname: formData.lastname.trim(),
+          country: formData.country,
+          state: formData.state,
+          //email: formData.email.trim(),
+          skill: formData.skill
+        };
+      } else {
+        requestBody = {
+          firstname: formData.firstname.trim(),
+          lastname: formData.lastname.trim(),
+          country: formData.country,
+          state: formData.state,
+          user_mail: formData.user_mail.trim(),
+          business_name: formData.business_name.trim(),
+          description: formData.description.trim(),
+          industry_category: formData.industry_category,
+          address: formData.address.trim(),
+          contact_email: formData.contact_email.trim(),
+          website_link: formData.website_link.trim(),
+          operational_role: formData.operational_role
+        };
+      }
 
-      const API_URL = import.meta.env.VITE_API_URL
+      const API_URL = import.meta.env.VITE_API_URL;
 
       const response = await fetch(`${API_URL}/api/profile_setup`, {
         method: 'POST',
@@ -278,133 +359,67 @@ const Setup = () => {
 
       const data = await response.json();
 
-    // Replace the handleSubmit function's success handling section with this:
-
-if (!response.ok) {
-  setApiError(data.error_message || 'Profile setup failed. Please try again.');
-  
-  if (response.status === 401) {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('user_id');
-    clearPersistedFormData();
-    navigate('/signin');
-  }
-  return;
-}
-
-console.log('Profile setup successful:', data);
-
-// Handle the API response according to documentation:
-// Should return: well_received, profile_data (firstname, lastname, skill, country, state)
-if (data.well_received) {
-  // Check if profile_data exists as documented
-  if (data.profile_data) {
-    console.log('Profile data received:', data.profile_data);
-    
-    // Extract user_id if it exists in profile_data
-    if (data.profile_data.user_id) {
-      localStorage.setItem('user_id', data.profile_data.user_id.toString());
-    }
-  } else {
-    // API is not returning profile_data as documented
-    console.warn('API response missing profile_data object. Expected: {firstname, lastname, skill, country, state}');
-    console.warn('Actual response:', data);
-    
-    // Check if the data is returned at root level instead
-    if (data.firstname || data.lastname || data.country || data.state || data.skill) {
-      console.log('Profile data found at root level');
-    } else {
-      console.error('No profile data found in response - all fields are null');
-      setApiError('Profile setup completed but server response is incomplete. You may need to complete setup again.');
-    }
-  }
-
-  // Handle JWT tokens - check both new and existing tokens
-  if (data.access_jwt) {
-    localStorage.setItem('access_token', data.access_jwt);
-    localStorage.setItem('access_jwt', data.access_jwt);
-  } else {
-    // Keep existing tokens since API didn't provide new ones
-    const existingToken = localStorage.getItem('access_token');
-    if (existingToken) {
-      localStorage.setItem('access_jwt', existingToken);
-    }
-  }
-
-  if (data.refresh_jwt) {
-    localStorage.setItem('refresh_token', data.refresh_jwt);
-    localStorage.setItem('refresh_jwt', data.refresh_jwt);
-  } else {
-    const existingRefreshToken = localStorage.getItem('refresh_token');
-    if (existingRefreshToken) {
-      localStorage.setItem('refresh_jwt', existingRefreshToken);
-    }
-  }
-  
-  // Mark profile as completed
-  localStorage.setItem('profileCompleted', 'true');
-  
-  // Clear the form data from storage since profile setup is complete
-  clearPersistedFormData();
-  
-  if (selectedRole === 'freelancer') {
-    setProfileSaved(true);
-  } else {
-    navigate('/client-dashboard', { 
-      state: { 
-        profileCompleted: true,
-        userRole: 'client',
-        userName: `${formData.firstname} ${formData.lastname}`
+      if (!response.ok) {
+        setApiError(data.error_message || 'Profile setup failed. Please try again.');
+        
+        if (response.status === 401) {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('userRole');
+          localStorage.removeItem('user_id');
+          clearPersistedFormData();
+          navigate('/signin');
+        }
+        return;
       }
-    });
-  }
-} else {
-  // Handle case where well_received is false
-  setApiError('Profile setup was not successful. Please try again.');
-}
 
       console.log('Profile setup successful:', data);
-      
-      if (data.profile_data && data.profile_data.user_id) {
-        localStorage.setItem('user_id', data.profile_data.user_id.toString());
-      }
 
-      if (data.access_jwt) {
-        localStorage.setItem('access_token', data.access_jwt);
-        localStorage.setItem('access_jwt', data.access_jwt);
-      } else {
-        const existingToken = localStorage.getItem('access_token');
-        if (existingToken) {
-          localStorage.setItem('access_jwt', existingToken);
-        }
-      }
-
-      if (data.refresh_jwt) {
-        localStorage.setItem('refresh_token', data.refresh_jwt);
-        localStorage.setItem('refresh_jwt', data.refresh_jwt);
-      } else {
-        const existingRefreshToken = localStorage.getItem('refresh_token');
-        if (existingRefreshToken) {
-          localStorage.setItem('refresh_jwt', existingRefreshToken);
-        }
-      }
-      
-      localStorage.setItem('profileCompleted', 'true');
-      
-      clearPersistedFormData();
-      
-      if (selectedRole === 'freelancer') {
-        setProfileSaved(true);
-      } else {
-        navigate('/client-dashboard', { 
-          state: { 
-            profileCompleted: true,
-            userRole: 'client',
-            userName: `${formData.firstname} ${formData.lastname}`
+      if (data.well_received) {
+        if (data.profile_data) {
+          console.log('Profile data received:', data.profile_data);
+          
+          if (data.profile_data.user_id) {
+            localStorage.setItem('user_id', data.profile_data.user_id.toString());
           }
-        });
+        }
+
+        if (data.access_jwt) {
+          localStorage.setItem('access_token', data.access_jwt);
+          localStorage.setItem('access_jwt', data.access_jwt);
+        } else {
+          const existingToken = localStorage.getItem('access_token');
+          if (existingToken) {
+            localStorage.setItem('access_jwt', existingToken);
+          }
+        }
+
+        if (data.refresh_jwt) {
+          localStorage.setItem('refresh_token', data.refresh_jwt);
+          localStorage.setItem('refresh_jwt', data.refresh_jwt);
+        } else {
+          const existingRefreshToken = localStorage.getItem('refresh_token');
+          if (existingRefreshToken) {
+            localStorage.setItem('refresh_jwt', existingRefreshToken);
+          }
+        }
+        
+        localStorage.setItem('profileCompleted', 'true');
+        clearPersistedFormData();
+        
+        if (selectedRole === 'freelancer') {
+          setProfileSaved(true);
+        } else {
+          navigate('/client-dashboard', { 
+            state: { 
+              profileCompleted: true,
+              userRole: 'client',
+              userName: `${formData.firstname} ${formData.lastname}`
+            }
+          });
+        }
+      } else {
+        setApiError('Profile setup was not successful. Please try again.');
       }
     } catch (error) {
       console.error('Network or unexpected error during profile setup:', error);
@@ -439,23 +454,15 @@ if (data.well_received) {
         interviewCompleted: true,
         userRole: 'freelancer',
         userName: `${formData.firstname} ${formData.lastname}`,
-        skill: formData.skill // Pass single skill instead of skills array
+        skill: formData.skill
       }
     });
   };
 
   const handleClearSavedData = () => {
-    // 
-      clearPersistedFormData();
-      setFormData({
-        firstname: '',
-        lastname: '',
-        country: '',
-        state: '',
-        skill: '' // Reset single skill
-        
-      });
-      setShowDataRestored(false);
+    clearPersistedFormData();
+    setFormData(getInitialFormData());
+    setShowDataRestored(false);
   };
 
   return (
@@ -466,7 +473,7 @@ if (data.well_received) {
           <p className="text-gray-700 text-lg">
             {isFreelancer 
               ? "Tell us about yourself so we can match you with the right opportunities"
-              : "Tell us about yourself so we can help you find the right freelancers"
+              : "Tell us about your business so we can help you find the right freelancers"
             }
           </p>
         </div>
@@ -505,7 +512,7 @@ if (data.well_received) {
                 <AlertCircle className="h-5 w-5 mr-2" />
                 <div>
                   <strong className="font-semibold">Data Restored!</strong>
-                  <span className="block sm:inline"> Your previously entered information has been restored. Continue where you left off.</span>
+                  <span className="block sm:inline"> Your previously entered information has been restored.</span>
                 </div>
               </div>
             </div>
@@ -547,6 +554,7 @@ if (data.well_received) {
                       onChange={handleChange}
                       placeholder="John"
                       error={errors.firstname}
+                      required
                     />
 
                     <FormInput
@@ -557,6 +565,7 @@ if (data.well_received) {
                       onChange={handleChange}
                       placeholder="Doe"
                       error={errors.lastname}
+                      required
                     />
 
                     <FormSelect
@@ -569,6 +578,7 @@ if (data.well_received) {
                       placeholder="Select a country"
                       error={errors.country}
                       icon={<Globe className="h-5 w-5 text-gray-400" />}
+                      required
                     />
 
                     <FormSelect
@@ -580,6 +590,7 @@ if (data.well_received) {
                       options={availableStates}
                       placeholder="Select a state"
                       error={errors.state}
+                      required
                     />
 
                     {isFreelancer && (
@@ -593,9 +604,9 @@ if (data.well_received) {
                         placeholder="Select your main skill"
                         error={errors.skill}
                         icon={<Building className="h-5 w-5 text-gray-400" />}
+                        required
                       />
                     )}
-
                   </div>
                 </div>
 
@@ -617,13 +628,115 @@ if (data.well_received) {
                 )}
 
                 {!isFreelancer && (
-                  <div className="space-y-6">
-                    <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2">
-                      Looking For Talent
-                    </h2>
+                  <div className="space-y-8">
+                    <div>
+                      <h2 className="text-xl font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-6">
+                        Business Information
+                      </h2>
+                      
+                      <div className="space-y-6">
+                        <FormInput
+                          label="Business Name"
+                          id="business_name"
+                          name="business_name"
+                          value={formData.business_name}
+                          onChange={handleChange}
+                          placeholder="Your Business Name"
+                          error={errors.business_name}
+                          required
+                        />
+
+                    <FormInput
+                      label="Email"
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.user_mail}
+                      onChange={handleChange}
+                      placeholder="john@example.com"
+                      error={errors.user_mail}
+                      required
+                    />
+
+                        <FormTextarea
+                          label="Business Description"
+                          id="description"
+                          name="description"
+                          value={formData.description}
+                          onChange={handleChange}
+                          placeholder="Tell us about your business, what you do, and what you're looking for..."
+                          error={errors.description}
+                          required
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <FormSelect
+                            label="Industry Category"
+                            id="industry_category"
+                            name="industry_category"
+                            value={formData.industry_category}
+                            onChange={handleChange}
+                            options={industryCategories}
+                            placeholder="Select industry"
+                            error={errors.industry_category}
+                            icon={<Briefcase className="h-5 w-5 text-gray-400" />}
+                            required
+                          />
+
+                          <FormSelect
+                            label="Operational Role"
+                            id="operational_role"
+                            name="operational_role"
+                            value={formData.operational_role}
+                            onChange={handleChange}
+                            options={operationalRoles}
+                            placeholder="Select your role"
+                            error={errors.operational_role}
+                            required
+                          />
+                        </div>
+
+                        <FormInput
+                          label="Business Address"
+                          id="address"
+                          name="address"
+                          value={formData.address}
+                          onChange={handleChange}
+                          placeholder="123 Business Street, City"
+                          error={errors.address}
+                          required
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <FormInput
+                            label="Contact Email"
+                            id="contact_email"
+                            name="contact_email"
+                            type="email"
+                            value={formData.contact_email}
+                            onChange={handleChange}
+                            placeholder="contact@business.com"
+                            error={errors.contact_email}
+                            required
+                          />
+
+                          <FormInput
+                            label="Website (Optional)"
+                            id="website_link"
+                            name="website_link"
+                            type="url"
+                            value={formData.website_link}
+                            onChange={handleChange}
+                            placeholder="https://www.yourbusiness.com"
+                            error={errors.website_link}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
                       <p className="text-gray-700 text-sm leading-relaxed">
-                        As a client, you'll be able to browse profiles, post projects, and connect with skilled freelancers after completing your profile.
+                        This information helps us match you with qualified freelancers who best fit your business needs. You can update your profile anytime.
                       </p>
                     </div>
                   </div>
@@ -663,7 +776,7 @@ if (data.well_received) {
                   </p>
 
                   <button
-                    onClick={isFreelancer ? startInterview : () => alert('Redirecting to client dashboard...')}
+                    onClick={isFreelancer ? startInterview : () => navigate('/client-dashboard', { state: { profileCompleted: true, userRole: 'client' } })}
                     className="py-4 px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-lg rounded-lg shadow-md transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   >
                     {isFreelancer ? 'Start Interview' : 'Go to Dashboard'}

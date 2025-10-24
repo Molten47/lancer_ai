@@ -21,6 +21,8 @@
  --color-six:#9CA3AF;
  --color-seven:#6B7280;
  --color-texts:#111827;
+ --dashboard-text: #1F2937;
+ --sub-text: #374151;
  
  
 
@@ -117,6 +119,12 @@ body {
     }
     .text-time{
       color: var(--color-six);
+    }
+    .text-dashboard{
+      color: var(--dashboard-text);
+    }
+    .sub-text{
+      color: var(--sub-text);
     }
 
     /*brand-fonts*/

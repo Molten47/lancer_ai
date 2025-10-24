@@ -13,6 +13,7 @@ import DashboardFr from './Pages/DashboardLancer/DashboardFr';
 import LancerTaskPage from './Pages/TaskPage/Taskpage'
 import ThreePanelWorkspace from './Sections/Client Side/Projects/ProjectDashboard';
 import Interviewee from './Sections/Freelancer Side/Interview/jobInterview';
+import ProjectDashboard from './Sections/Client Side/Projects/Projects';
 
 const App = () => {
     const { auth } = useSelector(state => state.user);
@@ -48,6 +49,7 @@ const App = () => {
                         <Route path="/job-interview" element={<Interviewee />} />
                         <Route path="/workspace" element={<ThreePanelWorkspace />} />
                         <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
+                        <Route path='/full-project' element={<ProjectDashboard/>}/>
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </div>

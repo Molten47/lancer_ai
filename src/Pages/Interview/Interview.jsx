@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Loader2, MessageSquare, Send, XCircle } from 'lucide-react';
+import { Loader2, MessageSquare, Send, XCircle, CheckCircle } from 'lucide-react';
 import socket from '../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
@@ -31,6 +31,22 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const [statusMessage, setStatusMessage] = useState('');
   const [interviewId, setInterviewId] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  // Helper function to mark last status message as complete
+  const markLastStatusComplete = () => {
+    setMessages(prev => {
+      const lastStatusIndex = prev.map((msg, idx) => msg.isStatus ? idx : -1)
+        .filter(idx => idx !== -1)
+        .pop();
+      
+      if (lastStatusIndex !== undefined && lastStatusIndex >= 0) {
+        const updated = [...prev];
+        updated[lastStatusIndex] = { ...updated[lastStatusIndex], isComplete: true };
+        return updated;
+      }
+      return prev;
+    });
+  };
 
   // Authentication check
   const checkAuthentication = () => {
@@ -198,6 +214,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     });
 
     socket.on('new_message', (data, callback) => {
+      // Mark the last status message as complete before adding new message
+      markLastStatusComplete();
+
       const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
       const newMessage = {
         id: Date.now(),
@@ -243,6 +262,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
     socket.on('status_update', (data, callback) => {
       if (data.update) {
+        // Mark the previous status message as complete before adding new one
+        markLastStatusComplete();
+
         const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
         
         const statusMessage = {
@@ -250,7 +272,8 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
           sender_id: 'status', 
           message_content: customMessage,
           timestamp: new Date().toISOString(),
-          isStatus: true 
+          isStatus: true,
+          isComplete: false  // New status starts as incomplete
         };
         setMessages(prev => [...prev, statusMessage]);
       }
@@ -300,6 +323,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     if (currentInput.trim() === '' || isLoadingQuestion || !isConnected) {
       return;
     }
+
+    // Mark last status as complete when user sends a message
+    markLastStatusComplete();
 
     const userMessage = {
       id: Date.now(),
@@ -457,13 +483,17 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             {messages.map((message) => (
               <div key={message.id}>
                 {message.isStatus ? (
-                  // AI-style type of texting, text beside it
+                  // Status message with conditional spinner
                   <div className="flex items-start gap-3 px-2 py-1">
                     <div className="flex-shrink-0 mt-0.5">
-                      <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      {!message.isComplete ? (
+                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm text-gray-600 leading-relaxed">
+                      <p className={`text-sm leading-relaxed ${message.isComplete ? 'text-gray-500' : 'text-gray-600'}`}>
                         {message.message_content}
                       </p>
                     </div>
@@ -515,13 +545,13 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
                   onChange={handleInputChange}
                  disabled={!isConnected || isLoadingQuestion}
                   className="flex-1 resize-none border border-gray-300 rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 h-12 overflow-hidden"
-               placeholder={
-                    !isConnected
-                      ? 'Connecting...'
-                      : isLoadingQuestion
-                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'AI is thinking...'
-                        : 'Type your response...' // Input is ready
-                  }
+               placeholder={
+                    !isConnected
+                      ? 'Connecting...'
+                      : isLoadingQuestion
+                        ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'AI is thinking...'
+                        : 'Type your response...' // Input is ready
+                  }
                   rows={1}
                   minRows={1}
                   maxRows={6}

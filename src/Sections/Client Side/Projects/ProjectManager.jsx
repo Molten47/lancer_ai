@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Settings, MessageSquare } from 'lucide-react';
+import { Send, Loader2, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import socket from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
@@ -12,6 +12,9 @@ const STATUS_MESSAGE_MAP = {
 };
 
 const ProjectManager = ({
+  userId,
+  projectId,
+  clientId,  
   chat_type = 'project_manager',
   assistantName = 'Project Manager',
   assistantAvatar = 'PM',
@@ -22,7 +25,7 @@ const ProjectManager = ({
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(socket.connected);
-  const own_id = localStorage.getItem('user_id');
+  const own_id = userId || localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const [messages, setMessages] = useState([]);
@@ -30,17 +33,35 @@ const ProjectManager = ({
   const [socketError, setSocketError] = useState('');
   const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const dynamicRecipientIdRef = useRef(null);
- const ownIdRef = useRef(own_id);
-  // New state variables for dynamic ID
-  const [projectId, setProjectId] = useState(null);
+  const ownIdRef = useRef(own_id);
   const [dynamicRecipientId, setDynamicRecipientId] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [userName, setUserName] = useState('You');
 
-  const responseTimeoutRef = useRef(null);
+  
+
+  // ✅ NEW: Helper function to mark last status message as complete
+  const markLastStatusComplete = () => {
+    setMessages(prev => {
+      const statusIndices = prev
+        .map((msg, idx) => msg.isStatus && !msg.isComplete ? idx : -1)
+        .filter(idx => idx !== -1);
+      
+      if (statusIndices.length === 0) return prev;
+      
+      const lastStatusIndex = statusIndices[statusIndices.length - 1];
+      const updated = [...prev];
+      updated[lastStatusIndex] = { 
+        ...updated[lastStatusIndex], 
+        isComplete: true,
+        completedAt: new Date().toISOString()
+      };
+      
+      return updated;
+    });
+  };
 
   // Consistent message type detection function
   const determineMessageType = (messageData, currentUserId) => {
@@ -49,7 +70,6 @@ const ProjectManager = ({
     const recipientStr = String(messageData.recipient_id);
     const senderTag = messageData.sender_tag;
 
-    // Priority 1: Handle specific sender_tag patterns from message history
     if (senderTag === 'ai') {
       return {
         type: 'ai',
@@ -57,7 +77,6 @@ const ProjectManager = ({
       };
     }
 
-    // Priority 2: Handle sender_a and sender_b patterns (common in message history)
     if (senderTag === 'sender_a') {
       return {
         type: 'user',
@@ -72,7 +91,6 @@ const ProjectManager = ({
       };
     }
 
-    // Priority 3: Check if sender is the assistant (project manager)
     if (senderStr !== 'undefined' && (senderStr === dynamicRecipientId || senderStr.includes('project_manager'))) {
       return {
         type: 'ai',
@@ -80,7 +98,6 @@ const ProjectManager = ({
       };
     }
 
-    // Priority 4: Check if sender is current user
     if (senderStr === currentUserStr && senderStr !== 'undefined') {
       return {
         type: 'user',
@@ -88,7 +105,6 @@ const ProjectManager = ({
       };
     }
 
-    // Priority 5: Check recipient to infer type (when sender/recipient IDs are available)
     if (recipientStr !== 'undefined' && senderStr !== 'undefined') {
       if (recipientStr === currentUserStr && (senderStr === dynamicRecipientId || senderStr.includes('project_manager'))) {
         return {
@@ -105,7 +121,6 @@ const ProjectManager = ({
       }
     }
 
-    // Default fallback with better logging
     console.warn('Could not determine message type, using content-based fallback', {
       messageData,
       currentUserId,
@@ -115,11 +130,9 @@ const ProjectManager = ({
       dynamicRecipientId
     });
 
-    // Content-based fallback for edge cases
     const content = messageData.message_content || messageData.content || '';
     const contentLength = content.length;
     
-    // If it's a very long message or contains AI-like responses, assume it's from AI
     if (contentLength > 100 || 
         content.includes('I can help') || 
         content.includes('Let me assist') ||
@@ -133,7 +146,6 @@ const ProjectManager = ({
       };
     }
 
-    // Default to user for short messages
     return {
       type: 'user',
       sender: userName
@@ -147,77 +159,26 @@ const ProjectManager = ({
     setIsWaitingForResponse(false);
     setStatusMessage('');
     
-    // Clear any pending timeout
-    if (responseTimeoutRef.current) {
-      clearTimeout(responseTimeoutRef.current);
-      responseTimeoutRef.current = null;
-    }
+ 
   };
 
-  // Set response timeout
-  const setResponseTimeout = () => {
-    // Clear any existing timeout
-    if (responseTimeoutRef.current) {
-      clearTimeout(responseTimeoutRef.current);
+  
+const sortMessages = (messagesArray) => {
+  return messagesArray.sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime();
+    const timeB = new Date(b.timestamp).getTime();
+    
+    // Sort by timestamp. If timestamps are equal, sort by ID to ensure stability.
+    if (timeA === timeB) {
+        return a.id > b.id ? 1 : a.id < b.id ? -1 : 0;
     }
     
-    // Set new timeout (30 seconds)
-    responseTimeoutRef.current = setTimeout(() => {
-      console.warn('Response timeout - clearing loading states');
-      clearLoadingStates();
-      setSocketError('Response timeout. The Project Manager may be experiencing issues. Please try again.');
-    }, 30000);
-  };
+    return timeA - timeB;
+  });
+};
 
-  // Fetch projects to get dynamic project_id
-  const fetchProjects = async () => {
-    try {
-      const token = localStorage.getItem('access_jwt');
-      const API_URL = import.meta.env.VITE_API_URL;
-      const response = await fetch(`${API_URL}/api/projects`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      const data = await response.json();
-      if (data.well_received && data.projects.length > 0) {
-        let targetProject = null;
-        for (const projectObj of data.projects) {
-          const projectKey = Object.keys(projectObj)[0];
-          const projectData = projectObj[projectKey];
-          if (projectData.status === 'ongoing') {
-            targetProject = projectData;
-            break;
-          }
-        }
-        if (!targetProject) {
-          const firstProjectObj = data.projects[0];
-          const projectKey = Object.keys(firstProjectObj)[0];
-          targetProject = firstProjectObj[projectKey];
-        }
-        
-        const fetchedProjectId = targetProject.id;
-        setProjectId(fetchedProjectId);
-        const recipientId = `project_manager_${fetchedProjectId}`;
-        setDynamicRecipientId(recipientId);
-        dynamicRecipientIdRef.current = recipientId;
-         ownIdRef.current = own_id; 
-        console.log(`✅ Project Manager initialized with ID: ${recipientId}`);
-        return recipientId;
-      } else {
-        setSocketError('No projects found. Cannot initialize project manager chat.');
-        return null;
-      }
-    } catch (err) {
-      console.error('Error fetching projects:', err);
-      setSocketError('Failed to load project data. Please try again.');
-      return null;
-    }
-  };
+
+
 
   // Chat Initialization with proper message type detection
   const initializeChat = async (recipientId) => {
@@ -267,12 +228,10 @@ const ProjectManager = ({
         }
       }
 
-      // Load message history with consistent type detection
       if (chatData.message_history && Array.isArray(chatData.message_history)) {
         const currentUserId = own_id || localStorage.getItem('user_id');
         
         const formattedMessages = chatData.message_history.map((msg, index) => {
-          // Use the consistent message type detection with the full message object
           const { type: messageType, sender: senderName } = determineMessageType({
             sender_id: msg.sender_id,
             recipient_id: msg.recipient_id,
@@ -293,7 +252,6 @@ const ProjectManager = ({
           };
         });
         
-        // Sort messages by timestamp to ensure correct order
         formattedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
         console.log('Processed PM message history:', formattedMessages.map(m => ({ 
@@ -329,40 +287,6 @@ const ProjectManager = ({
     }
   };
 
-  // Authorization Checker
-  const handleAuthError = (message, route, delay = 1500) => {
-    setSocketError(message);
-    setIsLoadingAuth(false);
-    setTimeout(() => {
-      navigate(route, { replace: true });
-    }, delay);
-  };
-
-  const checkAuthentication = () => {
-    const token = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
-    const userId = localStorage.getItem('user_id');
-    const userRole = localStorage.getItem('userRole');
-    if (!userId && !userRole) {
-      handleAuthError('Please complete the signup process first.', '/signup');
-      return false;
-    }
-    if (!token && userRole) {
-      const fromProfileSetup = location.state?.fromProfileSetup;
-      if (!fromProfileSetup) {
-        handleAuthError('Please complete your profile setup first.', '/profile_setup', { state: { role: userRole } });
-        return false;
-      }
-    }
-    if (!userId && userRole) {
-      handleAuthError('Session data incomplete. Please sign in again.', '/signin');
-      return false;
-    }
-    setIsLoadingAuth(false);
-    return true;
-  };
-
-  // REMOVED: Join project manager room - agents don't use rooms
-
   // Setup socket listeners function
   const setupSocketListeners = () => {
     console.log('Setting up socket listeners...');
@@ -372,7 +296,6 @@ const ProjectManager = ({
       console.log('Socket connected');
       setIsConnected(true);
       setSocketError('');
-      // REMOVED: No room joining for agents
     });
 
     socket.on('disconnect', (reason) => {
@@ -388,84 +311,94 @@ const ProjectManager = ({
       setSocketError('Connection error. Please try refreshing the page.');
     });
 
-  // ✅ SINGLE new_message handler - DELETE any other new_message handlers
-  socket.on('new_message', (data, callback) => {
-    const userId = ownIdRef.current || localStorage.getItem('user_id');
-    const currentRecipientId = dynamicRecipientIdRef.current;
-    
-    console.log('🔔 new_message received:', {
-      sender_id: data.sender_id,
-      recipient_id: data.recipient_id,
-      sender_tag: data.sender_tag,
-      own_id: data.own_id,
-      currentRecipientId,
-      userId,
-      preview: data.message_content?.substring(0, 50)
-    });
-    
-    // Simple filter - accept if any of these conditions are true
-    const isRelevant = 
-      data.sender_tag === 'ai' || 
-      String(data.sender_id) === String(currentRecipientId) || 
-      String(data.recipient_id) === String(currentRecipientId) ||
-      String(data.sender_id).includes('project_manager') ||
-      String(data.recipient_id).includes('project_manager');
-    
-    if (!isRelevant) {
-      console.log('❌ Filtered: Not relevant to PM chat');
-      if (callback) callback();
-      return;
-    }
-    
-    console.log('✅ Message accepted');
-    
-    // Determine message type
-    const { type: messageType, sender: senderName } = determineMessageType({
-      sender_id: data.sender_id,
-      recipient_id: data.recipient_id,
-      sender_tag: data.sender_tag,
-      message_content: data.message_content
-    }, userId);
+    // ✅ UPDATED: new_message listener with status completion
+    socket.on('new_message', (data, callback) => {
+      const userId = ownIdRef.current || localStorage.getItem('user_id');
+      const currentRecipientId = dynamicRecipientIdRef.current;
 
-    const newMessage = {
-      id: Date.now() + Math.random(), // Ensure unique ID
-      type: messageType,
-      content: data.message_content,
-      timestamp: new Date(),
-      sender: senderName,
-      sender_id: data.sender_id,
-      recipient_id: data.recipient_id,
-      isStatus: false
-    };
-    
-    console.log('📝 Adding message:', {
-      type: newMessage.type,
-      sender: newMessage.sender,
-      preview: newMessage.content.substring(0, 30)
-    });
-    
-    setMessages(prev => {
-      // Prevent duplicates
-      const isDuplicate = prev.some(msg => 
-        msg.content === newMessage.content && 
-        Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 2000
-      );
+      const userStr = String(userId);
+
+      console.log('🔔 new_message received:', {
+        sender_id: data.sender_id,
+        recipient_id: data.recipient_id,
+        sender_tag: data.sender_tag,
+        own_id: data.own_id,
+        currentRecipientId,
+        userId,
+        preview: data.message_content?.substring(0, 50)
+      });
       
-      if (isDuplicate) {
-        console.log('⚠️ Duplicate detected, skipping');
-        return prev;
+      const isRelevant = 
+        (String(data.sender_id) === currentRecipientId || 
+         String(data.recipient_id) === currentRecipientId ||
+         data.sender_tag === 'ai' || 
+         data.sender_tag === 'sender_b' || 
+         String(data.sender_id).includes('project_manager') ||
+         String(data.recipient_id).includes('project_manager')
+        ) &&
+        // 2. Message MUST be TO or FROM the current user (using the newly defined userStr)
+        (String(data.sender_id) === userStr || 
+         String(data.recipient_id) === userStr); 
+      
+      if (!isRelevant) {
+        console.log('❌ Filtered: Not relevant to PM chat');
+        if (callback) callback();
+        return;
       }
       
-      return [...prev, newMessage];
-    });
-    
-    if (messageType === 'ai') {
-      console.log('🤖 AI response - clearing loading');
-      clearLoadingStates();
-    }
+      console.log('✅ Message accepted');
+      
+      // ✅ NEW: Mark last status as complete before adding new message
+      markLastStatusComplete();
+      
+      const { type: messageType, sender: senderName } = determineMessageType({
+        sender_id: data.sender_id,
+        recipient_id: data.recipient_id,
+        sender_tag: data.sender_tag,
+        message_content: data.message_content
+      }, userId);
 
-    if (callback) callback();
-  });
+      const incomingTimestamp = data.timestamp ? new Date(data.timestamp) : new Date();
+
+      const newMessage = {
+        id: Date.now() + Math.random(),
+        type: messageType,
+        content: data.message_content,
+        timestamp: incomingTimestamp,
+        sender: senderName,
+        sender_id: data.sender_id,
+        recipient_id: data.recipient_id,
+        isStatus: false
+      };
+      
+      console.log('📝 Adding message:', {
+        type: newMessage.type,
+        sender: newMessage.sender,
+        preview: newMessage.content.substring(0, 30)
+      });
+      
+      setMessages(prev => {
+      // Check for a unique ID instead of content/time
+      const isDuplicate = prev.some(msg => msg.id === data.id);
+        
+        if (isDuplicate) {
+          console.log('⚠️ Duplicate detected, skipping');
+          return prev;
+        }
+
+        const updatedMessages = [...prev, newMessage];
+        return sortMessages(updatedMessages); 
+        
+        
+      });
+      
+      if (messageType === 'ai') {
+        console.log('🤖 AI response - clearing loading');
+        clearLoadingStates();
+      }
+
+      if (callback) callback();
+    });
 
     socket.on('control_instruction', (data, callback) => {
       console.log('Received control instruction:', data);
@@ -474,6 +407,7 @@ const ProjectManager = ({
       switch (command) {
         case 'interview_complete':
           clearLoadingStates();
+          markLastStatusComplete(); // ✅ NEW
           setStatusMessage('Chat session completed!');
           break;
         case 'next_question':
@@ -482,6 +416,7 @@ const ProjectManager = ({
         case 'error':
           setSocketError(instructionData?.message || 'An error occurred');
           clearLoadingStates();
+          markLastStatusComplete(); // ✅ NEW
           break;
         case 'redirect':
           if (instructionData?.url) {
@@ -493,22 +428,32 @@ const ProjectManager = ({
       if (callback && typeof callback === 'function') callback();
     });
 
+    // ✅ UPDATED: status_update listener with isComplete handling
     socket.on('status_update', (data, callback) => {
       console.log('Received status update:', data);
       if (data.update) {
+        // ✅ NEW: Mark previous status as complete before adding new one
+        markLastStatusComplete();
+        
         const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
-        setStatusMessage(customMessage);
         
         const statusMessage = {
-          id: Date.now(),
+          id: `status-${Date.now()}`,
           type: 'status',
           content: customMessage,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date(),
           sender: 'System',
           sender_id: 'status', 
-          isStatus: true 
+          isStatus: true,
+          isComplete: false, // ✅ NEW: Starts as incomplete
+          startedAt: new Date().toISOString() // ✅ NEW
         };
-        setMessages(prev => [...prev, statusMessage]);
+        
+        setMessages(prev => {
+          const updatedMessages = [...prev, statusMessage];
+          updatedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          return updatedMessages;
+        });
       }
       if (callback && typeof callback === 'function') callback();
     });
@@ -519,6 +464,7 @@ const ProjectManager = ({
       if (type === 'error') {
         setSocketError(message);
         clearLoadingStates();
+        markLastStatusComplete(); // ✅ NEW
       }
       if (callback && typeof callback === 'function') callback();
     });
@@ -535,116 +481,110 @@ const ProjectManager = ({
     socket.off('notification');
   };
 
-  // Cleanup timeouts when component unmounts
   useEffect(() => {
     return () => {
-      if (responseTimeoutRef.current) {
-        clearTimeout(responseTimeoutRef.current);
-      }
+    
     };
   }, []);
 
-  // Main initialization effect
   useEffect(() => {
+    if (!projectId) {
+      console.log('⏸️ Waiting for projectId from parent...');
+      return;
+    }
+
     const init = async () => {
-      if (checkAuthentication()) {
-        const recipientId = await fetchProjects();
-        if (recipientId) {
-          await initializeChat(recipientId);
-          // REMOVED: No room joining for agents - they work directly via socket connection
-        }
-      }
+      console.log('✅ Received projectId from parent:', projectId);
+      const recipientId = `project_manager_${projectId}`;
+      setDynamicRecipientId(recipientId);
+      dynamicRecipientIdRef.current = recipientId;
+      ownIdRef.current = own_id;
+      console.log(`✅ Project Manager initialized with ID: ${recipientId}`);
+      
+      await initializeChat(recipientId);
     };
+    
     init();
-  }, []);
+  }, [projectId]);
 
-// socket listeners effect:
-useEffect(() => {
-  if (!dynamicRecipientId) {
-    console.log('⏸️ Skipping socket setup - no recipient ID yet');
-    return;
-  }
-  
-  console.log('🔌 Setting up socket listeners for:', dynamicRecipientId);
-  
-  // ADD THIS: Clean up existing listeners BEFORE setting up new ones
-  cleanupSocketListeners();
-  
-  // Then set up fresh listeners
-  setupSocketListeners();
-  
-  return () => {
-    console.log('🧹 Cleaning up socket listeners');
+  useEffect(() => {
+    if (!dynamicRecipientId) {
+      console.log('⏸️ Skipping socket setup - no recipient ID yet');
+      return;
+    }
+    
+    console.log('🔌 Setting up socket listeners for:', dynamicRecipientId);
     cleanupSocketListeners();
-  };
-}, [dynamicRecipientId]); //Only re-run when dynamicRecipientId changes
+    setupSocketListeners();
+    
+    return () => {
+      console.log('🧹 Cleaning up socket listeners');
+      cleanupSocketListeners();
+    };
+  }, [dynamicRecipientId]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Add after your other useEffects
-useEffect(() => {
-  const logAllEvents = (eventName, ...args) => {
-    console.log(`🔔 [SOCKET EVENT] ${eventName}:`, args);
-  };
-  
-  socket.onAny(logAllEvents);
-  
-  return () => socket.offAny(logAllEvents);
-}, []);
+  // ✅ UPDATED: Send message function with status completion
+  const handleSendMessage = () => {
+    if (!inputValue.trim() || !isConnected || !dynamicRecipientId) {
+      console.warn('Cannot send - missing requirements:', {
+        hasInput: !!inputValue.trim(),
+        isConnected,
+        hasDynamicRecipientId: !!dynamicRecipientId
+      });
+      return;
+    }
 
-  // Send message function
-const handleSendMessage = () => {
-  if (!inputValue.trim() || !isConnected || !dynamicRecipientId) {
-    console.warn('Cannot send - missing requirements:', {
-      hasInput: !!inputValue.trim(),
-      isConnected,
-      hasDynamicRecipientId: !!dynamicRecipientId
+    // ✅ NEW: Mark last status as complete when user sends a message
+    markLastStatusComplete();
+
+    const userId = own_id || localStorage.getItem('user_id');
+    const messageTimestamp = new Date().getTime(); 
+
+    const userMessage = {
+      id: messageTimestamp, 
+      type: 'user',
+      content: inputValue.trim(),
+      timestamp: new Date(messageTimestamp),
+      sender: 'You',
+      sender_id: userId,
+      recipient_id: dynamicRecipientId,
+      isStatus: false
+    };
+
+    setMessages(prev => {
+      const updatedMessages = [...prev, userMessage];
+      updatedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      return updatedMessages;
     });
-    return;
-  }
 
-  const userId = own_id || localStorage.getItem('user_id');
-  const userMessage = {
-    id: Date.now(),
-    type: 'user',
-    content: inputValue.trim(),
-    timestamp: new Date(),
-    sender: 'You',
-    sender_id: userId,
-    recipient_id: dynamicRecipientId,
-    isStatus: false
+    const messagePayload = {
+      message_content: inputValue.trim(),
+      own_id: parseInt(userId),
+      recipient_id: dynamicRecipientId,
+      chat_type: chat_type,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('📤 Sending message:', messagePayload);
+
+    socket.emit('send_message', messagePayload);
+    console.log('✅ Message emitted to backend');
+    
+    if (onMessageSent) {
+      onMessageSent(userMessage);
+    }
+
+    setInputValue('');
+    setIsWaitingForResponse(true);
+    setIsLoadingAnswer(true);
+    setTimeout(() => setIsTyping(true), 500);
+    setTimeout(() => inputRef.current?.focus(), 100);
+    //setResponseTimeout();
   };
-
-  setMessages(prev => [...prev, userMessage]);
-
-  const messagePayload = {
-    message_content: inputValue.trim(),
-    own_id: parseInt(userId),
-    recipient_id: dynamicRecipientId,
-    chat_type: chat_type,
-    timestamp: new Date().toISOString()
-  };
-
-  console.log('📤 Sending message:', messagePayload);
-
-  // Emit without callback - backend doesn't send acknowledgments
-  socket.emit('send_message', messagePayload);
-  console.log('✅ Message emitted to backend');
-  
-  if (onMessageSent) {
-    onMessageSent(userMessage);
-  }
-
-  setInputValue('');
-  setIsWaitingForResponse(true);
-  setIsLoadingAnswer(true);
-  setTimeout(() => setIsTyping(true), 500);
-  setTimeout(() => inputRef.current?.focus(), 100);
-  setResponseTimeout();
-};
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -661,13 +601,13 @@ const handleSendMessage = () => {
     });
   };
 
-  if (isLoadingAuth || !isInitialized) {
+  if (!isInitialized) {
     return (
       <div className={`flex flex-col h-full bg-gray-50 ${className}`}>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your project data...</p>
+            <p className="text-gray-600">Loading chat history...</p>
             {statusMessage && (
               <p className="text-sm text-gray-500 mt-2">{statusMessage}</p>
             )}
@@ -678,38 +618,7 @@ const handleSendMessage = () => {
   }
 
   return (
-    <div className={`flex flex-col h-full pt-6 bg-gray-50 ${className}`}>
-      {/* Chat Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">{assistantAvatar}</span>
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{assistantName}</h3>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></span>
-              {isConnected ? 'Online' : 'Connecting...'} • {formatTime(new Date())}
-              {projectId && <span>• Project {projectId}</span>}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
-            title="Chat History"
-          >
-            <MessageSquare size={20} />
-          </button>
-          <button
-            className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
-            title="Chat Settings"
-          >
-            <Settings size={20} />
-          </button>
-        </div>
-      </div>
-
+    <div className={`flex flex-col h-full bg-gray-50 ${className}`}>
       {/* Error Display */}
       {socketError && (
         <div className="px-4 py-3 bg-red-50 border-b border-red-200">
@@ -740,17 +649,30 @@ const handleSendMessage = () => {
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="space-y-6">
           {messages.map((message) => {
-            // Use message type for positioning instead of sender_id comparison
             const isFromCurrentUser = message.type === 'user';
             
             return (
               <div key={message.id} className={`flex gap-3 ${
-                message.isStatus ? 'justify-center' :
+                message.isStatus ? 'justify-start' :
                 isFromCurrentUser ? 'justify-end' : 'justify-start'
               }`}>
+                {/* ✅ UPDATED: Status message with spinner/checkmark */}
                 {message.isStatus && (
-                  <div className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
-                    {message.content}
+                  <div className="flex items-start gap-3 px-2 py-1">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {!message.isComplete ? (
+                        <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm leading-relaxed transition-colors duration-300 ${
+                        message.isComplete ? 'text-gray-500' : 'text-gray-600 font-medium'
+                      }`}>
+                        {message.content}
+                      </p>
+                    </div>
                   </div>
                 )}
                 {!message.isStatus && (
@@ -814,7 +736,7 @@ const handleSendMessage = () => {
 
       {/* Chat Input */}
       <div className="p-4 bg-white border-t border-gray-200">
-        <div className="flex gap-3 max-w-5xl mx-auto items-end">
+        <div className="flex gap-3 items-end">
           <div className="flex-1 relative">
             <TextareaAutosize
               ref={inputRef}
