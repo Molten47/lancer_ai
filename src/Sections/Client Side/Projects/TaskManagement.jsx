@@ -159,7 +159,7 @@ const TaskManagementComponent = ({ project = null }) => {
   return (
     <div className="space-y-6">
       {/* Search and Filter Bar */}
-      <div className="bg-white rounded-xl shadow-sm p-4">
+      <div className=" p-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2 flex-1">
             <div className="relative flex-1 max-w-md">

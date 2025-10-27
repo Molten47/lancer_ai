@@ -1,13 +1,13 @@
 // P2PChatComponent.js - FIXED: Users join their own room, not P2P room
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Circle, Phone, Video, MoreVertical, Smile } from 'lucide-react';
+import { Send, User, Circle, Phone, Video, MoreVertical, Smile , Paperclip} from 'lucide-react';
 import socket, { 
   isSocketConnected, 
   getConnectionStatus, 
   getAPIUrl
 } from '../../../Components/socket';
-
+import TextareaAutosize from 'react-textarea-autosize'
 const P2PChatComponent = ({ 
   ownId, 
   recipientId, 
@@ -346,53 +346,48 @@ console.log('🎯 Message routing check:', {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-white third-font">
+  <div className="flex flex-col h-screen w-full bg-white">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-6 bg-blue-600 text-white border-b flex-shrink-0">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-[#E5E7EB] flex-shrink-0">
+        <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-              <User size={24} />
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center overflow-hidden">
+              <User size={20} className="text-white" />
             </div>
-            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${onlineStatus ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${onlineStatus ? 'bg-green-500' : 'bg-gray-400'}`}></div>
           </div>
           <div>
-            <h3 className="font-semibold text-lg">{recipientName}</h3>
-            <div className="flex items-center space-x-2">
-              <Circle size={8} className={`${isConnected ? 'text-green-300' : 'text-red-300'} fill-current`} />
-              <span className="text-sm opacity-90">
-                {isConnected ? (onlineStatus ? 'Online' : 'Connected') : 'Disconnected'}
-              </span>
-            </div>
-            {/* Debug info - remove in production */}
-            <div className="text-xs opacity-70">
-              My Room: {ownId} | Chatting with: {recipientId}
-            </div>
+            <h3 className="font-semibold text-gray-900 text-base">{recipientName}</h3>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
-          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
-            <Phone size={20} />
+        <div className="flex items-center space-x-1">
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Phone className='text-gray-600' size={20} />
           </button>
-          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
-            <Video size={20} />
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Video className='text-gray-600' size={20} />
           </button>
-          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
-            <MoreVertical size={20} />
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <MoreVertical className='text-gray-600' size={20} />
           </button>
         </div>
       </div>
 
+      {/* New Message Label */}
+      <div className="py-3 text-center border-b border-[#E5E7EB] bg-white flex-shrink-0">
+        <span className="text-sm text-gray-500 font-medium">New Message</span>
+      </div>
+
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <div className="w-20 h-20 bg-gray-200 rounded-full mb-6 flex items-center justify-center">
-              <User size={32} />
+            <div className="w-16 h-16 bg-gray-100 rounded-full mb-4 flex items-center justify-center">
+              <User size={28} className="text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium mb-2">No messages yet</h3>
-            <p className="text-center max-w-md">
-              Start your conversation with {recipientName}. Send a message to get things started!
+            <h3 className="text-base font-medium mb-1 text-gray-700">No messages yet</h3>
+            <p className="text-center max-w-md text-sm text-gray-500">
+              Start your conversation with {recipientName}
             </p>
           </div>
         ) : (
@@ -402,21 +397,21 @@ console.log('🎯 Message routing check:', {
                 key={message.id}
                 className={`flex ${message.sender === ownId || message.sender == ownId ? 'justify-end' : 'justify-start'}`}
               >
-                <div className="flex items-end space-x-2 max-w-lg">
+                <div className="flex items-end space-x-2 max-w-xs sm:max-w-sm md:max-w-md">
                   {(message.sender !== ownId && message.sender != ownId) && (
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
-                      <User size={16} />
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                      <User size={16} className="text-white" />
                     </div>
                   )}
                   <div
-                    className={`px-4 py-3 rounded-2xl max-w-sm lg:max-w-md ${
+                    className={`px-4 py-2.5 rounded-2xl ${
                       (message.sender === ownId || message.sender == ownId)
-                        ? 'bg-blue-600 text-white rounded-br-md'
-                        : 'bg-white text-gray-800 border rounded-bl-md shadow-sm'
-                    } ${message.failed ? 'opacity-50 border-red-300' : ''}`}
+                        ? 'bg-[#2255D7] text-white rounded-lg'
+                        : 'bg-[#F3F4F6] text-[#151B25] rounded-lg'
+                    } ${message.failed ? 'opacity-50 border border-red-300' : ''}`}
                   >
                     <p className="text-sm leading-relaxed">{message.text}</p>
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center justify-end mt-1">
                       <span className={`text-xs ${(message.sender === ownId || message.sender == ownId) ? 'text-blue-100' : 'text-gray-500'}`}>
                         {formatTime(message.timestamp)}
                       </span>
@@ -428,7 +423,7 @@ console.log('🎯 Message routing check:', {
                     </div>
                   </div>
                   {(message.sender === ownId || message.sender == ownId) && (
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
                       <User size={16} className="text-white" />
                     </div>
                   )}
@@ -440,10 +435,10 @@ console.log('🎯 Message routing check:', {
             {isTyping && (
               <div className="flex justify-start">
                 <div className="flex items-end space-x-2">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User size={16} />
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User size={16} className="text-white" />
                   </div>
-                  <div className="bg-white text-gray-800 border px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
+                  <div className="bg-gray-100 text-gray-800 px-4 py-3 rounded-2xl rounded-bl-sm">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -460,36 +455,52 @@ console.log('🎯 Message routing check:', {
       </div>
 
       {/* Message Input */}
-      <div className="p-6 border-t bg-white flex-shrink-0">
-        <div className="flex items-center space-x-3">
-          <button className="p-3 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100">
-            <Smile size={24} />
-          </button>
+      <div className="p-4 border-t border-[#E5E7EB] bg-white flex-shrink-0">
+        <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
-            <input
-              type="text"
+            <TextareaAutosize
               value={newMessage}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder={isConnected ? "Type a message..." : "Connecting..."}
-              className="w-full px-6 py-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               disabled={!isConnected}
+              className="w-full px-4 py-3 pl-16 pr-4 border-none bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all text-sm resize-none placeholder-gray-400"
+              minRows={3}
+              maxRows={4}
             />
+            
+            {/* Icons inside input */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <button 
+                disabled={!isConnected}
+                className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                title="Attach file"
+              >
+                <Paperclip size={20} />
+              </button>
+              
+              <button 
+                className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                title="Add emoji"
+                disabled={!isConnected}
+              >
+                <Smile size={20} />
+              </button>
+            </div>
           </div>
-          <button
+
+          {/* Send Button */}
+          <button 
             onClick={sendMessage}
             disabled={!newMessage.trim() || !isConnected}
-            className={`p-3 rounded-full transition-colors ${
-              newMessage.trim() && isConnected
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm flex-shrink-0"
           >
-            <Send size={24} />
+            <Send size={18} className="text-white ml-0.5" />
           </button>
         </div>
+        
         {!isConnected && (
-          <p className="text-sm text-red-500 mt-3 text-center">
+          <p className="text-sm text-red-500 mt-2 text-center">
             Connecting to chat...
           </p>
         )}

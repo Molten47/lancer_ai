@@ -127,7 +127,7 @@ const getInitialFormData = () => {
     industry_category: '',   // Add this
     address: '',             // Add this
     contact_email: '',       // Add this
-    website_link: '',        // Add this
+    website_url: '',        // Add this
     operational_role: '',    // Add this
     skill: '',               // Add this
   };
@@ -341,9 +341,11 @@ const validateForm = () => {
           industry_category: formData.industry_category,
           address: formData.address.trim(),
           contact_email: formData.contact_email.trim(),
-          website_link: formData.website_link.trim(),
+           website_url: formData.website_url ? formData.website_url.trim() : '',
           operational_role: formData.operational_role
         };
+          
+        
       }
 
       const API_URL = import.meta.env.VITE_API_URL;
@@ -649,7 +651,7 @@ const validateForm = () => {
                     <FormInput
                       label="Email"
                       id="email"
-                      name="email"
+                      name="user_mail"
                       type="email"
                       value={formData.user_mail}
                       onChange={handleChange}
@@ -702,7 +704,7 @@ const validateForm = () => {
                           name="address"
                           value={formData.address}
                           onChange={handleChange}
-                          placeholder="123 Business Street, City"
+                          placeholder="31, Lancer Av. City"
                           error={errors.address}
                           required
                         />
@@ -722,13 +724,13 @@ const validateForm = () => {
 
                           <FormInput
                             label="Website (Optional)"
-                            id="website_link"
-                            name="website_link"
+                            id="website_url"
+                            name="website_url"
                             type="url"
-                            value={formData.website_link}
+                            value={formData.website_url}
                             onChange={handleChange}
                             placeholder="https://www.yourbusiness.com"
-                            error={errors.website_link}
+                            error={errors.website_url}
                           />
                         </div>
                       </div>

@@ -369,36 +369,39 @@ const calculateTaskCompletion = (jobs) => {
   );
 
   return (
-    <div className="w-full h-full bg-gray-50 overflow-y-auto third-font">
+    <div className="w-full h-full bg-[#F9FAFB] overflow-y-auto third-font">
       <div className="w-full px-8 py-6">
-        <div className="mb-8">
+       <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
           {onBack && (
             <button
               onClick={onBack}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 font-medium text-sm transition-colors"
+              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
             >
-              <ArrowLeft size={20} />
-              Back
+              <ArrowLeft className='text-[#6B7280]' size={20} />
             </button>
           )}
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{projectData.project_title}</h1>
-              <p className="text-sm text-gray-500">{projectData.client_id}</p>
-            </div>
-            <button className="px-6 py-4 bg-[#2255D7] text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors">
-              Custom Offer: ${metrics.totalBudget.toLocaleString()}
-            </button>
+          
+          <h1 className="text-2xl font-bold text-gray-900">{projectData.project_title}</h1>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 text-sm font-medium rounded-full">
+            <Clock size={16} />
+            <span>In Progress</span>
           </div>
         </div>
-
-        <div className="bg-white rounded-xl shadow-sm mb-8">
-          <div className="flex items-center gap-1 px-6 py-2 overflow-x-auto border-b border-gray-100">
+        <div className="flex justify-end mb-6">
+        <button className="p-6 bg-[#2255D7] text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors">
+          Custom Offer: ${metrics.totalBudget.toLocaleString()}
+        </button>
+        </div>
+        </div>
+       {/* Move the Custom Offer button to where it should be in your layout */}
+        <div className="bg-transparent  mb-8">
+          <div className="flex items-center gap-1 px-6 py-2 overflow-x-auto border-b-2 border-[#E5E7EB]">
             {[
               { id: 'overview', label: 'Overview'},
               { id: 'team', label: 'Team'},
               { id: 'tasks', label: 'Tasks' },
-              { id: 'messages', label: 'Messages', badge: 4 },
+              { id: 'messages', label: 'Messages'},
               { id: 'analytics', label: 'Analytics' },
               { id: 'documents', label: 'Documents' },
               { id: 'settings', label: 'Settings' }
@@ -409,8 +412,8 @@ const calculateTaskCompletion = (jobs) => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-4 py-3 font-medium text-sm whitespace-nowrap transition-colors relative ${
                     activeTab === tab.id
-                      ? 'text-blue-600'
-                      : 'text-gray-500 hover:text-gray-900'
+                      ? 'text-[#2255D7]'
+                      : 'text-[#6B7280] hover:text-gray-900'
                   }`}
                 >
                   {tab.label}
@@ -420,7 +423,7 @@ const calculateTaskCompletion = (jobs) => {
                     </span>
                   )}
                   {activeTab === tab.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />
+                    <div className="absolute -bottom-2 left-0 right-0 h-0.75 bg-[#2255D7]" />
                   )}
                 </button>
               );

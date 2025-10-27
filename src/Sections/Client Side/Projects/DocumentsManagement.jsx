@@ -209,51 +209,52 @@ export default function FileManager() {
   );
 
   return (
-    <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-6">
-      <div className="w-full">
-        {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <button
-            onClick={() => { setActiveTab('root'); setCurrentView('root'); }}
-            className={`flex items-center gap-2 px-4 py-3 font-medium border-b-2 transition text-sm ${
-              activeTab === 'root'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Folder size={18} />
-            Root Folder
-          </button>
-          <button
-            onClick={() => { setActiveTab('jobs'); setCurrentView('root'); }}
-            className={`flex items-center gap-2 px-4 py-3 font-medium border-b-2 transition text-sm ${
-              activeTab === 'jobs'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Briefcase size={18} />
-            Job Folder
-          </button>
-        </div>
+    <div className="w-full h-full bg-[#F9FAFB] p-4 sm:p-6">
+    <div className="w-full">
+  {/* White background container wrapping tabs, controls, and content */}
+  <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+    {/* Tabs */}
+    <div className="flex border-b border-gray-200">
+      <button
+        onClick={() => { setActiveTab('root'); setCurrentView('root'); }}
+        className={`flex items-center gap-2 px-4 py-3 font-medium border-b-3 transition text-sm ${
+          activeTab === 'root'
+            ? 'border-[[#1D4ED8]] text-[#1D4ED8]'
+            : 'border-transparent text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        <Folder size={18} />
+        Root Folder
+      </button>
+      <button
+        onClick={() => { setActiveTab('jobs'); setCurrentView('root'); }}
+        className={`flex items-center gap-2 px-4 py-3 font-medium border-b-3 transition text-sm ${
+          activeTab === 'jobs'
+            ? 'border-[#1D4ED8] text-[#1D4ED8]'
+            : 'border-transparent text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        <Briefcase size={18} />
+        Job Folder
+      </button>
+    </div>
 
-        {/* Controls */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div className="w-full sm:max-w-xs">
-            <div className="elative flex flex-row justify-center items-center gap-3">
-              <div>
-               <ArrowLeft size={24}/>
-              </div>
-              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-black" />
-              <input
-                type="text"
-                placeholder="Search documents"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <div className='flex flex-row bg-black rounded-lg border-2 border-[#E5E7EB] gap-0'>
-             <button
+    {/* Controls */}
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border-b border-gray-200">
+      <div className="w-full sm:max-w-xs">
+        <div className="relative flex flex-row justify-center items-center gap-3">
+          <div>
+            <ArrowLeft size={24}/>
+          </div>
+          <input
+            type="text"
+            placeholder="Search documents"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <div className='flex flex-row bg-black rounded-lg border-2 border-[#E5E7EB] gap-0'>
+            <button
               onClick={() => setViewMode('list')}
               className={`p-2 transition ${
                 viewMode === 'list'
@@ -273,33 +274,32 @@ export default function FileManager() {
             >
               <Grid3X3 size={18} />
             </button>
-              </div>
-       
-            </div>
           </div>
-          <div className="flex items-center gap-2">
-         
-            <button className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm ml-2">
-              <Plus size={18} />
-              {currentView === 'root' ? 'New Folder' : 'Upload'}
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5 shadow-sm">
-          {activeTab === 'root' && currentView === 'root' && renderRootFolders()}
-          {activeTab === 'root' && currentView !== 'root' && renderFiles(
-            fileStructure.root.folders.find(f => f.id === currentView)?.files || [],
-            fileStructure.root.folders.find(f => f.id === currentView)?.name || ''
-          )}
-          {activeTab === 'jobs' && currentView === 'root' && renderJobFolders()}
-          {activeTab === 'jobs' && currentView !== 'root' && renderFiles(
-            fileStructure.jobs.find(j => j.id === currentView)?.files || [],
-            fileStructure.jobs.find(j => j.id === currentView)?.name || ''
-          )}
         </div>
       </div>
+      <div className="flex items-center gap-2">
+        <button className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm ml-2">
+          <Plus size={18} />
+          {currentView === 'root' ? 'New Folder' : 'Upload'}
+        </button>
+      </div>
+    </div>
+
+    {/* Content */}
+    <div className="p-5">
+      {activeTab === 'root' && currentView === 'root' && renderRootFolders()}
+      {activeTab === 'root' && currentView !== 'root' && renderFiles(
+        fileStructure.root.folders.find(f => f.id === currentView)?.files || [],
+        fileStructure.root.folders.find(f => f.id === currentView)?.name || ''
+      )}
+      {activeTab === 'jobs' && currentView === 'root' && renderJobFolders()}
+      {activeTab === 'jobs' && currentView !== 'root' && renderFiles(
+        fileStructure.jobs.find(j => j.id === currentView)?.files || [],
+        fileStructure.jobs.find(j => j.id === currentView)?.name || ''
+      )}
+    </div>
+  </div>
+</div>
     </div>
   );
 }

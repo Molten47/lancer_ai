@@ -206,71 +206,70 @@ const TeamManagementDashboard = ({ project = null }) => {
         </div>
 
         {/* Potential Hires */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Potential Hire</h3>
-          </div>
-          
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {potentialHires.length > 0 ? (
-                potentialHires.map((hire) => (
-                  <div key={hire.id} className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                    <div className="flex items-start gap-4 mb-4">
-                      <div className="w-12 h-12 rounded-full bg-[#F3E8FF] flex items-center justify-center text-[#7E22CE] font-bold text-lg flex-shrink-0">
-                        {getInitials(hire.firstname, hire.lastname)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-semibold text-gray-900 truncate">
-                          {hire.firstname} {hire.lastname}
-                        </h3>
-                        <p className="text-sm text-gray-600 truncate">{hire.jobTitle}</p>
-                      </div>
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Potential Hire</h3>
+        </div>
+        
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {potentialHires.length > 0 ? (
+              potentialHires.map((hire) => (
+                <div key={hire.id} className="bg-white border border-[#E5E7EB] rounded-xl p-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-[#F3E8FF] flex items-center justify-center text-[#7E22CE] font-bold text-lg flex-shrink-0">
+                      {getInitials(hire.firstname, hire.lastname)}
                     </div>
-
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {getSkillTags(hire.skill).map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-gray-600">Match score:</span>
-                        <span className="text-xs font-bold text-gray-900">{hire.matchScore}%</span>
-                      </div>
-                    
-                    </div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleAddToTeam(hire)}
-                        className="flex-1 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Add to Team
-                      </button>
-                      <button
-                        onClick={() => handleInvite(hire)}
-                        className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        Invite
-                      </button>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-gray-900 truncate">
+                        {hire.firstname} {hire.lastname}
+                      </h3>
+                      <p className="text-sm text-gray-600 truncate">{hire.jobTitle}</p>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="col-span-full text-center py-12 text-gray-500">
-                  No potential hires available
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {getSkillTags(hire.skill).map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex items-center justify-start gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-600">Match score:</span>
+                      <span className="text-xs font-bold text-gray-900">{hire.matchScore}%</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleAddToTeam(hire)}
+                      className="px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-blue-700 transition-colors whitespace-nowrap"
+                    >
+                      Add to Team
+                    </button>
+                    <button
+                      onClick={() => handleInvite(hire)}
+                      className="px-4 py-2 bg-white border border-[#E5E7EB] text-sm font-semibold rounded-lg hover:bg-gray-200 transition-colors whitespace-nowrap"
+                    >
+                      Invite
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12 text-gray-500">
+                No potential hires available
+              </div>
+            )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

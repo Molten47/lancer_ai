@@ -21,14 +21,20 @@ import {
   Star
 } from 'lucide-react';
 import AssistantModal from '../Client Assistant/AssistantModal';
+import { useNavigate } from 'react-router-dom';
 
-// Empty State Component
-const EmptyProjectsState = ({ onCreateProject }) => {
+// Update EmptyProjectsState
+const EmptyProjectsState = ({ onOpenModal }) => {
+  console.log('EmptyProjectsState rendered, onOpenModal:', onOpenModal);
+  
   const handleNewProject = () => {
-    if (onCreateProject) {
-      onCreateProject();
+    console.log('handleNewProject called');
+    console.log('onOpenModal exists?', !!onOpenModal);
+    if (onOpenModal) {
+      console.log('Calling onOpenModal...');
+      onOpenModal();
     } else {
-      console.log('Create new project');
+      console.log('onOpenModal is undefined!');
     }
   };
 
@@ -40,7 +46,7 @@ const EmptyProjectsState = ({ onCreateProject }) => {
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Projects</h1>
             <p className="text-sm text-gray-600">Manage your projects and track their progress.</p>
           </div>
-          <button
+          <button 
             onClick={handleNewProject}
             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
           >
@@ -86,11 +92,11 @@ const ProjectDashboard = ({ onSelectProject }) => {
   const [error, setError] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
+   useEffect(() => {
+    console.log('isChatOpen changed to:', isChatOpen);
+  }, [isChatOpen]);
+
   
-
-
-  // Calculate task completion from API
-// Projects.jsx - Refactored calculateTaskCompletion (Synchronous)
 
 // Function is now synchronous and only accepts the jobs array.
 const calculateTaskCompletion = (jobs) => {
@@ -371,9 +377,9 @@ const calculateTaskCompletion = (jobs) => {
 
   // Tile View Component
   const TileView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
       {filteredProjects.map((project) => (
-        <div key={project.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col">
+        <div key={project.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden w-4/5 flex flex-col">
           {/* Upper Section - White Background */}
           <div className="bg-white p-6 border-b border-gray-200">
             <div className="flex items-start justify-between mb-4">
@@ -429,17 +435,17 @@ const calculateTaskCompletion = (jobs) => {
             </div>
 
             <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="border border-gray-200 bg-white rounded-lg p-4 text-center">
+              <div className="border border-gray-200 bg-white rounded-lg p-3 text-center">
                 <p className="text-xs text-gray-500 mb-2">Budget</p>
                 <p className="font-semibold text-gray-900">${project.budget}</p>
               </div>
-              <div className="border border-gray-200 rounded-lg bg-white p-4 text-center">
+              <div className="border border-gray-200 rounded-lg bg-white p-3 text-center">
                 <p className="text-xs text-gray-500 mb-2">Tasks</p>
                 <p className="font-semibold text-gray-900">
                   {formatTaskNumber(project.tasks.completed)}/{formatTaskNumber(project.tasks.total)}
                 </p>
               </div>
-              <div className="border border-gray-200 bg-white rounded-lg p-4 text-center">
+              <div className="border border-gray-200 bg-white rounded-lg p-3 text-center">
                 <p className="text-xs text-gray-500 mb-2">Due Date</p>
                 <p className="font-semibold text-gray-900 text-xs">
                   {project.dueDate.toLocaleDateString('en-US', { 
@@ -453,7 +459,7 @@ const calculateTaskCompletion = (jobs) => {
             <div className="flex justify-end mt-auto">
               <button 
                 onClick={() => onSelectProject(project.rawProject)}
-                className="px-8 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
+                className="px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
               >
                 View Details
               </button>
@@ -576,28 +582,41 @@ const calculateTaskCompletion = (jobs) => {
     );
   }
 
-  if (projectsData.length === 0) {
-    return <EmptyProjectsState onCreateProject={() => console.log('Create new project')} />;
-  }
+if (projectsData.length === 0) {
+  return (
+    <>
+      <EmptyProjectsState onOpenModal={() => {
+        console.log('onOpenModal callback called from EmptyProjectsState');
+        setIsChatOpen(true);
+        console.log('setIsChatOpen(true) executed');
+      }} />
+      <AssistantModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+    </>
+  );
+}
 
   return (
-    <div className="w-full min-h-screen bg-[#F9FAFB] overflow-y-auto relative pb-24">
+    <div className="w-full min-h-full bg-[#F9FAFB] overflow-y-auto relative pb-24">
       <div className="w-full px-6 py-6">
-        {/* Header - Outside the white container */}
+        {/* Header, Outside the white container */}
         <div className="flex items-start justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Projects</h1>
             <p className="text-sm text-gray-600">Manage your projects and track their progress.</p>
           </div>
-          <button className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
-            <Plus size={18} />
-            Create New Project
-          </button>
+         
+            <button 
+              onClick={() => setIsChatOpen(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              <Plus size={18} />
+              Create New Project
+            </button>
         </div>
 
         {/* White container with borders */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-          {/* Tab and Search Section */}
+        <div className="bg-white rounded-lg shadow-sm border h-full border-gray-100 overflow-hidden">
+          {/* the tabsb and search Section */}
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between flex-wrap gap-4">
               <div className="flex items-center gap-2">
@@ -696,7 +715,7 @@ const calculateTaskCompletion = (jobs) => {
 
       <button 
         onClick={() => setIsChatOpen(true)}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:shadow-xl z-30"
+        className="fixed bottom-8 right-8 w-14 h-14 bg-primary hover:bg-blue-700 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:shadow-xl z-30"
       >
         <Star size={24} className="text-white" fill="white" />
       </button>

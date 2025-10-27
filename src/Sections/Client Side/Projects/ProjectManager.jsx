@@ -690,8 +690,8 @@ const sortMessages = (messagesArray) => {
                     }`}>
                       <div className={`rounded-2xl px-4 py-3 shadow-sm ${
                         isFromCurrentUser
-                          ? 'bg-blue-500 text-white rounded-br-md'
-                          : 'bg-white text-gray-800 border border-gray-200 rounded-bl-md'
+                          ? 'bg-primary text-white rounded-lg'
+                          : 'bg-[#F3F4F6] text-gray-800 border border-gray-200 rounded-bl-md'
                       }`}>
                         <p className="whitespace-pre-wrap leading-relaxed text-sm">{message.content}</p>
                       </div>

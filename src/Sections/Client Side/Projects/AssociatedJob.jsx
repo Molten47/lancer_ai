@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import P2PChatComponent from '../Projects/IndividualChat'; // Adjust the import path as needed
+//import P2PChatComponent from '../Projects/IndividualChat'; // Adjust the import path as needed
 
 const AssociatedJobs = () => {
     // State to hold the project data and the loading status

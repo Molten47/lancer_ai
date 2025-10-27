@@ -1,7 +1,8 @@
-// P2PChatComponent.js - FIXED: Message bubble alignment with normalized IDs
+// P2PChatComponent.js - Updated UI to match design
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Circle, Phone, Video, MoreVertical, Smile } from 'lucide-react';
+import { Send, User, Circle, Phone, Video, MoreVertical, Smile, Paperclip } from 'lucide-react';
+import TextareaAutosize from 'react-textarea-autosize';
 import socket, { 
   isSocketConnected, 
   getConnectionStatus, 
@@ -70,27 +71,24 @@ const P2PChatComponent = ({
           }
         );
         
-if (response.ok) {
+        if (response.ok) {
           const chatData = await response.json();
           console.log('📦 Full API Response:', chatData); 
           if (chatData.messages) {
             // Normalize message data when loading from history
             const normalizedMessages = chatData.messages.map(msg => {
               console.log('📩 Raw message from API:', {
-        id: msg.id,
-        sender_id: msg.sender_id,
-        sender: msg.sender,
-        own_id: msg.own_id,
-        recipient_id: msg.recipient_id,
-        recipient: msg.recipient,
-        timestamp: msg.timestamp,
-        created_at: msg.created_at,
-        message_content: msg.message_content,
-        allKeys: Object.keys(msg)
-      });
-              // Determine the actual sender based on the message direction
-              // If the message has sender_id, use that; otherwise infer from own_id and recipient_id
-
+                id: msg.id,
+                sender_id: msg.sender_id,
+                sender: msg.sender,
+                own_id: msg.own_id,
+                recipient_id: msg.recipient_id,
+                recipient: msg.recipient,
+                timestamp: msg.timestamp,
+                created_at: msg.created_at,
+                message_content: msg.message_content,
+                allKeys: Object.keys(msg)
+              });
 
               let actualSender;
               if (msg.sender_id) {
@@ -102,7 +100,6 @@ if (response.ok) {
               } else if (msg.from) {
                 actualSender = normalizeId(msg.from);
               } else {
-                // If none of the above, use own_id as fallback
                 actualSender = normalizeId(msg.own_id);
               }
 
@@ -114,9 +111,6 @@ if (response.ok) {
                 timestamp: msg.timestamp || msg.created_at || new Date().toISOString(),
                 delivered: true
               };
-
-
-              
             });
             
             console.log('📋 Loaded messages from history:', normalizedMessages.map(m => ({
@@ -158,31 +152,26 @@ if (response.ok) {
     };
 
     const handleNewMessage = (messageData) => {
-     console.log('📨 Received message:', messageData);
-      
-      // ADDED: Normalize IDs from the incoming message, checking new keys
-      const msgSender = normalizeId(messageData.sender || messageData.from || messageData.own_id); // The sender of the message
-      const msgRecipient = normalizeId(messageData.recipient || messageData.to || messageData.recipient_id); // The intended recipient of the message
+      console.log('📨 Received message:', messageData);
+      
+      const msgSender = normalizeId(messageData.sender || messageData.from || messageData.own_id);
+      const msgRecipient = normalizeId(messageData.recipient || messageData.to || messageData.recipient_id);
 
-      // Normalized chat IDs for comparison
-      const normalizedOwnId = normalizeId(ownId);
-      const normalizedRecipientId = normalizeId(recipientId);
+      const normalizedOwnId = normalizeId(ownId);
+      const normalizedRecipientId = normalizeId(recipientId);
 
-      // FIXED: Check if message is for this conversation
-      const isForThisChat = (
-        // Case 1: Message is FROM the recipient TO me (I am the receiver)
-        (msgSender === normalizedRecipientId && msgRecipient === normalizedOwnId) ||
-        // Case 2: Message is FROM me TO the recipient (Server echo of my sent message)
-        (msgSender === normalizedOwnId && msgRecipient === normalizedRecipientId)
-      );
+      const isForThisChat = (
+        (msgSender === normalizedRecipientId && msgRecipient === normalizedOwnId) ||
+        (msgSender === normalizedOwnId && msgRecipient === normalizedRecipientId)
+      );
 
-      console.log('🎯 Message routing check:', {
-        messageFrom: msgSender,
-        messageTo: msgRecipient,
-        expectedFrom: normalizedRecipientId,
-        expectedTo: normalizedOwnId,
-        isForThisChat
-      });
+      console.log('🎯 Message routing check:', {
+        messageFrom: msgSender,
+        messageTo: msgRecipient,
+        expectedFrom: normalizedRecipientId,
+        expectedTo: normalizedOwnId,
+        isForThisChat
+      });
       
       if (isForThisChat) {
         const newMsg = {
@@ -197,7 +186,6 @@ if (response.ok) {
         console.log('✅ Adding message to chat:', newMsg);
         
         setMessages(prev => {
-          // Avoid duplicate messages
           const exists = prev.some(msg => 
             msg.id === newMsg.id || 
             (msg.text === newMsg.text && 
@@ -218,7 +206,6 @@ if (response.ok) {
 
     const handleTyping = (data) => {
       console.log('⌨️ Typing event:', data);
-      // Show typing indicator if it's from the recipient
       if (data.userId === recipientId || data.user_id === recipientId) {
         setIsTyping(true);
         clearTimeout(typingTimeoutRef.current);
@@ -267,12 +254,10 @@ if (response.ok) {
       console.error('❌ Room join error:', data);
     };
 
-    // Check if socket is already connected
     if (isSocketConnected()) {
       handleConnect();
     }
 
-    // Add event listeners
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('new_message', handleNewMessage);
@@ -286,7 +271,6 @@ if (response.ok) {
     socket.on('joined', handleRoomJoined);
     socket.on('join_error', handleRoomJoinError);
 
-    // Cleanup function
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
@@ -307,7 +291,6 @@ if (response.ok) {
     };
   }, [ownId, recipientId, chatType, isInitialized]);
 
-  // FIXED: Simplified message sending - no room management needed
   const sendMessage = () => {
     if (!newMessage.trim() || !isConnected) {
       console.log('❌ Cannot send message:', { 
@@ -319,7 +302,6 @@ if (response.ok) {
 
     const tempId = Date.now();
     
-    // FIXED: Clean message data according to API docs
     const messageData = {
       message_content: newMessage.trim(),
       own_id: parseInt(ownId), 
@@ -331,7 +313,6 @@ if (response.ok) {
       note: "Message will be routed through user rooms by backend"
     });
 
-    // Add message to local state immediately
     const localMessage = {
       id: tempId,
       text: newMessage.trim(),
@@ -346,11 +327,9 @@ if (response.ok) {
     setNewMessage('');
 
     try {
-      // Send message via socket - backend handles room routing
       socket.emit('send_message', messageData);
       console.log('✅ Message emitted via socket');
       
-      // Update message status after a delay
       setTimeout(() => {
         setMessages(prev => prev.map(msg => 
           msg.id === tempId ? { ...msg, pending: false, delivered: true } : msg
@@ -364,11 +343,9 @@ if (response.ok) {
       ));
     }
 
-    // FIXED: Simplified typing indicator (no room needed)
     socket.emit('stop_typing', { userId: ownId });
   };
 
-  // FIXED: Simplified typing indicators
   const handleTypingIndicator = () => {
     if (isConnected) {
       socket.emit('typing', { userId: ownId, targetUserId: recipientId });
@@ -380,7 +357,6 @@ if (response.ok) {
     }
   };
 
-  // Handle key press
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -390,7 +366,6 @@ if (response.ok) {
     }
   };
 
-  // Handle input change with typing indicator
   const handleInputChange = (e) => {
     const value = e.target.value;
     setNewMessage(value);
@@ -399,7 +374,6 @@ if (response.ok) {
     }
   };
 
-  // Format timestamp
   const formatTime = (timestamp) => {
     try {
       const date = new Date(timestamp);
@@ -410,92 +384,88 @@ if (response.ok) {
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-white third-font">
+    <div className="flex flex-col h-screen w-full bg-white">
       {/* Chat Header */}
-      <div className="flex items-center justify-between p-6 bg-blue-600 text-white border-b flex-shrink-0">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-[#E5E7EB] flex-shrink-0">
+        <div className="flex items-center space-x-3">
           <div className="relative">
-            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-              <User size={24} />
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center overflow-hidden">
+              <User size={20} className="text-white" />
             </div>
-            <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${onlineStatus ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${onlineStatus ? 'bg-green-500' : 'bg-gray-400'}`}></div>
           </div>
           <div>
-            <h3 className="font-semibold text-lg">{recipientName}</h3>
-            <div className="flex items-center space-x-2">
-              <Circle size={8} className={`${isConnected ? 'text-green-300' : 'text-red-300'} fill-current`} />
-              <span className="text-sm opacity-90">
-                {isConnected ? (onlineStatus ? 'Online' : 'Connected') : 'Disconnected'}
-              </span>
-            </div>
-            {/* Debug info - remove in production */}
-            <div className="text-xs opacity-70">
-              My Room: {ownId} | Chatting with: {recipientId}
-            </div>
+            <h3 className="font-semibold text-gray-900 text-base">{recipientName}</h3>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
-          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
-            <Phone size={20} />
+        <div className="flex items-center space-x-1">
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Phone className='text-gray-600' size={20} />
           </button>
-          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
-            <Video size={20} />
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <Video className='text-gray-600' size={20} />
           </button>
-          <button className="p-3 hover:bg-blue-700 rounded-full transition-colors">
-            <MoreVertical size={20} />
+          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+            <MoreVertical className='text-gray-600' size={20} />
           </button>
         </div>
       </div>
 
+      {/* New Message Label */}
+      <div className="py-3 text-center border-b border-[#E5E7EB] bg-white flex-shrink-0">
+        <span className="text-sm text-gray-500 font-medium">New Message</span>
+      </div>
+
       {/* Messages Container */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500">
-            <div className="w-20 h-20 bg-gray-200 rounded-full mb-6 flex items-center justify-center">
-              <User size={32} />
+            <div className="w-16 h-16 bg-gray-100 rounded-full mb-4 flex items-center justify-center">
+              <User size={28} className="text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium mb-2">No messages yet</h3>
-            <p className="text-center max-w-md">
-              Start your conversation with {recipientName}. Send a message to get things started!
+            <h3 className="text-base font-medium mb-1 text-gray-700">No messages yet</h3>
+            <p className="text-center max-w-md text-sm text-gray-500">
+              Start your conversation with {recipientName}
             </p>
           </div>
         ) : (
-          <>{messages.map((message) => (
+          <>
+            {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex flex-col ${message.sender === normalizeId(ownId) ? 'items-end' : 'items-start'}`}
+                className={`flex ${message.sender === normalizeId(ownId) ? 'justify-end' : 'justify-start'}`}
               >
-                <div className="flex items-start space-x-3 max-w-lg">
+                <div className="flex items-end space-x-2 max-w-xs sm:max-w-sm md:max-w-md">
                   {message.sender !== normalizeId(ownId) && (
-                    <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User size={20} />
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                      <User size={16} className="text-white" />
                     </div>
                   )}
-                  <div className="flex flex-col">
+                <div className="flex flex-col">
                     <div
-                      className={`px-5 py-3 max-w-sm lg:max-w-md ${
+                      className={`px-4 py-2.5 rounded-2xl ${
                         message.sender === normalizeId(ownId)
-                          ? 'bg-[#2255D7] text-white rounded-2xl rounded-tr-sm'
-                          : 'bg-[#F3F4F6] text-[#151B25] rounded-2xl rounded-tl-sm'
-                      } ${message.failed ? 'opacity-50 border-red-300' : ''}`}
+                          ? 'bg-[#2255D7] text-white rounded-lg'
+                          : 'bg-[#F3F4F6] text-[#151B25] rounded-lg'
+                      } ${message.failed ? 'opacity-50 border border-red-300' : ''}`}
                     >
-                      <p className="text-[15px] leading-relaxed">{message.text}</p>
+                      <p className="text-sm leading-relaxed">{message.text}</p>
+                    </div>
+                    <div className={`flex items-center gap-1 mt-1 ${message.sender === normalizeId(ownId) ? 'justify-end' : 'justify-start'}`}>
+                      <span className="text-xs text-gray-500">
+                        {formatTime(message.timestamp)}
+                      </span>
+                      {message.sender === normalizeId(ownId) && (
+                        <span className="text-xs text-gray-500">
+                          {message.pending ? '⏳' : message.failed ? '❌' : message.delivered ? '✓✓' : '✓'}
+                        </span>
+                      )}
                     </div>
                   </div>
                   {message.sender === normalizeId(ownId) && (
-                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User size={20} className="text-white" />
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0 mb-1">
+                      <User size={16} className="text-white" />
                     </div>
-                  )}
-                </div>
-                <div className={`flex items-center space-x-2 mt-1 ${message.sender === normalizeId(ownId) ? 'mr-14' : 'ml-14'}`}>
-                  <span className="text-xs text-gray-500">
-                    {formatTime(message.timestamp)}
-                  </span>
-                  {message.sender === normalizeId(ownId) && (
-                    <span className="text-xs text-gray-500">
-                      {message.pending ? '⏳' : message.failed ? '❌' : message.delivered ? '✓✓' : '✓'}
-                    </span>
                   )}
                 </div>
               </div>
@@ -505,10 +475,10 @@ if (response.ok) {
             {isTyping && (
               <div className="flex justify-start">
                 <div className="flex items-end space-x-2">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                    <User size={16} />
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <User size={16} className="text-white" />
                   </div>
-                  <div className="bg-white text-gray-800 border px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
+                  <div className="bg-gray-100 text-gray-800 px-4 py-3 rounded-2xl rounded-bl-sm">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -525,36 +495,52 @@ if (response.ok) {
       </div>
 
       {/* Message Input */}
-      <div className="p-6 border-t bg-white flex-shrink-0">
-        <div className="flex items-center space-x-3">
-          <button className="p-3 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100">
-            <Smile size={24} />
-          </button>
+      <div className="p-4 border-t border-[#E5E7EB] bg-white flex-shrink-0">
+        <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
-            <input
-              type="text"
+            <TextareaAutosize
               value={newMessage}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder={isConnected ? "Type a message..." : "Connecting..."}
-              className="w-full px-6 py-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               disabled={!isConnected}
+              className="w-full px-4 py-3 pl-16 pr-4 border-none bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-200 disabled:cursor-not-allowed transition-all text-sm resize-none placeholder-gray-400"
+              minRows={3}
+              maxRows={4}
             />
+            
+            {/* Icons inside input */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <button 
+                disabled={!isConnected}
+                className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                title="Attach file"
+              >
+                <Paperclip size={20} />
+              </button>
+              
+              <button 
+                className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                title="Add emoji"
+                disabled={!isConnected}
+              >
+                <Smile size={20} />
+              </button>
+            </div>
           </div>
-          <button
+
+          {/* Send Button */}
+          <button 
             onClick={sendMessage}
             disabled={!newMessage.trim() || !isConnected}
-            className={`p-3 rounded-full transition-colors ${
-              newMessage.trim() && isConnected
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
+            className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm flex-shrink-0"
           >
-            <Send size={24} />
+            <Send size={18} className="text-white ml-0.5" />
           </button>
         </div>
+        
         {!isConnected && (
-          <p className="text-sm text-red-500 mt-3 text-center">
+          <p className="text-sm text-red-500 mt-2 text-center">
             Connecting to chat...
           </p>
         )}

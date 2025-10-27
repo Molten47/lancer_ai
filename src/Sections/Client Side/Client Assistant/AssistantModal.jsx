@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Minimize } from 'lucide-react';
 import AIAssistantChat from './DashboardClient'; // Adjust path as needed
 
 const AssistantModal = ({ isOpen, onClose }) => {
@@ -29,7 +29,7 @@ const AssistantModal = ({ isOpen, onClose }) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-white bg-opacity-50 z-40 transition-opacity"
+        className="fixed inset-0 bg-white opacity-50 z-40 transition-opacity"
         onClick={onClose}
         role="presentation"
       />
@@ -64,9 +64,7 @@ const AssistantModal = ({ isOpen, onClose }) => {
                 title={isMinimized ? 'Expand' : 'Minimize'}
                 aria-label={isMinimized ? 'Expand chat' : 'Minimize chat'}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                </svg>
+               <Minimize/>
               </button>
               <button
                 onClick={onClose}

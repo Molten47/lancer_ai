@@ -118,12 +118,14 @@ const AnalyticsComponent = ({ project = null }) => {
   return (
     <div className="space-y-6">
       {/* Performance Metrics */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-6">Performance Metrics</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+        <div className="p-6 border-b mb-5 border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Performance Metrics</h2>
+          </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Task Completion Rate */}
-          <div>
+          <div className='bg-[#F9FAFB] p-4 rounded-lg' >
             <p className="text-sm text-gray-600 mb-2">Task Completion Rate</p>
             <p className="text-3xl font-bold text-gray-900 mb-3">{metrics.completionRate}%</p>
             <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
@@ -139,14 +141,14 @@ const AnalyticsComponent = ({ project = null }) => {
           </div>
 
           {/* Hours Utilized */}
-          <div>
+          <div className='bg-[#F9FAFB] p-4 rounded-lg'>
             <p className="text-sm text-gray-600 mb-2">Hours Utilized</p>
             <p className="text-3xl font-bold text-gray-900 mb-3">{metrics.totalHours}</p>
             <p className="text-sm text-green-600 font-medium">{metrics.hoursIncrease} from last month</p>
           </div>
 
           {/* Team */}
-          <div>
+          <div className='bg-[#F9FAFB] p-4 rounded-lg'>
             <p className="text-sm text-gray-600 mb-2">Team</p>
             <p className="text-3xl font-bold text-gray-900 mb-3">{metrics.teamCount}</p>
             <div className="flex items-center gap-2">
@@ -249,44 +251,7 @@ const AnalyticsComponent = ({ project = null }) => {
         </div>
       </div>
 
-      {/* Additional Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Avg. Task Duration</p>
-            <Clock size={20} className="text-blue-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{projectData.duration || 3} months</p>
-          <p className="text-xs text-gray-500 mt-1">Per task average</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Active Tasks</p>
-            <BarChart3 size={20} className="text-green-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{metrics.totalTasks - metrics.completedTasks}</p>
-          <p className="text-xs text-gray-500 mt-1">Currently in progress</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Team Efficiency</p>
-            <TrendingUp size={20} className="text-purple-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">94%</p>
-          <p className="text-xs text-green-600 mt-1">+5% from last month</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-medium text-gray-600">Team Size</p>
-            <Users size={20} className="text-orange-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{metrics.teamCount}</p>
-          <p className="text-xs text-gray-500 mt-1">Active members</p>
-        </div>
-      </div>
+     
     </div>
   );
 };

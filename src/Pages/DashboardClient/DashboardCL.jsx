@@ -7,13 +7,13 @@ import { Sidebar, Bell, User, Settings, Home,
 import SideLogo from '../../assets/Images/SVG/Flogo2.svg'
 
 import ProjectManagement from '../../Sections/Client Side/Projects/Projects'
-import ProjectManagers from '../../Sections/Client Side/Projects/ProjectManager'
+//import ProjectManagers from '../../Sections/Client Side/Projects/ProjectManager'
 import AIAssistantChat from '../../Sections/Client Side/Client Assistant/DashboardClient'
 import Notifications from '../Notifications/Notifications'
 //import GroupChatSpace from '../../Sections/Client Side/Projects/Groupchat'
 import AssociatedJobs from '../../Sections/Client Side/Projects/AssociatedJob'
 import Analytics from '../../Sections/Client Side/Projects/Analytics'
-import HumanChat from '../../Sections/Client Side/Projects/IndividualChat'
+//import HumanChat from '../../Sections/Client Side/Projects/IndividualChat'
 import ProjectReport from '../DashboardClient/ProjectReport'
 import ProjectDashboard from '../../Sections/Client Side/Projects/ProjectDashboard'
 import FullProjectDashboard from '../../Sections/Client Side/Projects/Projects' // The full project detail view
@@ -340,8 +340,11 @@ const DashboardCl = () => {
         return <ProjectOverview />;
       case 'project-analytics':
         return <ProjectAnalytics />;
-      case 'pm-agent':
+        {/* 
+          case 'pm-agent':
         return <AgentView />;
+          */}
+      
       case 'group-chat':
         return <MessagesDashboardView />;
       case 'personal-chat':
@@ -361,7 +364,7 @@ const DashboardCl = () => {
     if (selectedProject) return selectedProject.project_title || 'Project Details';
     
     switch(activeView) {
-      case 'pm-agent': return 'PM Agent';
+      //case 'pm-agent': return 'PM Agent';
       case 'dashboard': return 'AI Assistant';
       case 'group-chat': return 'Messages';
       case 'projects': return 'Projects';

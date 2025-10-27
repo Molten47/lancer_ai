@@ -11,9 +11,10 @@ import Interview from './Pages/Interview/Interview';
 import DashboardCl from './Pages/DashboardClient/DashboardCL';
 import DashboardFr from './Pages/DashboardLancer/DashboardFr';
 import LancerTaskPage from './Pages/TaskPage/Taskpage'
-import ThreePanelWorkspace from './Sections/Client Side/Projects/ProjectDashboard';
+import ClientAssistant from './Sections/Client Side/Client Assistant/DashboardClient'
 import Interviewee from './Sections/Freelancer Side/Interview/jobInterview';
 import ProjectDashboard from './Sections/Client Side/Projects/Projects';
+import AssistantModal from './Sections/Client Side/Client Assistant/AssistantModal';
 
 const App = () => {
     const { auth } = useSelector(state => state.user);
@@ -47,9 +48,11 @@ const App = () => {
                         <Route path="/task" element={<LancerTaskPage/>}/>
                         <Route path="/client-dashboard" element={<DashboardCl/>}/>
                         <Route path="/job-interview" element={<Interviewee />} />
-                        <Route path="/workspace" element={<ThreePanelWorkspace />} />
+                        <Route path="/client-assistant" element={<ClientAssistant />} />
+                        <Route path="/assistant-modal" element={<AssistantModal />} />
                         <Route path='/freelancer-dashboard' element={<DashboardFr/>}/>
                         <Route path='/full-project' element={<ProjectDashboard/>}/>
+
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </div>
