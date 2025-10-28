@@ -376,99 +376,113 @@ const calculateTaskCompletion = (jobs) => {
   };
 
   // Tile View Component
-  const TileView = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
-      {filteredProjects.map((project) => (
-        <div key={project.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden w-4/5 flex flex-col">
-          {/* Upper Section - White Background */}
-          <div className="bg-white p-6 border-b border-gray-200">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <div className={`${getIconBgColor(project.icon)} rounded-lg p-3 flex-shrink-0`}>
-                  {renderIcon(project.icon)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate mb-1">{project.title}</h3>
-                  <p className="text-sm text-gray-500 truncate">{project.companyName}</p>
-                </div>
+ const TileView = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {filteredProjects.map((project) => (
+      <div 
+        key={project.id} 
+        className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col h-full"
+      >
+        {/* Upper Section - White Background */}
+        <div className="bg-white p-6 border-b border-gray-200">
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className={`${getIconBgColor(project.icon)} rounded-lg p-3 flex-shrink-0`}>
+                {renderIcon(project.icon)}
               </div>
-              <div className="flex-shrink-0 ml-2">
-                {getStatusBadge(project)}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900 truncate mb-1">
+                  {project.title}
+                </h3>
+                <p className="text-sm text-gray-500 truncate">
+                  {project.companyName}
+                </p>
               </div>
             </div>
-
-            <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-              {project.description}
-            </p>
+            <div className="flex-shrink-0 ml-2">
+              {getStatusBadge(project)}
+            </div>
           </div>
 
-          {/* Lower Section - Gray Background */}
-          <div className="bg-[#F9FAFB] p-6 flex flex-col flex-1">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {project.teamMembers.slice(0, 3).map((member, idx) => (
-                    <div
-                      key={member.id || idx}
-                      className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 border-2 border-white flex items-center justify-center text-white text-xs font-medium"
-                      title={`${member.firstname} ${member.lastname}`}
-                    >
-                      {member.firstname?.[0]?.toUpperCase()}{member.lastname?.[0]?.toUpperCase()}
-                    </div>
-                  ))}
-                  {project.teamMembers.length > 3 && (
-                    <div className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-gray-600 text-xs font-medium">
-                      +{project.teamMembers.length - 3}
-                    </div>
-                  )}
-                  {project.teamMembers.length === 0 && (
-                    <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-gray-400 text-xs">
-                      --
-                    </div>
-                  )}
-                </div>
-                <span className="text-xs text-gray-600">
-                  {project.teamMembers.length} team member{project.teamMembers.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <span className="text-xs text-gray-500">Active {project.lastActivity}</span>
-            </div>
+          <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
+            {project.description}
+          </p>
+        </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="border border-gray-200 bg-white rounded-lg p-3 text-center">
-                <p className="text-xs text-gray-500 mb-2">Budget</p>
-                <p className="font-semibold text-gray-900">${project.budget}</p>
+        {/* Lower Section - Gray Background */}
+        <div className="bg-[#F9FAFB] p-6 flex flex-col flex-1">
+          <div className="flex items-center justify-between mb-6 flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {project.teamMembers.slice(0, 3).map((member, idx) => (
+                  <div
+                    key={member.id || idx}
+                    className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 border-2 border-white flex items-center justify-center text-white text-xs font-medium"
+                    title={`${member.firstname} ${member.lastname}`}
+                  >
+                    {member.firstname?.[0]?.toUpperCase()}
+                    {member.lastname?.[0]?.toUpperCase()}
+                  </div>
+                ))}
+                {project.teamMembers.length > 3 && (
+                  <div className="w-8 h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-gray-600 text-xs font-medium">
+                    +{project.teamMembers.length - 3}
+                  </div>
+                )}
+                {project.teamMembers.length === 0 && (
+                  <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-gray-400 text-xs">
+                    --
+                  </div>
+                )}
               </div>
-              <div className="border border-gray-200 rounded-lg bg-white p-3 text-center">
-                <p className="text-xs text-gray-500 mb-2">Tasks</p>
-                <p className="font-semibold text-gray-900">
-                  {formatTaskNumber(project.tasks.completed)}/{formatTaskNumber(project.tasks.total)}
-                </p>
-              </div>
-              <div className="border border-gray-200 bg-white rounded-lg p-3 text-center">
-                <p className="text-xs text-gray-500 mb-2">Due Date</p>
-                <p className="font-semibold text-gray-900 text-xs">
-                  {project.dueDate.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
+              <span className="text-xs text-gray-600 whitespace-nowrap">
+                {project.teamMembers.length} team member
+                {project.teamMembers.length !== 1 ? 's' : ''}
+              </span>
             </div>
+            <span className="text-xs text-gray-500 whitespace-nowrap">
+              Active {project.lastActivity}
+            </span>
+          </div>
 
-            <div className="flex justify-end mt-auto">
-              <button 
-                onClick={() => onSelectProject(project.rawProject)}
-                className="px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
-              >
-                View Details
-              </button>
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="border border-gray-200 bg-white rounded-lg p-3 text-center min-w-0">
+              <p className="text-xs text-gray-500 mb-2">Budget</p>
+              <p className="font-semibold text-gray-900 text-sm break-words">
+                ${project.budget}
+              </p>
             </div>
+            <div className="border border-gray-200 rounded-lg bg-white p-3 text-center min-w-0">
+              <p className="text-xs text-gray-500 mb-2">Tasks</p>
+              <p className="font-semibold text-gray-900 text-sm">
+                {formatTaskNumber(project.tasks.completed)}/
+                {formatTaskNumber(project.tasks.total)}
+              </p>
+            </div>
+            <div className="border border-gray-200 bg-white rounded-lg p-3 text-center min-w-0">
+              <p className="text-xs text-gray-500 mb-2">Due Date</p>
+              <p className="font-semibold text-gray-900 text-xs break-words">
+                {project.dueDate.toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end mt-auto">
+            <button 
+              onClick={() => onSelectProject(project.rawProject)}
+              className="px-6 py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm w-full sm:w-auto"
+            >
+              View Details
+            </button>
           </div>
         </div>
-      ))}
-    </div>
-  );
+      </div>
+    ))}
+  </div>
+);
 
   // Line View Component
   const LineView = () => (

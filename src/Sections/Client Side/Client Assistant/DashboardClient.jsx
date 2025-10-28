@@ -16,12 +16,15 @@ const AIAssistantChat = ({
   assistantName = 'Client Assistant',
   assistantAvatar = 'AI',
   className = '',
-  onMessageSent
+  onMessageSent,
+  onClose,
+  onMinimize
 }) => {
   const navigate = useNavigate();
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -436,7 +439,7 @@ const AIAssistantChat = ({
         case 'interview_complete':
           setInterviewComplete(true);
           clearLoadingStates();
-          markLastStatusComplete(); // ✅ NEW
+          markLastStatusComplete();
           setStatusMessage('Chat session completed!');
           break;
         case 'next_question':
@@ -445,7 +448,7 @@ const AIAssistantChat = ({
         case 'error':
           setSocketError(instructionData?.message || 'An error occurred');
           clearLoadingStates();
-          markLastStatusComplete(); // ✅ NEW
+          markLastStatusComplete();
           break;
         case 'redirect':
           if (instructionData?.url) {
@@ -475,8 +478,8 @@ const AIAssistantChat = ({
           sender: 'System',
           sender_id: 'status', 
           isStatus: true,
-          isComplete: false, // ✅ NEW: Starts as incomplete
-          startedAt: new Date().toISOString() // ✅ NEW
+          isComplete: false,
+          startedAt: new Date().toISOString()
         };
         setMessages(prev => [...prev, statusMessage]);
       }
@@ -489,7 +492,7 @@ const AIAssistantChat = ({
       if (type === 'error') {
         setSocketError(message);
         clearLoadingStates();
-        markLastStatusComplete(); // ✅ NEW
+        markLastStatusComplete();
       }
       if (callback && typeof callback === 'function') callback();
     });
@@ -513,6 +516,26 @@ const AIAssistantChat = ({
 
   const removeAttachment = (index) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      // Default behavior: navigate back or close window
+      if (window.history.length > 1) {
+        navigate(-1);
+      } else {
+        window.close();
+      }
+    }
+  };
+
+  const handleMinimize = () => {
+    setIsMinimized(!isMinimized);
+    if (onMinimize) {
+      onMinimize(!isMinimized);
+    }
   };
 
   useEffect(() => {
@@ -670,7 +693,7 @@ const AIAssistantChat = ({
   }
 
   return (
-    <div className={`flex flex-col h-full bg-white ${className} third-font pt-12`}>
+    <div className={`flex flex-col h-full bg-white ${className} third-font pt-12 ${isMinimized ? 'hidden' : ''}`}>
       {/* Chat Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-primary">
         <div className="flex items-center gap-3">
@@ -682,10 +705,18 @@ const AIAssistantChat = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="p-2 text-white hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100">
+          <button 
+            onClick={handleMinimize}
+            className="p-2 text-white hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+            title="Minimize"
+          >
             <Minimize size={20} />
           </button>
-          <button className="p-2 text-white hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100">
+          <button 
+            onClick={handleClose}
+            className="p-2 text-white hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+            title="Close"
+          >
             <X size={20} />
           </button>
         </div>
@@ -708,7 +739,7 @@ const AIAssistantChat = ({
             const isFromCurrentUser = message.type === 'user';
             const isAIMessage = message.type === 'ai';
 
-            {/* ✅ UPDATED: Enhanced status message with spinner/checkmark */}
+            {/* Status message with spinner/checkmark */}
             if (message.isStatus) {
               return (
                 <div key={message.id} className="flex items-start gap-3 px-2 py-2 my-3">
@@ -906,7 +937,7 @@ const AIAssistantChat = ({
         )}
       </div>
 
-      {/* ✅ NEW: CSS for progress bar animation */}
+      {/* CSS for progress bar animation */}
       <style>{`
         @keyframes progress {
           0% {
