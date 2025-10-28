@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 // Lazy load chat components
-const GroupChat = lazy(() => import('./GroupChat'));
+const GroupChat = lazy(() => import('./GroupChatMessage'));
 const ProjectManager = lazy(() => import('./ProjectManager'));
 const DirectMessageChat = lazy(() => import('./DirectMessageChat')); 
 
