@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Search, Plus, MessageCircle } from 'lucide-react'; // Added MessageCircle icon
 
 // NOTE: You must ensure the path to your P2PChatComponent is correct
-import P2PChatComponent from '../../Client Side/Projects/IndividualChat'; // Adjust path as needed
+//import P2PChatComponent from './DirectMessagesChat'; // Adjust path as needed
 
 // --- LOGGED IN USER ID (Placeholder for the client's ID) ---
 const own_id = localStorage.getItem('own_id'); 

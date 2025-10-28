@@ -16,7 +16,7 @@ import {
 // Lazy load chat components
 const GroupChat = lazy(() => import('./GroupChat'));
 const ProjectManager = lazy(() => import('./ProjectManager'));
-const DirectMessageChat = lazy(() => import('./IndividualChat')); 
+const DirectMessageChat = lazy(() => import('./DirectMessagesChat')); 
 
 const MessagesComponent = ({ project = null, userId = null, projectId: propProjectId = null, clientId: propClientId = null }) => {
   const [projectData, setProjectData] = useState(null);
