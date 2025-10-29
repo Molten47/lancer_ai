@@ -414,7 +414,7 @@ const AIAssistantChat = ({
         id: Date.now(),
         type: messageType,
         content: message_content,
-        timestamp: new Date(),
+        timestamp: serverTimestamp ? new Date(serverTimestamp) : new Date(),
         sender: senderName,
         sender_id: socket_sender_id,
         recipient_id: recipient_id,
