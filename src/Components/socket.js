@@ -114,6 +114,7 @@ const setupBaseHandlers = () => {
   socket.removeAllListeners('reconnect');
   socket.removeAllListeners('joined');
   socket.removeAllListeners('join_error');
+  socket.removeAllListeners('reconnecting');
 
   socket.on('connect', () => {
     console.log('✅ Connected to server:', socket.id);
@@ -143,16 +144,25 @@ const setupBaseHandlers = () => {
     connectionPromise = null;
   });
 
-  socket.on('reconnect', () => {
+    socket.on('reconnecting', () => {
+        console.log('🔌 Reconnection attempt started...');
+        isConnecting = true; // Crucial: Set this flag
+        isConnected = false;
+        userJoined = false;
+    });
+
+
+socket.on('reconnect', () => {
     console.log('🔄 Reconnected to server');
     isConnected = true;
-    userJoined = false;
-    isConnecting = false;
+    isConnecting = false; // Connection is successful
+    userJoined = false; // Must rejoin room
     
+    // CRITICAL: Call the room join process immediately after reconnect
     setTimeout(() => {
-      joinUserRoom();
+        joinUserRoom(); // This MUST be the promise-based version
     }, 100);
-  });
+});
 
   socket.on('joined', (data) => {
     console.log('✅ Successfully joined room (server confirmation):', data);

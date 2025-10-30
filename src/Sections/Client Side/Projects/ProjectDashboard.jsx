@@ -379,17 +379,18 @@ const calculateTaskCompletion = (jobs) => {
 
 const TileView = () => (
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+    {/*Project cards*/}
     {filteredProjects.map((project) => (
       <div 
         key={project.id} 
-        className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden flex flex-col h-full"
+        className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 mb-6"
       >
-        {/* Upper Section - White Background */}
+        {/* Upper Section with  White Background */}
         <div className="bg-white p-3 sm:p-4 lg:p-6 border-b border-gray-200">
-          <div className="flex items-start justify-between mb-2 sm:mb-3 gap-2">
+          <div className="flex items-start  mb-2 sm:mb-3 gap-2">
             <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-              <div className={`${getIconBgColor(project.icon)} rounded-lg p-2 sm:p-2.5 lg:p-3 flex-shrink-0`}>
-                <div className="w-5 h-5 sm:w-6 sm:h-6">
+              <div className={`${getIconBgColor(project.icon)} rounded-lg  p-2 sm:p-2.5 lg:p-3 flex-shrink-0`}>
+                <div className="w-3 h-3 sm:w-4 sm:h-4 items-center flex">
                   {renderIcon(project.icon)}
                 </div>
               </div>
@@ -474,10 +475,10 @@ const TileView = () => (
           </div>
 
           {/* Action Button */}
-          <div className="mt-auto">
+          <div className="flex gap-4 justify-end">
             <button 
               onClick={() => onSelectProject(project.rawProject)}
-              className="w-full px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-xs sm:text-sm"
+              className="px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-xs sm:text-sm"
             >
               View Details
             </button>
@@ -688,8 +689,8 @@ if (projectsData.length === 0) {
 }
 
   return (
-    <div className="w-full min-h-full bg-[#F9FAFB] overflow-y-auto relative pb-24">
-      <div className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6">
+    <div className="w-full bg-[#F9FAFB] overflow-y-auto third-font h-full ">
+      <div className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 pb-24">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 md:mb-6 gap-3">
           <div>

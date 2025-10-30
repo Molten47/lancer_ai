@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Loader2, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import socket from '../../../Components/socket';
+import socket, { isSocketConnected, hasJoinedRoom, isSocketConnecting } from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
 
 const STATUS_MESSAGE_MAP = {
@@ -24,7 +24,8 @@ const ProjectManager = ({
   const navigate = useNavigate();
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(socket.connected);
+ const [isConnected, setIsConnected] = useState(isSocketConnected());
+ const [isConnecting, setIsConnecting] = useState(isSocketConnecting());
   const own_id = userId || localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -289,26 +290,55 @@ const sortMessages = (messagesArray) => {
 
   // Setup socket listeners function
   const setupSocketListeners = () => {
-    console.log('Setting up socket listeners...');
+console.log('Setting up socket listeners...');
     setIsConnected(socket.connected);
     
     socket.on('connect', () => {
-      console.log('Socket connected');
+      console.log('Socket connected (Initial)');
       setIsConnected(true);
+      setIsConnecting(false); // New: Clear connecting state
       setSocketError('');
     });
 
+    // 🛑 CRITICAL FIX 1: Listen for the RECONNECT event
+    socket.on('reconnect', (attemptNumber) => {
+      console.log(`Socket reconnected after ${attemptNumber} attempts!`);
+      setIsConnected(true);
+      setIsConnecting(false); // Clear connecting state
+      setSocketError('');
+      
+      // 🛑 CRITICAL FIX 2: Re-run initialization logic after successful reconnect
+      // This is often needed if the room join process happens on connect/reconnect
+      const recipientId = dynamicRecipientIdRef.current;
+      if (recipientId) {
+          console.log('Re-initializing chat history after reconnect...');
+          initializeChat(recipientId); // Load fresh history
+      }
+    });
+
+    // 🛑 CRITICAL FIX 3: Listen for the RECONNECTING event
+    socket.on('reconnecting', (attemptNumber) => {
+      console.log(`Socket trying to reconnect (Attempt ${attemptNumber})...`);
+      setIsConnected(false);
+      setIsConnecting(true); // Set connecting state
+      setSocketError(''); // Clear error while attempting to reconnect
+    });
+    
     socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
       setIsConnected(false);
+      // Do NOT set socketError here, let 'reconnect_error' handle failure, 
+      // and 'reconnecting' handle the retry status.
       clearLoadingStates();
     });
 
     socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
       setIsConnected(false);
+      setIsConnecting(false); // Connection attempt failed definitively
       clearLoadingStates();
-      setSocketError('Connection error. Please try refreshing the page.');
+      // Use the generic 'Connection Error.' or a more specific message
+      setSocketError('Connection Error. Please check your network and refresh.');
     });
 
     // ✅ UPDATED: new_message listener with status completion
@@ -481,11 +511,16 @@ const sortMessages = (messagesArray) => {
     socket.off('notification');
   };
 
-  useEffect(() => {
-    return () => {
-    
-    };
-  }, []);
+ useEffect(() => {
+    const interval = setInterval(() => {
+        // Update all derived states
+        setIsConnected(isSocketConnected());
+        //setIsRoomJoined(hasJoinedRoom()); 
+        setIsConnecting(isSocketConnecting()); // <-- Update the new state
+    }, 500);
+
+    return () => clearInterval(interval);
+}, []);
 
   useEffect(() => {
     if (!projectId) {
@@ -744,7 +779,7 @@ const sortMessages = (messagesArray) => {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="What do you want to get done?"
-              disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId}
+              disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId || !!socketError}
               className="w-full px-6 py-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all text-sm resize-none"
               minRows={1}
               maxRows={6}
@@ -760,7 +795,7 @@ const sortMessages = (messagesArray) => {
           </div>
           <button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId}
+            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId ||!!socketError}
             className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md flex-shrink-0"
           >
             {isLoadingAnswer ? (
@@ -770,14 +805,27 @@ const sortMessages = (messagesArray) => {
             )}
           </button>
         </div>
-        {/* Connection Status */}
-        {!isConnected && (
-          <div className="flex justify-center mt-3">
-            <div className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-medium">
-              Connection lost. Trying to reconnect...
+    
+{socketError && (
+  <div className="p-4 bg-white border-t border-gray-200">
+    <div className="flex justify-center">
+      <div className="px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">
+        {socketError} {/* Display the actual error message */}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Check 2: Show active status only if no hard error */}
+{!socketError && !isConnected && isConnecting && ( // Only show this if no hard error, not connected, but IS trying
+    <div className="p-4 bg-white border-t border-gray-200">
+        <div className="flex justify-center">
+            <div className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600">
+                Connection lost. Trying to reconnect...
             </div>
-          </div>
-        )}
+        </div>
+    </div>
+)}
       </div>
     </div>
   );

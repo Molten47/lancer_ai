@@ -377,7 +377,7 @@ const DashboardCl = () => {
   }
 
   return (
-    <div className="flex w-full h-screen overflow-hidden bg-white basic-font">
+    <div className="flex w-full h-screen overflow-hidden bg-white third-font">
       {/* Overlay for mobile sidebar */}
       {isMobile && isSidebarOpen && (
         <div 

@@ -17,8 +17,7 @@ const useAuthService = () => {
     localStorage.setItem('refresh_jwt', refreshJwt);
     setIsAuthenticated(true);
     
-    // REMOVED: Socket initialization - let App.jsx handle it via Redux state change
-    // The socket will be initialized automatically when App.jsx detects auth state change
+   
   };
 
   const clearTokens = () => {
