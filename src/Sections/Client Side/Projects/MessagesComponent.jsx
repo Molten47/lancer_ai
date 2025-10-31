@@ -248,7 +248,7 @@ const MessagesComponent = ({ project = null, userId = null, projectId: propProje
 
   return (
     <div className="space-y-6 pt-5">
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ height: '600px' }}>
+      <div className="bg-white rounded-xl shadow-sm overflow-y-scroll" style={{ height: '600px' }}>
         <div className="flex h-full">
           {/* Left Sidebar */}
           <div className="w-80 border-r border-gray-200 flex flex-col">

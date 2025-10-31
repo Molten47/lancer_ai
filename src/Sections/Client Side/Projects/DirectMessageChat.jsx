@@ -346,7 +346,7 @@ console.log('🎯 Message routing check:', {
   };
 
   return (
-  <div className="flex flex-col h-screen w-full bg-white">
+  <div className="flex flex-col h-screen overflow-y-auto w-full bg-white">
       {/* Chat Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-[#E5E7EB] flex-shrink-0">
         <div className="flex items-center space-x-3">

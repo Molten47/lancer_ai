@@ -313,7 +313,7 @@ const MessagesComponent = ({ userId = null }) => {
 
   return (
     <div className="space-y-6 pt-5">
-      <div className="bg-white rounded-xl third-font shadow-sm overflow-hidden" style={{ height: '600px' }}>
+      <div className="bg-white rounded-xl third-font shadow-sm overflow-y-auto" style={{ height: '600px' }}>
         <div className="flex h-full">
           {/* Left Sidebar */}
           <div className="w-80 border-r border-gray-200 flex flex-col bg-white">

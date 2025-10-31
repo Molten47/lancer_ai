@@ -83,7 +83,7 @@ const MessageView = () => {
   const isConversationListEmpty = conversations.length === 0;
 
   return (
-    <div className="flex h-full w-full bg-white overflow-hidden">
+    <div className="flex h-full w-full bg-white overflow-y-auto">
       
       {/* Conversation List Sidebar (Left Pane) */}
       <div className="w-full sm:w-1/3 min-w-[280px] border-r border-gray-200 flex flex-col h-full overflow-hidden">
