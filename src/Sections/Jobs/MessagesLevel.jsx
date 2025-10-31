@@ -247,7 +247,8 @@ const MessagesComponent = ({ userId = null }) => {
       isPotentialHire: false, 
       hasUnreadRequest: false, 
       unreadCount: 0,
-      timestamp: 'Just now'
+      timestamp: 'Just now',
+      initialMessage: request.lastMessage 
     };
     setConversations(prev => [...prev, acceptedConversation]);
     setSelectedConversation(acceptedConversation);
@@ -522,13 +523,14 @@ const MessagesComponent = ({ userId = null }) => {
                     </div>
                   </div>
                 }>
-                  <DirectMessageChat
-                    ownId={currentUserId}
-                    recipientId={selectedConversation.recipientId}
-                    recipientName={selectedConversation.recipientName}
-                    chatType="human"
-                    className="h-full"
-                  />
+                <DirectMessageChat
+                  ownId={currentUserId}
+                  recipientId={selectedConversation.recipientId}
+                  recipientName={selectedConversation.recipientName}
+                  chatType="human"
+                  className="h-full"
+                  initialMessage={selectedConversation.lastMessage} // ✅ Pass the initial message
+                />
                 </Suspense>
               </div>
             )

@@ -13,7 +13,8 @@ const P2PChatComponent = ({
   ownId, 
   recipientId, 
   recipientName,
-  chatType = "human" 
+  chatType = "human",
+  initialMessage = null
 }) => {
 
   console.log('🚀 P2PChatComponent loaded with props:', {
@@ -54,89 +55,129 @@ const P2PChatComponent = ({
       note: "Users communicate through their individual rooms"
     });
 
-    const initializeChat = async () => {
-      try {
-        // Fetch existing messages from the /chat endpoint
-        const token = localStorage.getItem('access_jwt');
-        const API_URL = getAPIUrl();
+  const initializeChat = async () => {
+  try {
+    // Fetch existing messages from the /chat endpoint
+    const token = localStorage.getItem('access_jwt');
+    const API_URL = getAPIUrl();
 
-        const response = await fetch(
-          `${API_URL}/api/chat?chat_type=${chatType}&own_id=${ownId}&recipient_id=${recipientId}`,
-          {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        if (response.ok) {
-          const chatData = await response.json();
-          console.log('📦 Full API Response:', chatData); 
-          if (chatData.messages) {
-            // Normalize message data when loading from history
-            const normalizedMessages = chatData.messages.map(msg => {
-              console.log('📩 Raw message from API:', {
-                id: msg.id,
-                sender_id: msg.sender_id,
-                sender: msg.sender,
-                own_id: msg.own_id,
-                recipient_id: msg.recipient_id,
-                recipient: msg.recipient,
-                timestamp: msg.timestamp,
-                created_at: msg.created_at,
-                message_content: msg.message_content,
-                allKeys: Object.keys(msg)
-              });
-
-              let actualSender;
-              if (msg.sender_id) {
-                actualSender = normalizeId(msg.sender_id);
-              } else if (msg.sender) {
-                actualSender = normalizeId(msg.sender);
-              } else if (msg.from_user_id) {
-                actualSender = normalizeId(msg.from_user_id);
-              } else if (msg.from) {
-                actualSender = normalizeId(msg.from);
-              } else {
-                actualSender = normalizeId(msg.own_id);
-              }
-
-              return {
-                id: msg.id || msg.message_id || Date.now(),
-                text: msg.text || msg.message || msg.content || msg.message_content,
-                sender: actualSender,
-                recipient: normalizeId(msg.recipient || msg.to || msg.recipient_id || msg.to_user_id),
-                timestamp: msg.timestamp || msg.created_at || new Date().toISOString(),
-                delivered: true
-              };
-            });
-            
-            console.log('📋 Loaded messages from history:', normalizedMessages.map(m => ({
-              id: m.id,
-              sender: m.sender,
-              recipient: m.recipient,
-              text: m.text.substring(0, 30)
-            })));
-            
-            setMessages(normalizedMessages);
-          }
-        } else {
-          console.warn('Failed to fetch chat history:', response.status);
+    const response = await fetch(
+      `${API_URL}/api/chat?chat_type=${chatType}&own_id=${ownId}&recipient_id=${recipientId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-
-        // Use existing socket connection
-        const connectionStatus = getConnectionStatus();
-        setIsConnected(connectionStatus.isConnected);
-
-        setIsInitialized(true);
-
-      } catch (error) {
-        console.error('Error initializing chat:', error);
-        setIsInitialized(true);
       }
-    };
+    );
+    
+    if (response.ok) {
+      const chatData = await response.json();
+      console.log('📦 Full API Response:', chatData); 
+      
+      if (chatData.messages && chatData.messages.length > 0) {
+        // Normalize message data when loading from history
+        const normalizedMessages = chatData.messages.map(msg => {
+          console.log('📩 Raw message from API:', {
+            id: msg.id,
+            sender_id: msg.sender_id,
+            sender: msg.sender,
+            own_id: msg.own_id,
+            recipient_id: msg.recipient_id,
+            recipient: msg.recipient,
+            timestamp: msg.timestamp,
+            created_at: msg.created_at,
+            message_content: msg.message_content,
+            allKeys: Object.keys(msg)
+          });
+
+          let actualSender;
+          if (msg.sender_id) {
+            actualSender = normalizeId(msg.sender_id);
+          } else if (msg.sender) {
+            actualSender = normalizeId(msg.sender);
+          } else if (msg.from_user_id) {
+            actualSender = normalizeId(msg.from_user_id);
+          } else if (msg.from) {
+            actualSender = normalizeId(msg.from);
+          } else {
+            actualSender = normalizeId(msg.own_id);
+          }
+
+          return {
+            id: msg.id || msg.message_id || Date.now(),
+            text: msg.text || msg.message || msg.content || msg.message_content,
+            sender: actualSender,
+            recipient: normalizeId(msg.recipient || msg.to || msg.recipient_id || msg.to_user_id),
+            timestamp: msg.timestamp || msg.created_at || new Date().toISOString(),
+            delivered: true
+          };
+        });
+        
+        console.log('📋 Loaded messages from history:', normalizedMessages.map(m => ({
+          id: m.id,
+          sender: m.sender,
+          recipient: m.recipient,
+          text: m.text.substring(0, 30)
+        })));
+        
+        setMessages(normalizedMessages);
+      } else if (initialMessage) {
+        // ✅ FIXED: Response successful but no messages in DB, use initialMessage
+        console.log('💬 No messages in history, using initial message from request');
+        const initialMsg = {
+          id: Date.now(),
+          text: initialMessage,
+          sender: normalizeId(recipientId), // Message is from the recipient
+          recipient: normalizeId(ownId),
+          timestamp: new Date().toISOString(),
+          delivered: true
+        };
+        setMessages([initialMsg]);
+      }
+    } else if (initialMessage) {
+      // Response failed, but we have initial message
+      console.log('⚠️ API request failed, using initial message from request');
+      const initialMsg = {
+        id: Date.now(),
+        text: initialMessage,
+        sender: normalizeId(recipientId),
+        recipient: normalizeId(ownId),
+        timestamp: new Date().toISOString(),
+        delivered: true
+      };
+      setMessages([initialMsg]);
+    } else {
+      console.warn('Failed to fetch chat history:', response.status);
+    }
+
+    // Use existing socket connection
+    const connectionStatus = getConnectionStatus();
+    setIsConnected(connectionStatus.isConnected);
+
+    setIsInitialized(true);
+
+  } catch (error) {
+    console.error('Error initializing chat:', error);
+    
+    // If there's an error but we have initialMessage, still show it
+    if (initialMessage) {
+      console.log('💬 Error occurred but using initial message from request');
+      const initialMsg = {
+        id: Date.now(),
+        text: initialMessage,
+        sender: normalizeId(recipientId),
+        recipient: normalizeId(ownId),
+        timestamp: new Date().toISOString(),
+        delivered: true
+      };
+      setMessages([initialMsg]);
+    }
+    
+    setIsInitialized(true);
+  }
+};
 
     initializeChat();
 
