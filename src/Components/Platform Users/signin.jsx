@@ -126,7 +126,7 @@ dispatch(setAuthData({
       }
 
       // Store tokens using the auth service
-      setTokens(accessJwt, refreshJwt);
+      setTokens(accessJwt, refreshJwt, userId);
 
       // Store user data in localStorage with error handling
       try {

@@ -1,23 +1,57 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { clearAuthData } from '../store/userSlice';
-// REMOVED: Don't import initializeSocket here - App.jsx handles it
-
+import { clearAuthData, setAuthData } from '../store/userSlice';
 
 const useAuthService = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!(localStorage.getItem('access_jwt') || localStorage.getItem('access_token'))
   );
 
-  const setTokens = (accessJwt, refreshJwt) => {
+  // FIXED: Helper to sync localStorage with Redux
+  const syncAuthToRedux = () => {
+    const accessToken = localStorage.getItem('access_jwt') || localStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_jwt') || localStorage.getItem('refresh_token');
+    const userId = localStorage.getItem('user_id');
+
+    if (accessToken && userId) {
+      dispatch(setAuthData({
+        user_id: userId,
+        tokens: {
+          access: accessToken,
+          refresh: refreshToken
+        },
+        isAuthenticated: true
+      }));
+      setIsAuthenticated(true);
+    }
+  };
+
+  const setTokens = (accessJwt, refreshJwt, userId = null) => {
     localStorage.setItem('access_jwt', accessJwt);
     localStorage.setItem('refresh_jwt', refreshJwt);
+    
+    // FIXED: If userId provided, store it
+    if (userId) {
+      localStorage.setItem('user_id', userId);
+    }
+    
     setIsAuthenticated(true);
     
-   
+    // CRITICAL: Update Redux immediately
+    const storedUserId = userId || localStorage.getItem('user_id');
+    if (storedUserId) {
+      dispatch(setAuthData({
+        user_id: storedUserId,
+        tokens: {
+          access: accessJwt,
+          refresh: refreshJwt
+        },
+        isAuthenticated: true
+      }));
+    }
   };
 
   const clearTokens = () => {
@@ -32,8 +66,7 @@ const useAuthService = () => {
     localStorage.removeItem('showSignupSuccess');
     localStorage.removeItem('fromProfileSetup');
 
-
-    //State to clear Redux auth state
+    // Clear Redux auth state
     dispatch(clearAuthData());
 
     setIsAuthenticated(false);
@@ -67,7 +100,9 @@ const useAuthService = () => {
 
       const newAccessToken = data.access_jwt || data.access_token;
       const newRefreshToken = data.refresh_jwt || data.refresh_token || refreshToken;
-      setTokens(newAccessToken, newRefreshToken);
+      const userId = data.user_id || localStorage.getItem('user_id');
+      
+      setTokens(newAccessToken, newRefreshToken, userId);
       return newAccessToken;
     } catch (error) {
       console.error('Refresh token error:', error);
@@ -111,6 +146,7 @@ const useAuthService = () => {
     isAuthenticated,
     makeAuthenticatedRequest,
     refreshAccessToken,
+    syncAuthToRedux  // EXPORT this for App.js to use
   };
 };
 
