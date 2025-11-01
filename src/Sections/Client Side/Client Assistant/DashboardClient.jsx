@@ -467,7 +467,14 @@ const AIAssistantChat = ({
         // ✅ NEW: Mark previous status as complete before adding new one
         markLastStatusComplete();
         
-        const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
+        const customMessage = STATUS_MESSAGE_MAP[data.update]
+
+      if (!customMessage) {
+      console.log('Ignoring unmapped status:', data.update);
+      if (callback && typeof callback === 'function') callback();
+      return;
+    }
+    
         setStatusMessage(customMessage);
         
         const statusMessage = {

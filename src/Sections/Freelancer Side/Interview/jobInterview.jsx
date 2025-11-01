@@ -547,7 +547,7 @@ const JobInterview = () => {
 
   // Main interface
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-green-50 to-white flex justify-center py-12">
+    <div className="w-full min-h-screen bg-gradient-to-b from-green-50 to-white flex justify-center py-12 third-font">
       <div className="w-full max-w-6xl flex flex-col rounded-xl overflow-hidden shadow-xl">
         {/* Header */}
         <div className="bg-green-600 text-white rounded-t-xl px-8 py-6 border-b border-gray-200">

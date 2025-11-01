@@ -24,8 +24,8 @@ const ProjectManager = ({
   const navigate = useNavigate();
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
- const [isConnected, setIsConnected] = useState(isSocketConnected());
- const [isConnecting, setIsConnecting] = useState(isSocketConnecting());
+  const [isConnected, setIsConnected] = useState(isSocketConnected());
+  const [isConnecting, setIsConnecting] = useState(isSocketConnecting());
   const own_id = userId || localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -37,20 +37,45 @@ const ProjectManager = ({
   const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
   const dynamicRecipientIdRef = useRef(null);
   const ownIdRef = useRef(own_id);
-  const [dynamicRecipientId, setDynamicRecipientId] = useState(null);
+  const [dynamicRecipientId, setDynamicRecipientIdState] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [userName, setUserName] = useState('You');
-
   
+  // 🔧 FIX: Race condition prevention refs
+  const messageSequenceRef = useRef(0);
+  const pendingStatusRef = useRef(false);
+  const initializingRef = useRef(false);
+  const processedMessageIdsRef = useRef(new Set());
 
-  // ✅ NEW: Helper function to mark last status message as complete
+  // 🔧 FIX: Synchronized state setter for dynamicRecipientId
+  const setDynamicRecipientId = (value) => {
+    dynamicRecipientIdRef.current = value;
+    setDynamicRecipientIdState(value);
+  };
+
+  // 🔧 FIX: Improved message ID generation
+  const generateMessageId = (prefix = 'msg') => {
+    return `${prefix}-${Date.now()}-${++messageSequenceRef.current}-${Math.random().toString(36).substr(2, 9)}`;
+  };
+
+  // 🔧 FIX: Enhanced status completion with race prevention
   const markLastStatusComplete = () => {
+    if (pendingStatusRef.current) {
+      console.log('⚠️ Status completion already in progress, skipping');
+      return;
+    }
+    
+    pendingStatusRef.current = true;
+    
     setMessages(prev => {
       const statusIndices = prev
         .map((msg, idx) => msg.isStatus && !msg.isComplete ? idx : -1)
         .filter(idx => idx !== -1);
       
-      if (statusIndices.length === 0) return prev;
+      if (statusIndices.length === 0) {
+        pendingStatusRef.current = false;
+        return prev;
+      }
       
       const lastStatusIndex = statusIndices[statusIndices.length - 1];
       const updated = [...prev];
@@ -59,6 +84,11 @@ const ProjectManager = ({
         isComplete: true,
         completedAt: new Date().toISOString()
       };
+      
+      // Reset flag after state update is queued
+      queueMicrotask(() => {
+        pendingStatusRef.current = false;
+      });
       
       return updated;
     });
@@ -92,7 +122,7 @@ const ProjectManager = ({
       };
     }
 
-    if (senderStr !== 'undefined' && (senderStr === dynamicRecipientId || senderStr.includes('project_manager'))) {
+    if (senderStr !== 'undefined' && (senderStr === dynamicRecipientIdRef.current || senderStr.includes('project_manager'))) {
       return {
         type: 'ai',
         sender: assistantName
@@ -107,14 +137,14 @@ const ProjectManager = ({
     }
 
     if (recipientStr !== 'undefined' && senderStr !== 'undefined') {
-      if (recipientStr === currentUserStr && (senderStr === dynamicRecipientId || senderStr.includes('project_manager'))) {
+      if (recipientStr === currentUserStr && (senderStr === dynamicRecipientIdRef.current || senderStr.includes('project_manager'))) {
         return {
           type: 'ai',
           sender: assistantName
         };
       }
 
-      if ((recipientStr === dynamicRecipientId || recipientStr.includes('project_manager')) && senderStr === currentUserStr) {
+      if ((recipientStr === dynamicRecipientIdRef.current || recipientStr.includes('project_manager')) && senderStr === currentUserStr) {
         return {
           type: 'user',
           sender: userName
@@ -128,7 +158,7 @@ const ProjectManager = ({
       senderTag,
       senderStr,
       recipientStr,
-      dynamicRecipientId
+      dynamicRecipientId: dynamicRecipientIdRef.current
     });
 
     const content = messageData.message_content || messageData.content || '';
@@ -159,30 +189,40 @@ const ProjectManager = ({
     setIsLoadingAnswer(false);
     setIsWaitingForResponse(false);
     setStatusMessage('');
-    
- 
   };
 
-  
-const sortMessages = (messagesArray) => {
-  return messagesArray.sort((a, b) => {
-    const timeA = new Date(a.timestamp).getTime();
-    const timeB = new Date(b.timestamp).getTime();
-    
-    // Sort by timestamp. If timestamps are equal, sort by ID to ensure stability.
-    if (timeA === timeB) {
-        return a.id > b.id ? 1 : a.id < b.id ? -1 : 0;
+  // 🔧 FIX: Enhanced sorting with sequence numbers for stability
+  const sortMessages = (messagesArray) => {
+    return messagesArray.sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      
+      // Sort by timestamp first
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      
+      // If timestamps are equal, sort by sequence number for stability
+      const seqA = a.sequence || 0;
+      const seqB = b.sequence || 0;
+      if (seqA !== seqB) {
+        return seqA - seqB;
+      }
+      
+      // Fallback to ID comparison for absolute stability
+      return a.id > b.id ? 1 : a.id < b.id ? -1 : 0;
+    });
+  };
+
+  // 🔧 FIX: Protected chat initialization with race prevention
+  const initializeChat = async (recipientId) => {
+    if (initializingRef.current) {
+      console.log('⚠️ Chat initialization already in progress');
+      return false;
     }
     
-    return timeA - timeB;
-  });
-};
-
-
-
-
-  // Chat Initialization with proper message type detection
-  const initializeChat = async (recipientId) => {
+    initializingRef.current = true;
+    
     try {
       setIsLoadingQuestion(true);
       setStatusMessage('Loading chat history...');
@@ -232,6 +272,9 @@ const sortMessages = (messagesArray) => {
       if (chatData.message_history && Array.isArray(chatData.message_history)) {
         const currentUserId = own_id || localStorage.getItem('user_id');
         
+        // 🔧 FIX: Clear processed message IDs when loading history
+        processedMessageIdsRef.current.clear();
+        
         const formattedMessages = chatData.message_history.map((msg, index) => {
           const { type: messageType, sender: senderName } = determineMessageType({
             sender_id: msg.sender_id,
@@ -241,27 +284,33 @@ const sortMessages = (messagesArray) => {
             message_content: msg.message_content
           }, currentUserId);
           
+          const messageId = msg.id || generateMessageId('history');
+          
+          // 🔧 FIX: Track processed messages
+          processedMessageIdsRef.current.add(messageId);
+          
           return {
-            id: msg.id || `history-${index}`,
+            id: messageId,
             type: messageType,
             content: msg.message_content,
             timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
             sender: senderName,
             sender_id: msg.sender_id,
             recipient_id: msg.recipient_id,
+            sequence: ++messageSequenceRef.current,
             isStatus: false
           };
         });
         
-        formattedMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const sortedMessages = sortMessages(formattedMessages);
         
-        console.log('Processed PM message history:', formattedMessages.map(m => ({ 
+        console.log('Processed PM message history:', sortedMessages.map(m => ({ 
           type: m.type, 
           sender: m.sender, 
           content_preview: m.content.substring(0, 50) 
         })));
         
-        setMessages(formattedMessages);
+        setMessages(sortedMessages);
       }
 
       setIsLoadingQuestion(false);
@@ -285,67 +334,67 @@ const sortMessages = (messagesArray) => {
         setTimeout(() => navigate('/signin', { replace: true }), 2000);
       }
       return false;
+    } finally {
+      initializingRef.current = false;
     }
   };
 
   // Setup socket listeners function
   const setupSocketListeners = () => {
-console.log('Setting up socket listeners...');
+    console.log('Setting up socket listeners...');
     setIsConnected(socket.connected);
     
     socket.on('connect', () => {
       console.log('Socket connected (Initial)');
       setIsConnected(true);
-      setIsConnecting(false); // New: Clear connecting state
+      setIsConnecting(false);
       setSocketError('');
     });
 
-    // 🛑 CRITICAL FIX 1: Listen for the RECONNECT event
-    socket.on('reconnect', (attemptNumber) => {
+    // 🔧 FIX: Protected reconnect handler with async/await
+    socket.on('reconnect', async (attemptNumber) => {
       console.log(`Socket reconnected after ${attemptNumber} attempts!`);
       setIsConnected(true);
-      setIsConnecting(false); // Clear connecting state
+      setIsConnecting(false);
       setSocketError('');
       
-      // 🛑 CRITICAL FIX 2: Re-run initialization logic after successful reconnect
-      // This is often needed if the room join process happens on connect/reconnect
       const recipientId = dynamicRecipientIdRef.current;
-      if (recipientId) {
-          console.log('Re-initializing chat history after reconnect...');
-          initializeChat(recipientId); // Load fresh history
+      if (recipientId && !initializingRef.current) {
+        console.log('Re-initializing chat history after reconnect...');
+        try {
+          await initializeChat(recipientId);
+        } catch (error) {
+          console.error('Reconnect initialization failed:', error);
+          setSocketError('Failed to reload chat history after reconnection');
+        }
       }
     });
 
-    // 🛑 CRITICAL FIX 3: Listen for the RECONNECTING event
     socket.on('reconnecting', (attemptNumber) => {
       console.log(`Socket trying to reconnect (Attempt ${attemptNumber})...`);
       setIsConnected(false);
-      setIsConnecting(true); // Set connecting state
-      setSocketError(''); // Clear error while attempting to reconnect
+      setIsConnecting(true);
+      setSocketError('');
     });
     
     socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
       setIsConnected(false);
-      // Do NOT set socketError here, let 'reconnect_error' handle failure, 
-      // and 'reconnecting' handle the retry status.
       clearLoadingStates();
     });
 
     socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
       setIsConnected(false);
-      setIsConnecting(false); // Connection attempt failed definitively
+      setIsConnecting(false);
       clearLoadingStates();
-      // Use the generic 'Connection Error.' or a more specific message
       setSocketError('Connection Error. Please check your network and refresh.');
     });
 
-    // ✅ UPDATED: new_message listener with status completion
+    // 🔧 FIX: Enhanced duplicate detection and message processing
     socket.on('new_message', (data, callback) => {
       const userId = ownIdRef.current || localStorage.getItem('user_id');
       const currentRecipientId = dynamicRecipientIdRef.current;
-
       const userStr = String(userId);
 
       console.log('🔔 new_message received:', {
@@ -366,7 +415,6 @@ console.log('Setting up socket listeners...');
          String(data.sender_id).includes('project_manager') ||
          String(data.recipient_id).includes('project_manager')
         ) &&
-        // 2. Message MUST be TO or FROM the current user (using the newly defined userStr)
         (String(data.sender_id) === userStr || 
          String(data.recipient_id) === userStr); 
       
@@ -378,7 +426,19 @@ console.log('Setting up socket listeners...');
       
       console.log('✅ Message accepted');
       
-      // ✅ NEW: Mark last status as complete before adding new message
+      // 🔧 FIX: Create robust message ID from server data or generate unique one
+      const serverMessageId = data.id || data.message_id;
+      const messageId = serverMessageId 
+        ? `server-${serverMessageId}`
+        : generateMessageId('incoming');
+      
+      // 🔧 FIX: Check if we've already processed this exact message
+      if (processedMessageIdsRef.current.has(messageId)) {
+        console.log('⚠️ Already processed message ID:', messageId);
+        if (callback) callback();
+        return;
+      }
+      
       markLastStatusComplete();
       
       const { type: messageType, sender: senderName } = determineMessageType({
@@ -391,35 +451,39 @@ console.log('Setting up socket listeners...');
       const incomingTimestamp = data.timestamp ? new Date(data.timestamp) : new Date();
 
       const newMessage = {
-        id: Date.now() + Math.random(),
+        id: messageId,
         type: messageType,
         content: data.message_content,
         timestamp: incomingTimestamp,
         sender: senderName,
         sender_id: data.sender_id,
         recipient_id: data.recipient_id,
+        sequence: ++messageSequenceRef.current,
         isStatus: false
       };
       
       console.log('📝 Adding message:', {
+        id: messageId,
         type: newMessage.type,
         sender: newMessage.sender,
+        sequence: newMessage.sequence,
         preview: newMessage.content.substring(0, 30)
       });
       
+      // 🔧 FIX: Mark as processed before adding to state
+      processedMessageIdsRef.current.add(messageId);
+      
       setMessages(prev => {
-      // Check for a unique ID instead of content/time
-      const isDuplicate = prev.some(msg => msg.id === data.id);
+        // 🔧 FIX: Enhanced duplicate check using processed IDs
+        const isDuplicate = prev.some(msg => msg.id === messageId);
         
         if (isDuplicate) {
-          console.log('⚠️ Duplicate detected, skipping');
+          console.log('⚠️ Duplicate detected in state, skipping');
           return prev;
         }
 
         const updatedMessages = [...prev, newMessage];
-        return sortMessages(updatedMessages); 
-        
-        
+        return sortMessages(updatedMessages);
       });
       
       if (messageType === 'ai') {
@@ -437,7 +501,7 @@ console.log('Setting up socket listeners...');
       switch (command) {
         case 'interview_complete':
           clearLoadingStates();
-          markLastStatusComplete(); // ✅ NEW
+          markLastStatusComplete();
           setStatusMessage('Chat session completed!');
           break;
         case 'next_question':
@@ -446,7 +510,7 @@ console.log('Setting up socket listeners...');
         case 'error':
           setSocketError(instructionData?.message || 'An error occurred');
           clearLoadingStates();
-          markLastStatusComplete(); // ✅ NEW
+          markLastStatusComplete();
           break;
         case 'redirect':
           if (instructionData?.url) {
@@ -458,31 +522,36 @@ console.log('Setting up socket listeners...');
       if (callback && typeof callback === 'function') callback();
     });
 
-    // ✅ UPDATED: status_update listener with isComplete handling
+    // 🔧 FIX: Protected status update handler
     socket.on('status_update', (data, callback) => {
       console.log('Received status update:', data);
       if (data.update) {
-        // ✅ NEW: Mark previous status as complete before adding new one
+        const customMessage = STATUS_MESSAGE_MAP[data.update];
+
+        if (!customMessage) {
+          console.log('Ignoring unmapped status:', data.update);
+          if (callback && typeof callback === 'function') callback();
+          return;
+        }
+        
         markLastStatusComplete();
         
-        const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
-        
         const statusMessage = {
-          id: `status-${Date.now()}`,
+          id: generateMessageId('status'),
           type: 'status',
           content: customMessage,
           timestamp: new Date(),
           sender: 'System',
-          sender_id: 'status', 
+          sender_id: 'status',
+          sequence: ++messageSequenceRef.current,
           isStatus: true,
-          isComplete: false, // ✅ NEW: Starts as incomplete
-          startedAt: new Date().toISOString() // ✅ NEW
+          isComplete: false,
+          startedAt: new Date().toISOString()
         };
         
         setMessages(prev => {
           const updatedMessages = [...prev, statusMessage];
-          updatedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-          return updatedMessages;
+          return sortMessages(updatedMessages);
         });
       }
       if (callback && typeof callback === 'function') callback();
@@ -494,7 +563,7 @@ console.log('Setting up socket listeners...');
       if (type === 'error') {
         setSocketError(message);
         clearLoadingStates();
-        markLastStatusComplete(); // ✅ NEW
+        markLastStatusComplete();
       }
       if (callback && typeof callback === 'function') callback();
     });
@@ -509,18 +578,18 @@ console.log('Setting up socket listeners...');
     socket.off('control_instruction');
     socket.off('status_update');
     socket.off('notification');
+    socket.off('reconnect');
+    socket.off('reconnecting');
   };
 
- useEffect(() => {
+  useEffect(() => {
     const interval = setInterval(() => {
-        // Update all derived states
-        setIsConnected(isSocketConnected());
-        //setIsRoomJoined(hasJoinedRoom()); 
-        setIsConnecting(isSocketConnecting()); // <-- Update the new state
+      setIsConnected(isSocketConnected());
+      setIsConnecting(isSocketConnecting());
     }, 500);
 
     return () => clearInterval(interval);
-}, []);
+  }, []);
 
   useEffect(() => {
     if (!projectId) {
@@ -532,7 +601,6 @@ console.log('Setting up socket listeners...');
       console.log('✅ Received projectId from parent:', projectId);
       const recipientId = `project_manager_${projectId}`;
       setDynamicRecipientId(recipientId);
-      dynamicRecipientIdRef.current = recipientId;
       ownIdRef.current = own_id;
       console.log(`✅ Project Manager initialized with ID: ${recipientId}`);
       
@@ -562,7 +630,7 @@ console.log('Setting up socket listeners...');
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // ✅ UPDATED: Send message function with status completion
+  // 🔧 FIX: Protected message sending with proper sequencing
   const handleSendMessage = () => {
     if (!inputValue.trim() || !isConnected || !dynamicRecipientId) {
       console.warn('Cannot send - missing requirements:', {
@@ -573,41 +641,49 @@ console.log('Setting up socket listeners...');
       return;
     }
 
-    // ✅ NEW: Mark last status as complete when user sends a message
     markLastStatusComplete();
 
     const userId = own_id || localStorage.getItem('user_id');
-    const messageTimestamp = new Date().getTime(); 
+    const messageContent = inputValue.trim();
+    const messageId = generateMessageId('user');
 
     const userMessage = {
-      id: messageTimestamp, 
+      id: messageId,
       type: 'user',
-      content: inputValue.trim(),
-      timestamp: new Date(messageTimestamp),
+      content: messageContent,
+      timestamp: new Date(),
       sender: 'You',
       sender_id: userId,
       recipient_id: dynamicRecipientId,
+      sequence: ++messageSequenceRef.current,
       isStatus: false
     };
 
-    setMessages(prev => {
-      const updatedMessages = [...prev, userMessage];
-      updatedMessages.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-      return updatedMessages;
-    });
+    // 🔧 FIX: Mark as processed immediately
+    processedMessageIdsRef.current.add(messageId);
 
     const messagePayload = {
-      message_content: inputValue.trim(),
+      message_content: messageContent,
       own_id: parseInt(userId),
       recipient_id: dynamicRecipientId,
       chat_type: chat_type,
       timestamp: new Date().toISOString()
     };
 
-    console.log('📤 Sending message:', messagePayload);
+    console.log('📤 Preparing to send message:', messagePayload);
 
-    socket.emit('send_message', messagePayload);
-    console.log('✅ Message emitted to backend');
+    // 🔧 FIX: Add message to state and emit in microtask for proper ordering
+    setMessages(prev => {
+      const updated = sortMessages([...prev, userMessage]);
+      
+      // Emit after state update is queued
+      queueMicrotask(() => {
+        console.log('✅ Emitting message to backend');
+        socket.emit('send_message', messagePayload);
+      });
+      
+      return updated;
+    });
     
     if (onMessageSent) {
       onMessageSent(userMessage);
@@ -618,7 +694,6 @@ console.log('Setting up socket listeners...');
     setIsLoadingAnswer(true);
     setTimeout(() => setIsTyping(true), 500);
     setTimeout(() => inputRef.current?.focus(), 100);
-    //setResponseTimeout();
   };
 
   const handleKeyPress = (e) => {
@@ -691,7 +766,6 @@ console.log('Setting up socket listeners...');
                 message.isStatus ? 'justify-start' :
                 isFromCurrentUser ? 'justify-end' : 'justify-start'
               }`}>
-                {/* ✅ UPDATED: Status message with spinner/checkmark */}
                 {message.isStatus && (
                   <div className="flex items-start gap-3 px-2 py-1">
                     <div className="flex-shrink-0 mt-0.5">
@@ -795,7 +869,7 @@ console.log('Setting up socket listeners...');
           </div>
           <button
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId ||!!socketError}
+            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId || !!socketError}
             className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed shadow-md flex-shrink-0"
           >
             {isLoadingAnswer ? (
@@ -806,26 +880,21 @@ console.log('Setting up socket listeners...');
           </button>
         </div>
     
-{socketError && (
-  <div className="p-4 bg-white border-t border-gray-200">
-    <div className="flex justify-center">
-      <div className="px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">
-        {socketError} {/* Display the actual error message */}
-      </div>
-    </div>
-  </div>
-)}
-
-{/* Check 2: Show active status only if no hard error */}
-{!socketError && !isConnected && isConnecting && ( // Only show this if no hard error, not connected, but IS trying
-    <div className="p-4 bg-white border-t border-gray-200">
-        <div className="flex justify-center">
-            <div className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600">
-                Connection lost. Trying to reconnect...
+        {socketError && (
+          <div className="mt-3 flex justify-center">
+            <div className="px-3 py-1 rounded-full text-xs font-medium bg-red-50 text-red-600">
+              {socketError}
             </div>
-        </div>
-    </div>
-)}
+          </div>
+        )}
+
+        {!socketError && !isConnected && isConnecting && (
+          <div className="mt-3 flex justify-center">
+            <div className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-50 text-yellow-600">
+              Connection lost. Trying to reconnect...
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

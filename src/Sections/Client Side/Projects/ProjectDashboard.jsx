@@ -383,7 +383,7 @@ const TileView = () => (
     {filteredProjects.map((project) => (
       <div 
         key={project.id} 
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 mb-6"
+        className="bg-white rounded-lg max-w-86 shadow-sm border border-gray-200 p-2 mb-6"
       >
         {/* Upper Section with  White Background */}
         <div className="bg-white p-3 sm:p-4 lg:p-6 border-b border-gray-200">
