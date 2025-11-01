@@ -478,7 +478,7 @@ const TileView = () => (
           <div className="flex gap-4 justify-end">
             <button 
               onClick={() => onSelectProject(project.rawProject)}
-              className="px-3 sm:px-4 lg:px-6 py-2 sm:py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-xs sm:text-sm"
+              className="px-2 sm:px-4 lg:px-4 py-2 sm:py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-xs sm:text-sm"
             >
               View Details
             </button>
