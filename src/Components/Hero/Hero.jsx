@@ -55,7 +55,7 @@ const Hero = ({ onExplore }) => {
       
       {/* Decorative Floating Name Tags */}
       {/* Peter - Top Left */}
-      <div className='hidden lg:block absolute top-78 left-145 animate-float'>
+      <div className='hidden lg:block absolute top-78 left-125 animate-float'>
         <div className='relative'>
           <div className='bg-[#A8B8D8] text-white px-5 py-2.5 rounded-br-xl rounded-bl-xl rounded-tr-xl rounded-tl-0 shadow-lg font-medium  text-base'>
             Peter
@@ -67,7 +67,7 @@ const Hero = ({ onExplore }) => {
       </div>
 
       {/* Kelvin - Top Right */}
-      <div className='hidden lg:block absolute top-56 right-154 animate-float-delayed'>
+      <div className='hidden lg:block absolute top-56 right-132 animate-float-delayed'>
         <div className='relative'>
           <div className='bg-[#1E293B] text-white px-5 py-2.5 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-lg font-medium text-base'>
             Kelvin
@@ -77,7 +77,7 @@ const Hero = ({ onExplore }) => {
       </div>
 
       {/* Shirley - Bottom Right */}
-      <div className='hidden lg:block absolute bottom-40 right-135 animate-float'>
+      <div className='hidden lg:block absolute bottom-40 right-132 animate-float'>
         <div className='relative'>
           <div className='bg-[#2563EB] text-white px-5 py-2.5 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-lg font-medium text-base'>
             Shirley
@@ -107,12 +107,14 @@ const Hero = ({ onExplore }) => {
           <div 
             className='w-full flex flex-col sm:flex-row gap-3 justify-center lg:justify-center items-stretch sm:items-center'
           >
-            <button 
-              onClick={startProject}
+            <a
+              href='https://forms.gle/BPQ4XXApoRNbRBXR7'
+             target="_blank" // Opens in new tab
+             rel="noopener noreferrer"
               className='py-3 px-6 md:py-2.5 md:px-6 lg:py-4 lg:px-8 bg-[#2255D7] text-white font-semibold rounded-lg shadow-xl hover:bg-[#1447e6] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-sm md:text-sm lg:text-base flex items-center justify-center gap-2 w-full sm:w-auto'
             >
               Join Waitlist 
-            </button>
+            </a>
           </div>
         </div>
       </div>

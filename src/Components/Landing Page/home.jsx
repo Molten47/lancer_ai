@@ -21,7 +21,7 @@ const LandHome = () => {
     <div className="relative min-h-[80vh] z-0 w-full bg-light">
       {/* ✅ SEO tags */}
       <Helmet>
-        <title>Lancer | AI-Powered Business Lifecycle Platform</title>
+        <title>Lancer | Build Your Team, Get Things Done</title>
         <meta
           name="description"
           content="Automate business operations with AI. Connect founders with skilled freelancers. Lancer powers your business growth with GenAI automation and talent matching."
