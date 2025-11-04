@@ -64,91 +64,63 @@ const AIAssistantChat = ({
   };
 
   // FIXED: Consistent message type detection function
-  const determineMessageType = (messageData, currentUserId) => {
+ const determineMessageType = (messageData, currentUserId) => {
+    // 1. Define Identifiers
     const currentUserStr = String(currentUserId);
-    const senderStr = String(messageData.sender_id || messageData.own_id);
-    const recipientStr = String(messageData.recipient_id);
+    // Prioritize messageData.sender_id for the source of the message
+    const senderStr = String(messageData.sender_id || messageData.own_id || 'unknown');
     const senderTag = messageData.sender_tag;
+    const assistantId = 'client_assistant';
 
-    if (senderTag === 'ai') {
-      return {
-        type: 'ai',
-        sender: assistantName
-      };
-    }
-
-    if (senderTag === 'sender_a') {
-      return {
-        type: 'user',
-        sender: userName
-      };
-    }
-
-    if (senderTag === 'sender_b') {
-      return {
-        type: 'ai',
-        sender: assistantName
-      };
-    }
-
-    if (senderStr === 'client_assistant' || senderStr !== 'undefined') {
-      return {
-        type: 'ai',
-        sender: assistantName
-      };
-    }
-
-    if (senderStr === currentUserStr && senderStr !== 'undefined') {
-      return {
-        type: 'user',
-        sender: userName
-      };
-    }
-
-    if (recipientStr !== 'undefined' && senderStr !== 'undefined') {
-      if (recipientStr === currentUserStr && senderStr === 'client_assistant') {
+    // 2. Prioritize explicit sender_tag (Most Reliable)
+    // AI message tags are explicit ('ai' or 'sender_b')
+    if (senderTag === 'ai' || senderTag === 'sender_b') {
         return {
-          type: 'ai',
-          sender: assistantName
+            type: 'ai',
+            sender: assistantName
         };
-      }
-
-      if (recipientStr === 'client_assistant' && senderStr === currentUserStr) {
+    }
+    
+    // User message tags are explicit ('user' or 'sender_a')
+    if (senderTag === 'user' || senderTag === 'sender_a') {
         return {
-          type: 'user',
-          sender: userName
+            type: 'user',
+            sender: userName
         };
-      }
     }
 
-    console.warn('Could not determine message type, using content-based fallback', {
-      messageData,
-      currentUserId,
-      senderTag,
-      senderStr,
-      recipientStr
+    // 3. Fallback to ID comparison (Second Most Reliable)
+
+    // Case A: Message from the ASSISTANT (Check senderStr against hardcoded assistant ID)
+    if (senderStr === assistantId) {
+        return {
+            type: 'ai',
+            sender: assistantName
+        };
+    }
+    
+    // Case B: Message from the USER (Check senderStr against current user's ID)
+    if (senderStr === currentUserStr) {
+        return {
+            type: 'user',
+            sender: userName
+        };
+    }
+
+    // 4. Default Fallback 
+    // If the message is not tagged and senderStr matches neither the AI nor the user, 
+    // log a warning and default to a safe type (e.g., AI or System if applicable).
+    // In this assistant chat, if it's not the user, it must be the assistant.
+    console.warn('Could not determine message type using tags or explicit IDs. Defaulting to AI.', {
+        messageData,
+        currentUserId
     });
 
-    const content = messageData.message_content || messageData.content || '';
-    const contentLength = content.length;
-    
-    if (contentLength > 100 || 
-        content.includes('I can help') || 
-        content.includes('Let me assist') ||
-        content.includes('I understand') ||
-        content.includes('Based on') ||
-        content.match(/^(Sure|Certainly|Of course|I'll|Let me)/)) {
-      return {
-        type: 'ai',
-        sender: assistantName
-      };
-    }
-
     return {
-      type: 'user',
-      sender: userName
+        type: 'ai',
+        sender: assistantName 
     };
-  };
+};
 
   // FIXED: Clear loading states function
   const clearLoadingStates = () => {

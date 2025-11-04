@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { Sidebar, Bell, User, Settings, Home, 
        FileText,  MessageCircle, ChevronDown, ChevronRight,
        Download, X,  LucideMessageSquareText, Briefcase, LayoutDashboard, Menu} from 'lucide-react'
-import SideLogo from '../../assets/Images/SVG/Flogo2.svg'
+import SideLogo from '../../assets/Images/DashLogo.jpg'
 
 import ProjectManagement from '../../Sections/Client Side/Projects/Projects'
 //import ProjectManagers from '../../Sections/Client Side/Projects/ProjectManager'
@@ -13,7 +13,8 @@ import Notifications from '../Notifications/Notifications'
 //import GroupChatSpace from '../../Sections/Client Side/Projects/Groupchat'
 import AssociatedJobs from '../../Sections/Client Side/Projects/AssociatedJob'
 import Analytics from '../../Sections/Client Side/Projects/Analytics'
-//import HumanChat from '../../Sections/Client Side/Projects/IndividualChat'
+import LogoutButton from '../../Components/Platform Users/Logout'
+
 import ProjectReport from '../DashboardClient/ProjectReport'
 import ProjectDashboard from '../../Sections/Client Side/Projects/ProjectDashboard'
 import FullProjectDashboard from '../../Sections/Client Side/Projects/Projects' // The full project detail view
@@ -405,7 +406,7 @@ const DashboardCl = () => {
               <X size={20} />
             </button>
           )}
-          <img src={SideLogo} className='h-20 w-full object-contain' alt="Lancer-logo" />
+          <img src={SideLogo} className='h-14 w-full object-contain' alt="Lancer-logo" />
         </div>
         
         {/* Navigation */}
@@ -500,31 +501,12 @@ const DashboardCl = () => {
         
         {/* Bottom section */}
         <div className="p-3 border-t border-gray-200 flex-shrink-0">
-          <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleMenuClick('settings');
-            }}
-            className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-              {isLoadingProfile ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <span className="text-white font-semibold text-sm">
-                  {initials}
-                </span>
-              )}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {isLoadingProfile ? 'Loading...' : fullName}
-              </p>
-              <p className="text-xs text-gray-500 truncate">Business Account</p>
-            </div>
-          </a>
+            {/* Log Out link */}
+            <LogoutButton 
+              className="w-full justify-start px-4 py-3 rounded-lg font-medium text-red-600 hover:bg-red-50 transition-all duration-200"
+              text="Log Out"
+              showIcon={true}
+            />
         </div>
       </aside>
 
