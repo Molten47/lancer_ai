@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Brain, Rocket, Layers} from 'lucide-react';
+import { ArrowRight, Brain, Rocket, Layers, MousePointer2} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Hero = ({ onExplore }) => {
@@ -48,98 +48,103 @@ const Hero = ({ onExplore }) => {
     });
   };
 
-
-
   return (
     <div 
-className='hero-container  basic-font w-full min-h-[90vh] flex flex-col lg:flex-row justify-center items-center z-1 pt-20 sm:pt-24 md:pt-28 lg:pt-32 p-4  sm:p-6 md:p-8 lg:p-16 md:px-8 lg:px-20 bg-gradient-to-br from-[#111827] from-0% via-[#0e4283] via-50% to-[#3f2286] to-100% relative'>
+      className='hero-container third-font w-full min-h-[70vh] flex flex-col lg:flex-row justify-center items-center z-1 pt-20 sm:pt-24 md:pt-28 lg:pt-32 p-4 sm:p-6 md:p-8 lg:p-16 md:px-8 lg:px-20 bg-white relative overflow-hidden'
+    >
+      
+      {/* Decorative Floating Name Tags */}
+      {/* Peter - Top Left */}
+      <div className='hidden lg:block absolute top-78 left-145 animate-float'>
+        <div className='relative'>
+          <div className='bg-[#A8B8D8] text-white px-5 py-2.5 rounded-br-xl rounded-bl-xl rounded-tr-xl rounded-tl-0 shadow-lg font-medium  text-base'>
+            Peter
+          </div>
+          <svg className='absolute -top-4 -right-6 w-6 h-6 transform rotate-90' viewBox="0 0 24 24" fill="#A4B4CB">
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+          </svg>
+        </div>
+      </div>
+
+      {/* Kelvin - Top Right */}
+      <div className='hidden lg:block absolute top-56 right-154 animate-float-delayed'>
+        <div className='relative'>
+          <div className='bg-[#1E293B] text-white px-5 py-2.5 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-lg font-medium text-base'>
+            Kelvin
+          </div>
+
+        </div>
+      </div>
+
+      {/* Shirley - Bottom Right */}
+      <div className='hidden lg:block absolute bottom-40 right-135 animate-float'>
+        <div className='relative'>
+          <div className='bg-[#2563EB] text-white px-5 py-2.5 rounded-tr-xl rounded-br-xl rounded-bl-xl shadow-lg font-medium text-base'>
+            Shirley
+          </div>
+           <svg className='absolute -top-4 -left-6 w-6 h-6 text-[#64748B]  transform rotate-0' viewBox="0 0 24 24" fill="#2563EB">
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+          </svg>
+        </div>
+      </div>
       
       {/* Content Section */}
-      <div className='w-full lg:w-1/2 z-50 relative flex justify-center lg:justify-start'>
-        <div className='flex flex-col justify-center items-center lg:items-start text-center lg:text-left px-4 sm:px-6 md:px-4 lg:px-10 max-w-2xl'>
+      <div className='w-full lg:w-1/2 z-50 relative flex justify-center lg:justify-center'>
+        <div className='flex flex-col justify-center items-center lg:items-center text-center lg:text-center px-4 sm:px-6 md:px-4 lg:px-10 max-w-2xl'>
           <h1 
             className='text-white text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-semibold mb-4 sm:mb-6 leading-tight'
           >
-            AI-powered <br />
-            business life cycle platform
+           <span className='text-[#131635]'>Build Your Team</span> <br />
+            <span className='text-[#2563EB]'>Get Things Done</span>
           </h1>
           
           <p 
-            className='text-white font-light text-sm sm:text-base md:text-base lg:text-lg xl:text-xl leading-relaxed mb-6 sm:mb-8 text-center lg:text-justify'
+            className='text-[#000000] text-center font-light text-sm sm:text-base md:text-base lg:text-lg xl:text-xl leading-relaxed mb-6 sm:mb-8 lg:text-center'
           >
-           Lancer takes the heavy lifting off founders and business owners by automating business formalization, hiring, workflow management, performance evaluation, and everyday operations—powered by frontier GenAI, bespoke machine learning, and general automation. Lancer also connects freelancers with the right skills to Startups and Business that are in need of their talents.
+           Lancer helps with the operational heavy lifting through project initiation, Hiring, and overall workflow management.
           </p>
           
           <div 
-            className='w-full flex flex-col sm:flex-row gap-3 justify-center lg:justify-start items-stretch sm:items-center'
+            className='w-full flex flex-col sm:flex-row gap-3 justify-center lg:justify-center items-stretch sm:items-center'
           >
             <button 
               onClick={startProject}
-              className='py-3 px-6 md:py-2.5 md:px-6 lg:py-3 lg:px-8 bg-[#2255D7] text-white font-semibold rounded-lg shadow-xl hover:bg-[#1447e6] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-sm md:text-sm lg:text-base flex items-center justify-center gap-2 w-full sm:w-auto'
+              className='py-3 px-6 md:py-2.5 md:px-6 lg:py-4 lg:px-8 bg-[#2255D7] text-white font-semibold rounded-lg shadow-xl hover:bg-[#1447e6] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-sm md:text-sm lg:text-base flex items-center justify-center gap-2 w-full sm:w-auto'
             >
-              Start a Project 
-              <ArrowRight size={18} className="w-4 h-4 lg:w-5 lg:h-5" />
-            </button>
-            <button 
-              onClick={getHired}
-              className='py-3 px-6 md:py-2.5 md:px-6 lg:py-3 lg:px-8 bg-white text-[#2255d7] font-semibold rounded-lg shadow-xl hover:bg-[#f1f1f1] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-sm md:text-sm lg:text-base w-full sm:w-auto'
-            >
-              Get Hired
+              Join Waitlist 
             </button>
           </div>
         </div>
       </div>
 
-      {/* Image Section - Hidden on Mobile and Tablet, Visible on Desktop Only */}
-      <div className='hidden lg:flex w-full lg:w-1/2 relative z-50 mt-8 lg:mt-0 justify-center items-center'>
-        {/* Top-left decorative circle */}
-        <div className='absolute -top-8 lg:-top-13 -left-3 w-20 h-20 lg:w-28 lg:h-28 bg-[#DBEAFE] rounded-full z-30'></div>
-        
-        {/* Bottom-right decorative circle */}
-        <div className='absolute -bottom-12 lg:-bottom-18 -right-6 lg:-right-10 w-24 h-24 lg:w-34 lg:h-34 bg-[#F3E8FF] rounded-full z-30'></div>
-        
-        <section className="bg-[#2255d7] w-full max-w-4xl h-[45vh] lg:h-[55vh] rounded-lg grid grid-cols-2 gap-4 lg:gap-6 p-5 lg:p-8 relative z-20">
-          {heroCarousels.map((carousel, index) => (
-            <div 
-              key={carousel.id || index} 
-              className="bg-white rounded-lg p-4 lg:p-6 flex flex-col justify-center"
-            >
-              {carousel.cta ? (
-                // CTA Card (bottom right)
-                <div className="flex items-center justify-center h-full">
-                  <a
-                    href='https://forms.gle/BPQ4XXApoRNbRBXR7'
-                    target="_blank" // Opens in new tab
-                     rel="noopener noreferrer" // Security best practice for external links
-                    className="bg-[#9333EA] hover:bg-purple-700 text-white font-semibold py-2.5 px-6 lg:py-3 lg:px-8 rounded-lg transition-all duration-300 ease-in-out hover:scale-105 focus:outline-none text-sm lg:text-base"
-                  >
-                    
-                    {carousel.cta}
-                  </a>
-                </div>
-              ) : (
-                // Regular feature cards
-                <div className="flex flex-col">
-                  <div className="mb-3 lg:mb-4">
-                    {carousel.icon}
-                  </div>
-                  <h3 className="text-lg lg:text-xl font-semibold text-[#151B25] mb-2 lg:mb-3">
-                    {carousel.actionWord}
-                  </h3>
-                  <p className="text-[#4B5563] font-normal text-sm lg:text-[16px] leading-relaxed">
-                    {carousel.description}
-                  </p>
-                </div>
-              )}
-            </div>
-          ))}
-        </section>
-      </div>
+      <style jsx>{`
+        @keyframes float {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-20px);
+          }
+        }
 
-      {/* Mobile decorative elements - subtle accent shapes */}
-      <div className='lg:hidden absolute top-10 right-4 w-20 h-20 rounded-full bg-gradient-to-br from-[#3A8DFF] to-[#A7A3FF] opacity-10'></div>
-      <div className='lg:hidden absolute bottom-20 left-4 w-16 h-16 rounded-full bg-gradient-to-br from-[#A7A3FF] to-[#3A8DFF] opacity-10'></div>
-      <div className='lg:hidden absolute top-1/3 left-2 w-8 h-8 rounded-full bg-[#2563EB] opacity-5'></div>
+        @keyframes float-delayed {
+          0%, 100% {
+            transform: translateY(0px);
+          }
+          50% {
+            transform: translateY(-15px);
+          }
+        }
+
+        .animate-float {
+          animation: float 3s ease-in-out infinite;
+        }
+
+        .animate-float-delayed {
+          animation: float-delayed 3.5s ease-in-out infinite;
+          animation-delay: 0.5s;
+        }
+      `}</style>
     </div>
   );
 };

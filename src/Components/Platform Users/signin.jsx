@@ -282,7 +282,7 @@ dispatch(setAuthData({
               id="keepLogin" 
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
-            <label htmlFor="keepLogin" className="text-sm font-normal text-dark">Keep me login</label>
+            <label htmlFor="keepLogin" className="text-sm font-normal text-dark">Keep me logged in</label>
           </div>
           <div>
             <Link to="/forgot-password" className="text-sm text-dark underline hover:text-blue-600">
