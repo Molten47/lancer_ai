@@ -341,12 +341,15 @@ dispatch(setAuthData({
     {/* Right Section - Image with Blur Overlay */}
     <div className='relative w-1/2 sm:max-w-md md:max-w-lg lg:max-w-xl p-8'>
       <div className='relative h-full rounded-lg overflow-hidden'>
-        <img src={SignupImage} className='w-full h-full object-cover rounded-lg' alt="CRM Platform" />
+        <img 
+        loading='lazy'
+        src={SignupImage} 
+        className='w-full h-full object-cover rounded-lg ' alt="CRM Platform" />
         
         {/* Blur Overlay with Text */}
-        <div className='absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-md p-6 text-white rounded-b-lg'>
-          <h2 className='text-2xl font-bold mb-2'>Join Our CRM - Streamline Your Business Today!</h2>
-          <p className='text-sm leading-relaxed'>
+        <div className='absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-md p-6 text-white rounded-b-lg gap-2'>
+          <h2 className='text-xl font-bold mb-2 text-center'>Join Our CRM - Streamline Your Business Today!</h2>
+          <p className='text-sm leading-relaxed text-center'>
             Sign up for our powerful CRM and take control of your business operations with ease. Manage customer relationships, track sales, and boost productivity-all in one intuitive platform. Get started today!
           </p>
           
