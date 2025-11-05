@@ -26,7 +26,7 @@ const LandHome = () => {
           name="description"
           content="Automate business operations with AI. Connect founders with skilled freelancers. Lancer powers your business growth with GenAI automation and talent matching."
         />
-        <meta property="og:title" content="Lancer | AI-Powered Business Lifecycle Platform" />
+        <meta property="og:title" content="Lancer | Build Your Team, Get Things Done" />
         <meta
           property="og:description"
           content="Automate business operations with AI. Connect founders with skilled freelancers. Lancer powers your business growth with GenAI automation and talent matching."

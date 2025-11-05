@@ -50,14 +50,14 @@ const Hero = ({ onExplore }) => {
 
   return (
     <div 
-      className='hero-container third-font w-full min-h-[70vh] flex flex-col lg:flex-row justify-center items-center z-1 pt-20 sm:pt-24 md:pt-28 lg:pt-32 p-4 sm:p-6 md:p-8 lg:p-16 md:px-8 lg:px-20 bg-white relative overflow-hidden'
+      className='hero-container third-font w-full min-h-[80vh] flex flex-col lg:flex-row justify-center items-center z-1 pt-20 sm:pt-24 md:pt-28 lg:pt-32 p-4 sm:p-6 md:p-8 lg:p-16 md:px-8 lg:px-20 bg-white relative overflow-hidden'
     >
       
       {/* Decorative Floating Name Tags */}
       {/* Peter - Top Left */}
       <div className='hidden lg:block absolute top-78 left-125 animate-float'>
         <div className='relative'>
-          <div className='bg-[#A8B8D8] text-white px-5 py-2.5 rounded-br-xl rounded-bl-xl rounded-tr-xl rounded-tl-0 shadow-lg font-medium  text-base'>
+          <div className='bg-[#A4B4CB] text-white px-5 py-2.5 rounded-br-xl rounded-bl-xl rounded-tr-xl rounded-tl-0 shadow-lg font-medium  text-base'>
             Peter
           </div>
           <svg className='absolute -top-4 -right-6 w-6 h-6 transform rotate-90' viewBox="0 0 24 24" fill="#A4B4CB">
@@ -145,6 +145,13 @@ const Hero = ({ onExplore }) => {
         .animate-float-delayed {
           animation: float-delayed 3.5s ease-in-out infinite;
           animation-delay: 0.5s;
+        }
+
+        .hero-container {
+          background-image: 
+            linear-gradient(to right, rgba(232, 232, 232, 0.3) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+          background-size: 120px 120px;
         }
       `}</style>
     </div>

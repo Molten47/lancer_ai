@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle } from 'lucide-react';
-import image1 from '../../assets/Images/sigmund.jpg'
-import image2 from '../../assets/Images/freelancer.jpg'
-import image3 from '../../assets/Images/property-10.jpg'
+import { motion } from 'framer-motion';
+import { CheckCircle, VideoIcon } from 'lucide-react';
+import Hubspot from '../../assets/Images/Frame 2095585678.png'
+import Figma from '../../assets/Images/Frame 2095585679.png'
+import Microsoft from '../../assets/Images/Frame 2095585680.png'
+import Google from '../../assets/Images/GoogleWorkspace_Logo_White 2.png'
+import Mailchimp from '../../assets/Images/Mailchimp_Logo-Horizontal_White 3.png'
+import Slack from '../../assets/Images/images__7_-removebg-preview 3.png'
+import Canva from '../../assets/Images/1656735105canva-logo-white 1.png'
+import Jira from '../../assets/Images/623031 1.png'
 
 const Philosophy = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -19,39 +24,124 @@ const Philosophy = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const services = [
-    {
-      id: 1,
-      title: "Project Space",
-      description: "Projects are a way for founders, small business owners and creative entrepreneurs to work on contracts with a short to medium term lifespan. Setup a Project, efficiently hire freelancers, assign tasks, manage workflows, track overall project progress and monitor freelancer working performance all with the power of Agentic AI.",
-      icon: <CheckCircle className='text-[#22C55E]'/>,
-      keywords: 'Efficient hiring, Task assignment, Workflow management, Performance tracking',
-      image: image1
-    },
-    {
-      id: 2,
-      title: "For Freelancers", 
-      description: "Lancer connects you and professionals like yourself with founders, early stage startups and businesses that are in need of your skills and expertise for either short or medium terms contracts (Projects) or a full employment package (Business Spaces). Lancer enforces a fair pay baseline and also uses an automated pay standardization system which tracks your work history and associated metrics to determine a favorable compensation range to be shown to your current or potential employers.",
-      icon: <CheckCircle className='text-[#22C55E]'/>,
-      keywords: 'Short-term contracts, Fairpay standards, Full employment options, Performance tracking',
-      image: image2
-    },
- {
-  id: 3,
-  title: "Business Spaces",
-  description: [
-    "Business spaces aren't duration bound and offer a broader, more holistic business process automation and management experience. For aspiring founders, through automated business formalization, AI-powered hiring and general onboarding framework, a Business Space helps you with everything you need to bring your startup idea into the real world.",
-    "For early stage startups and businesses, Business Spaces offer a way to automate your business process, hire new talent, efficiently manage internal workflows, track individual employee productivity and develop a robust Business Analytics framework as you grow."
-  ],
-  icon: null,
-  keywords: '',
-  image: image3
-}
+  // Array of logos
+  const logos = [
+    { src: Hubspot, alt: 'Hubspot' },
+    { src: Figma, alt: 'Figma' },
+    { src: Microsoft, alt: 'Microsoft' },
+    { src: Google, alt: 'Google Workspace' },
+    { src: Mailchimp, alt: 'Mailchimp' },
+    { src: Slack, alt: 'Slack' },
+    { src: Canva, alt: 'Canva' },
+    { src: Jira, alt: 'Jira' }
   ];
 
   return (
-   <div className={`w-full ${isMobile ? 'min-h-[70vh]' : 'min-h-[160vh]'} bg-white basic-font py-10 sm:py-14 flex flex-col items-center px-4`}>
-   
+    <div className={`w-full ${isMobile ? 'min-h-[95vh]' : 'min-h-[85vh]'} bg-[#151B25] third-font py-8 sm:py-12 flex flex-col justify-center items-center px-4`}>      
+      
+      {/* Logo Scroll Container */}
+      <div className='w-full overflow-hidden relative py-8 mb-8'>
+        {/* Gradient borders to mask edges */}
+        <div className='absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-[#151B25] to-transparent z-10'></div>
+        <div className='absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-[#151B25] to-transparent z-10'></div>
+        
+        {/* Scrolling Container */}
+        <motion.div
+          className='flex gap-8 md:gap-12'
+          animate={{
+            x: [0, -100 * logos.length * 1.5],
+          }}
+          transition={{
+            x: {
+              repeat: Infinity,
+              repeatType: "loop",
+              duration: 20,
+              ease: "linear",
+            },
+          }}
+        >
+          {/* First set of logos */}
+          {logos.map((logo, index) => (
+            <div key={`logo-1-${index}`} className='flex-shrink-0 h-10 md:h-12 flex items-center'>
+              <img 
+                src={logo.src} 
+                alt={logo.alt} 
+                className='h-full w-auto object-contain'
+              />
+            </div>
+          ))}
+          
+          {/* Duplicate set for seamless loop */}
+          {logos.map((logo, index) => (
+            <div key={`logo-2-${index}`} className='flex-shrink-0 h-10 md:h-12 flex items-center'>
+              <img 
+                src={logo.src} 
+                alt={logo.alt} 
+                className='h-full w-auto object-contain'
+              />
+            </div>
+          ))}
+          
+          {/* Third set for extra smoothness */}
+          {logos.map((logo, index) => (
+            <div key={`logo-3-${index}`} className='flex-shrink-0 h-10 md:h-12 flex items-center'>
+              <img 
+                src={logo.src} 
+                alt={logo.alt} 
+                className='h-full w-auto object-contain'
+              />
+            </div>
+          ))}
+        </motion.div>
+      </div>
+
+      {/* Demo Video Section - Centered */}
+      <div className='flex flex-col items-center justify-center gap-8 w-full max-w-5xl mx-auto'>
+        {/* Video Player Container */}
+        <div className='relative w-full aspect-video bg-[#1F2937] rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center'>
+          
+          {/* Centered Video Icon */}
+          <div className='flex items-center justify-center'>
+            <svg 
+              width="120" 
+              height="120" 
+              viewBox="0 0 80 80" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+              className="opacity-40"
+            >
+              <rect 
+                x="17.5" 
+                y="20" 
+                width="45" 
+                height="40" 
+                rx="6" 
+                fill="#E5E7EB"
+              />
+              <path 
+                d="M62.5 35L77.5 25V55L62.5 45V35Z" 
+                fill="#E5E7EB"
+              />
+            </svg>
+          </div>
+          
+          {/* Video Element - Uncomment when ready */}
+          {/* 
+          <video 
+            className='w-full h-full object-cover'
+            controls
+            poster="/path-to-thumbnail.jpg"
+          >
+            <source src="/" type="video/mp4" />
+          </video>
+          */}
+        </div>
+
+        {/* CTA Button */}
+        <button className='px-8 py-3 text-white border-2 border-white rounded-full font-normal transition-all duration-300 ease-in-out hover:-translate-y-1 hover:scale-105 hover:shadow-lg hover:shadow-white/20'>
+          Interested in Investing!
+        </button>
+      </div>
     </div>
   );
 };

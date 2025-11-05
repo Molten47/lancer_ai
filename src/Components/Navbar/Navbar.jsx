@@ -73,8 +73,8 @@ const Navbar = () => {
             </Link>
             </div>
             <div className='hidden lg:flex justify-end items-center'>
-            <Link to='/'>
-              <button className='py-2 px-6 bg-[#2563EB] rounded-md text-[16px] font-medium text-white hover:bg-[#1447e6]'>See Demo</button>
+            <Link to='/login'>
+              <button className='py-2 px-6 bg-[#2563EB] rounded-md text-[16px] font-medium text-white hover:bg-[#1447e6]'>Sign in</button>
             </Link>
           </div>
           </div>
@@ -115,7 +115,7 @@ const Navbar = () => {
                 <div className='mt-6 pt-4 border-t border-gray-200'>
                   <Link to='/signup' onClick={closeMenu} className='block w-full'>
                     <button className='py-3 px-6 bg-cta rounded-lg text-white hover:bg-[#3163e0] w-full transition-colors duration-200 text-base font-semibold'>
-                      Become a Lancer
+                      Sign Up
                     </button>
                   </Link>
                 </div>
