@@ -66,6 +66,7 @@ const Philosophy = () => {
               <img 
                 src={logo.src} 
                 alt={logo.alt} 
+                loading='lazy'
                 className='h-full w-auto object-contain'
               />
             </div>
