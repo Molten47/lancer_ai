@@ -78,6 +78,7 @@ const Philosophy = () => {
               <img 
                 src={logo.src} 
                 alt={logo.alt} 
+                loading='lazy'
                 className='h-full w-auto object-contain'
               />
             </div>
@@ -89,6 +90,7 @@ const Philosophy = () => {
               <img 
                 src={logo.src} 
                 alt={logo.alt} 
+                loading='lazy'
                 className='h-full w-auto object-contain'
               />
             </div>
@@ -99,7 +101,7 @@ const Philosophy = () => {
       {/* Demo Video Section - Centered */}
       <div className='flex flex-col items-center justify-center gap-8 w-full max-w-5xl mx-auto'>
         {/* Video Player Container */}
-        <div className='relative w-full aspect-video bg-[#1F2937] rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center'>
+        <div className='relative w-full aspect-video rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center'>
           
           {/* Centered Video Icon */}
           <div className='flex items-center justify-center'>
@@ -117,11 +119,11 @@ const Philosophy = () => {
                 width="45" 
                 height="40" 
                 rx="6" 
-                fill="#E5E7EB"
+                fill="#D9D9D9"
               />
               <path 
                 d="M62.5 35L77.5 25V55L62.5 45V35Z" 
-                fill="#E5E7EB"
+                fill="#D9D9D9"
               />
             </svg>
           </div>

@@ -46,7 +46,6 @@ const LandHome = () => {
         <Benefits />
         <FAQs />
         <Information />
-        <NewsletterSubscription />
         <Footer />
       </div>
     </div>

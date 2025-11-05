@@ -59,7 +59,7 @@ body, h1, h2, h3, h4, h5, h6, ul {
 body {
     display: flex;
     flex-direction: column;
-    font-family: 'Open Sans', 'sans-serif';
+    font-family: 'Funnel Display', sans-serif;
     height: 100vh;
     width: 100%;
 }

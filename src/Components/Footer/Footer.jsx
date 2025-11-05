@@ -4,7 +4,7 @@ import { Linkedin, Twitter, Instagram } from 'lucide-react';
 
 const Footer = () => {
   return (
-    <footer className="text-sm bg-[#151B25] text-[#9CA3AF] mt-auto basic-font">
+    <footer className="text-sm bg-[#151B25] text-[#9CA3AF] mt-auto third-font">
       <div className="container mx-auto px-6 py-0 md:py-12">
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-16">
           {/* Company Info */}

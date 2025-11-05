@@ -405,7 +405,7 @@ const Signup = () => {
             <div className='w-2 h-2 rounded-full bg-white'></div>
             <div className='w-2 h-2 rounded-full bg-white/50'></div>
             <div className='w-2 h-2 rounded-full bg-white/50'></div>
-          </div>absolute -top-4 -left-6 w-6 h-6 text-[#64748B] bg-[] transform rotate-0
+          </div>
         </div>
       </div>
     </div>
