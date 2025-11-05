@@ -9,7 +9,7 @@ const Unique = () => {
 
 
   return (
-    <main className="bg-white h-[340vh] third-font items-center justify-center flex flex-col py-16 px-4 ">
+    <main className="bg-white h-[400vh] third-font items-center justify-center flex flex-col py-16 px-4 ">
       {/* Top section */}
       <div className='flex flex-col items-center justify-center gap-6 mb-12'>
         <span className='bg-[#F3F4F6]  p-2.5 text-[#080026] rounded-[5px] border border-[#E5E7EB] text-base font-normal'>
@@ -33,7 +33,9 @@ const Unique = () => {
         </div>
         {/*Demo-image */}
         <div className='flex items-center justify-center'>
-          <img src={Frame1} alt="" />
+          <img 
+          loading='lazy'
+          src={Frame1} alt="" />
 
         </div>
       </section>
@@ -63,7 +65,9 @@ const Unique = () => {
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
           viewport={{ once: true, amount: 0.3 }}
         >
-          <img src={Frame2} alt="" />
+          <img 
+          loading='lazy'
+          src={Frame2} alt="" />
         </motion.div>
       </section>
      {/*Manage Project...... */}
@@ -99,7 +103,9 @@ const Unique = () => {
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
           viewport={{ once: true, amount: 0.3 }}
         >
-          <img src={Frame3} className="object-cover" alt="" />
+          <img src={Frame3} 
+          loading='lazy'
+          className="object-cover" alt="" />
         </motion.div>
       </section>
     
