@@ -8,7 +8,7 @@ import Benefits from '../Benefits/Benefits';
 import Information from '../Information/information';
 import Footer from '../Footer/Footer';
 import FAQs from '../FAQs/FAQs';
-import NewsletterSubscription from '../EmailSuscription/Newletter';
+
 
 const LandHome = () => {
   const philosophyRef = useRef(null);

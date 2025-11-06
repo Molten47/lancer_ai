@@ -31,7 +31,7 @@ const LancerBanner = () => {
     ];
 
     return (
-        <div className="relative flex flex-col bg-white min-h- items-center w-full py-8 md:py-12 px-4 third-font overflow-hidden">
+        <div className="relative flex flex-col bg-white min-h-screen items-center w-full py-8 sm:py-10 md:py-12 lg:py-12 px-4 sm:px-6 md:px-8 third-font overflow-hidden">
             {/* Background GIF */}
             <div className="absolute inset-0 z-0">
                 <img 
@@ -44,32 +44,34 @@ const LancerBanner = () => {
             {/* Content wrapper with z-index */}
             <div className="relative z-10 w-full max-w-6xl">
                 {/* Top section */}
-                <div className='flex flex-col items-center justify-center gap-4 mb-12'>
-                    <span className='bg-[#F3F4F6] py-2 px-5 text-[#151B25] rounded-lg border border-[#E5E7EB] text-base font-medium'>
+                <div className='flex flex-col items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-10 md:mb-12'>
+                    <span className='bg-[#F3F4F6] py-2 px-4 sm:px-5 text-[#151B25] rounded-lg border border-[#E5E7EB] text-sm sm:text-base font-medium'>
                         Our Services
                     </span>
-                    <h1 className='text-[#080026] font-medium text-2xl md:text-3xl'>Who can use Lancer?</h1>
-                    <p className='max-w-2xl text-center text-[#4B5563] text-sm md:text-base leading-relaxed px-4'>
+                    <h1 className='text-[#080026] font-medium text-xl sm:text-2xl md:text-3xl lg:text-3xl text-center px-4'>
+                        Who can use Lancer?
+                    </h1>
+                    <p className='max-w-2xl text-center text-[#4B5563] text-sm sm:text-base md:text-base leading-relaxed px-4'>
                         It is also for skilled talent or contract professionals who can use the platform to get hired.
                     </p>
                 </div>
 
                 {/* Middle Section - Services Grid */}
-                <div className='grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 w-full max-w-5xl mx-auto'>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-8 w-full max-w-5xl mx-auto'>
                     {services.map((service, index) => (
                         <div 
                             key={index}
-                            className='rounded-2xl p-6 md:p-8 shadow-sm border border-[#D1D5DB] hover:shadow-md transition-shadow duration-300'
+                            className='rounded-2xl p-5 sm:p-6 md:p-7 lg:p-8 shadow-sm border border-[#D1D5DB] hover:shadow-md transition-shadow duration-300 bg-white'
                         >
-                            <div className='flex items-start gap-4'>
+                            <div className='flex items-start gap-3 sm:gap-4'>
                                 <div className={`${service.bgColor} rounded-[10px] p-2 flex-shrink-0`}>
-                                    <service.icon size={38} className="text-white" strokeWidth={2} />
+                                    <service.icon size={32} className="text-white sm:w-[38px] sm:h-[38px]" strokeWidth={2} />
                                 </div>
-                                <div className='flex flex-col gap-3'>
-                                    <h3 className='text-[#080026] font-medium text-lg md:text-xl'>
+                                <div className='flex flex-col gap-2 sm:gap-3'>
+                                    <h3 className='text-[#080026] font-medium text-base sm:text-lg md:text-xl'>
                                         {service.title}
                                     </h3>
-                                    <p className='text-[#4B5563] text-sm md:text-base leading-relaxed'>
+                                    <p className='text-[#4B5563] text-sm sm:text-sm md:text-base leading-relaxed'>
                                         {service.description}
                                     </p>
                                 </div>
