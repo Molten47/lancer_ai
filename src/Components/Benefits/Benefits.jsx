@@ -1,29 +1,29 @@
 import React from 'react';
-import { Globe, Smartphone, Database, Code } from 'lucide-react';
+import { Briefcase, Users , Building , TvMinimalPlay} from 'lucide-react';
 import BackgroundGif from '../../assets/Images/660b5a75d56565aaff4cb23cbf6417a81bf0fbe6.gif'
 
 const LancerBanner = () => {
     const services = [
         {
-            icon: Globe,
+            icon: Briefcase,
             title: "Digital Freelancer",
             description: "Custom websites designed to meet your unique business needs, from simple landing pages to complex web applications.",
             bgColor: "bg-linear-to-r from-[#60A5FA] to-[#2563EB]"
         },
         {
-            icon: Smartphone,
+            icon: Users,
             title: "Startup Founder",
             description: "Native and cross-platform mobile applications that provide seamless experience across all devices.",
             bgColor: "bg-linear-to-r from-[#818CF8] to-[#4F46E5]"
         },
         {
-            icon: Database,
+            icon: Building,
             title: "Corporate Organization",
             description: "Extract valuable data from websites to gain insights and make informed business decisions.",
             bgColor: "bg-linear-to-r from-[#C084FC] to-[#9333EA]"
         },
         {
-            icon: Code,
+            icon: TvMinimalPlay,
             title: "Digital Agencies",
             description: "Seamlessly connect your systems with third party services to enhance functionality and streamline operations.",
             bgColor: "bg-linear-to-r from-[#22D3EE] to-[#0891B2]"
@@ -65,7 +65,7 @@ const LancerBanner = () => {
                         >
                             <div className='flex items-start gap-3 sm:gap-4'>
                                 <div className={`${service.bgColor} rounded-[10px] p-2 flex-shrink-0`}>
-                                    <service.icon size={32} className="text-white sm:w-[38px] sm:h-[38px]" strokeWidth={2} />
+                                    <service.icon size={30} className="text-white sm:w-[38px] sm:h-[38px]" strokeWidth={1} />
                                 </div>
                                 <div className='flex flex-col gap-2 sm:gap-3'>
                                     <h3 className='text-[#080026] font-medium text-base sm:text-lg md:text-xl'>

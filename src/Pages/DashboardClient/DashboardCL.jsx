@@ -9,12 +9,12 @@ import SideLogo from '../../assets/Images/DashLogo.jpg'
 import ProjectManagement from '../../Sections/Client Side/Projects/Projects'
 //import ProjectManagers from '../../Sections/Client Side/Projects/ProjectManager'
 import AIAssistantChat from '../../Sections/Client Side/Client Assistant/DashboardClient'
+import GeneralSettings from '../../Sections/Client Side/Settings/General'
 import Notifications from '../Notifications/Notifications'
 //import GroupChatSpace from '../../Sections/Client Side/Projects/Groupchat'
 import AssociatedJobs from '../../Sections/Client Side/Projects/AssociatedJob'
 import Analytics from '../../Sections/Client Side/Projects/Analytics'
 import LogoutButton from '../../Components/Platform Users/Logout'
-
 import ProjectReport from '../DashboardClient/ProjectReport'
 import ProjectDashboard from '../../Sections/Client Side/Projects/ProjectDashboard'
 import FullProjectDashboard from '../../Sections/Client Side/Projects/Projects' // The full project detail view
@@ -204,6 +204,7 @@ const DashboardCl = () => {
     </div>
   );
   
+  
   const MessagesDashboardView = () => (
     <div className="flex flex-col h-full w-full overflow-hidden">
       <PersonalMessages/>
@@ -292,11 +293,8 @@ const DashboardCl = () => {
   };
 
   const SettingsView = () => (
-    <div className="p-6 bg-gray-50 min-h-full h-screen overflow-hidden">
-      <div className="bg-white rounded-lg p-8 shadow-sm">
-        <h3 className="text-xl font-semibold mb-4">Settings</h3>
-        <p className="text-gray-600">Manage your account settings here.</p>
-      </div>
+    <div className="bg-gray-50 min-h-full w-full h-screen overflow-hidden">
+     <GeneralSettings/>
     </div>
   );
 
@@ -444,41 +442,7 @@ const DashboardCl = () => {
             <span>Projects</span>
           </a>
 
-          {/* Analytics -
-              <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleMenuClick('project-analytics');
-            }}
-            className={`flex items-center px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-              activeView === 'project-analytics'
-                ? 'bg-blue-50 text-blue-700' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <LayoutDashboard size={18} className="mr-3" />
-            <span>Analytics</span>
-          </a> Direct Link */}
-      
-
-          {/* PM Agent -
-          
-                <a 
-            href="#" 
-            onClick={(e) => {
-              e.preventDefault();
-              handleMenuClick('pm-agent');
-            }}
-            className={`flex items-center px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
-              activeView === 'pm-agent'
-                ? 'bg-blue-50 text-blue-700' 
-                : 'text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Briefcase size={18} className="mr-3" />
-            <span>PM Agent</span>
-          </a>Direct Link */}
+        
     
 
           {/* Messages - Direct Link (No Dropdown) */}
@@ -496,6 +460,22 @@ const DashboardCl = () => {
           >
             <LucideMessageSquareText size={18} className="mr-3" />
             <span>Messages</span>
+          </a>
+
+              <a 
+            href="#" 
+            onClick={(e) => {
+              e.preventDefault();
+              handleMenuClick('settings');
+            }}
+            className={`flex items-center px-3 py-3 rounded-lg font-medium transition-all duration-200 text-sm ${
+              activeView === 'settings'
+                ? 'bg-blue-50 text-blue-700' 
+                : 'text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            <Settings size={18} className="mr-3" />
+            <span>Settings</span>
           </a>
         </nav>
         

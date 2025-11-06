@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, DollarSign, TrendingUp, Clock, MessageCircle, ArrowRight, Briefcase, CheckCircle, CircleCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Calendar, DollarSign, TrendingUp, Clock, MessageCircle, ArrowRight, Briefcase, CheckCircle, CircleCheck, Send, Paperclip, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const DynamicDashboard = () => {
@@ -16,6 +16,19 @@ const DynamicDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  
+  // Chat assistant state
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      type: 'assistant',
+      content: "Hi there! I'm your AI assistant. I'll help you create and plan your new project. What do you want to do today?",
+      timestamp: new Date()
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const chatEndRef = useRef(null);
 
   // Fetch profile data
   const fetchProfileData = async (token, apiUrl) => {
@@ -250,6 +263,46 @@ const DynamicDashboard = () => {
     fetchAllData();
   }, []);
 
+  // Scroll chat to bottom when messages change
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
+
+  // Handle chat message send
+  const handleSendMessage = () => {
+    if (!chatInput.trim()) return;
+
+    const userMessage = {
+      id: chatMessages.length + 1,
+      type: 'user',
+      content: chatInput,
+      timestamp: new Date()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+
+    // Simulate AI response after a delay
+    setTimeout(() => {
+      const aiResponse = {
+        id: chatMessages.length + 2,
+        type: 'assistant',
+        content: "I understand you want to work on that. Let me help you set things up. Would you like to start a new project or manage an existing one?",
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, aiResponse]);
+    }, 1000);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-gray-50">
@@ -264,248 +317,400 @@ const DynamicDashboard = () => {
   const firstName = profileData?.firstname || 'User';
 
   return (
-    <div className="w-full h-full bg-gray-50 flex flex-col overflow-hidden">
-      {/* Scrollable content container */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-2 md:px-4 py-6 md:py-8">
-          <div className="max-w-full mx-auto">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row justify-between md:items-start mb-8 gap-4 bg-gray-100 px-8 py-8 rounded-xl">
-              <div>
-                <h1 className="text-xl md:text-xl font-semibold text-gray-900 mb-2">
-                  Welcome back, {firstName}
-                </h1>
-                <p className="text-gray-600 text-sm">Here's what's happening with your project today.</p>
-              </div>
-              <div className="flex gap-3 flex-shrink-0">
-                <button 
-                  onClick={createNewProject}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap">
-                  New Project
-                </button>
-                <button className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap">
-                  Invite Team
-                </button>
-              </div>
-            </div>
-
-            {/* Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {/* Active Projects */}
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="bg-blue-100 rounded-lg p-3">
-                    <Briefcase className="text-blue-600" size={24} />
-                  </div>
+    <div className="w-full h-full bg-gray-50 third-font flex overflow-hidden">
+      {/* Main Dashboard Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Scrollable content container */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-2 md:px-4 py-6 md:py-8">
+            <div className="max-w-full mx-auto">
+              {/* Header Section */}
+              <div className="flex flex-col md:flex-row justify-between md:items-start mb-8 gap-4 bg-[#2255D7] px-8 py-10 rounded-xl">
+                <div>
+                  <h1 className="text-xl md:text-xl font-semibold text-white mb-2">
+                    Welcome, {firstName}
+                  </h1>
+                  <p className="text-white text-sm">Here's what's happening with your project today.</p>
                 </div>
-                <h3 className="text-gray-600 text-sm font-medium mb-1">Active Projects</h3>
-                <p className="text-3xl font-bold text-gray-900">{dashboardMetrics.activeProjects}</p>
-              </div>
-
-              {/* Completed Projects */}
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="bg-green-100 rounded-lg p-3">
-                    <CheckCircle className="text-green-600" size={24} />
-                  </div>
-                </div>
-                <h3 className="text-gray-600 text-sm font-medium mb-1">Completed Projects</h3>
-                <p className="text-3xl font-bold text-gray-900">{dashboardMetrics.completedProjects}</p>
-              </div>
-
-              {/* Budget Spent */}
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="bg-indigo-600 rounded-lg p-3">
-                    <DollarSign className="text-white" size={24} />
-                  </div>
-                </div>
-                <h3 className="text-gray-600 text-sm font-medium mb-1">Budget Spent</h3>
-                <p className="text-3xl font-bold text-gray-900">${dashboardMetrics.budgetSpent.toLocaleString()}</p>
-              </div>
-
-              {/* Upcoming Deadlines */}
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="bg-yellow-500 rounded-lg p-3">
-                    <Calendar className="text-white" size={24} />
-                  </div>
-                </div>
-                <h3 className="text-gray-600 text-sm font-medium mb-1">Upcoming Deadlines</h3>
-                <p className="text-3xl font-bold text-gray-900">{dashboardMetrics.upcomingDeadlines}</p>
-              </div>
-            </div>
-
-            {/* Main Content Grid - Conditional Rendering */}
-            {projectsData.length === 0 ? (
-              /* Empty State */
-              <div className="bg-white rounded-lg p-16 shadow-sm border border-gray-100 mb-8">
-                <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto">
-                  <div className="mb-6">
-                    <TrendingUp className="text-gray-300" size={80} strokeWidth={1.5} />
-                  </div>
-                  <h2 className="text-xl font-semibold text-gray-700 mb-2">Project activity chart would render here</h2>
-                  <p className="text-gray-500 text-sm">Using actual chart library in production</p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-                {/* Active Projects Section */}
-                <div className="lg:col-span-2 bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-900">Active Projects</h2>
-                    <Calendar size={20} className="text-gray-600" />
-                  </div>
-
-                  <div className="space-y-0">
-                    {projectsData.slice(0, 2).map((projectObj, index) => {
-                      const projectKey = Object.keys(projectObj)[0];
-                      const project = projectObj[projectKey];
-                      const progress = calculateProgress(project);
-                      const dueDate = calculateDueDate(project.init_date, project.duration);
-                      const isLast = index === projectsData.slice(0, 2).length - 1;
-
-                      return (
-                        <div key={project.id} className={`border-t border-gray-100 p-4 hover:bg-gray-50 transition-colors ${isLast ? 'border-b border-gray-100' : ''}`}>
-                          <div className="flex items-center justify-between mb-3">
-                            <h3 className="font-semibold text-gray-900">{project.project_title}</h3>
-                            <span className={`text-xs font-semibold px-3 py-1 rounded-full text-white ${
-                              project.status === 'ongoing' ? 'bg-blue-600' : 
-                              project.status === 'completed' ? 'bg-green-500' : 'bg-gray-500'
-                            }`}>
-                              {project.status === 'ongoing' ? 'In Progress' : 
-                               project.status === 'completed' ? 'Completed' : 'Pending'}
-                            </span>
-                          </div>
-
-                          <div className="mb-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-sm text-gray-700">Progress</span>
-                              <span className="text-sm font-semibold text-gray-700">{progress}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-3">
-                              <div
-                                className="bg-blue-600 h-full rounded-full transition-all duration-300"
-                                style={{ width: `${progress}%` }}
-                              ></div>
-                            </div>
-                          </div>
-
-                          <div className="text-sm text-gray-500">
-                            Due: {dueDate.toLocaleDateString('en-US', {
-                              month: 'numeric',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {projectsData.length > 0 && (
-                      <button className="w-full text-center py-3 text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2 border-t border-gray-100">
-                        View all projects <ArrowRight size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Recent Activity Section */}
-                <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                  <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h2>
-
-                  <div className="space-y-4">
-                    {recentActivity.length > 0 ? (
-                      recentActivity.map((activity) => (
-                        <div key={activity.id} className="flex gap-3 items-start pb-4 border-b border-gray-100 last:border-0">
-                          <span className="text-lg mt-0.5">{activity.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 line-clamp-2">
-                              {activity.title}
-                            </p>
-                            <p className="text-xs text-gray-500 mt-1">{activity.timeAgo}</p>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-500 text-center py-8">No recent activity</p>
-                    )}
-
-                    {recentActivity.length > 0 && (
-                      <button className="w-full text-center py-3 text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2 mt-2">
-                        View all activity <ArrowRight size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Upcoming Deadlines Section - Only show when there are projects */}
-            {projectsData.length > 0 && (
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-gray-900">Upcoming Deadlines</h2>
-                  <Calendar size={20} className="text-gray-400" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {projectsData.slice(0, 2).map((projectObj) => {
-                    const projectKey = Object.keys(projectObj)[0];
-                    const project = projectObj[projectKey];
-                    const dueDate = calculateDueDate(project.init_date, project.duration);
-                    const now = new Date();
-                    const daysUntilDue = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
-                    
-                    let timeLabel = '';
-                    let colorClass = '';
-                    
-                    if (daysUntilDue < 0) {
-                      timeLabel = 'Overdue';
-                      colorClass = 'bg-red-100 text-red-700';
-                    } else if (daysUntilDue === 0) {
-                      timeLabel = 'Today';
-                      colorClass = 'bg-red-50 text-red-700';
-                    } else if (daysUntilDue === 1) {
-                      timeLabel = 'Tomorrow';
-                      colorClass = 'bg-red-50 text-red-700';
-                    } else if (daysUntilDue <= 7) {
-                      timeLabel = `${daysUntilDue} days`;
-                      colorClass = 'bg-yellow-50 text-yellow-700';
-                    } else if (daysUntilDue <= 30) {
-                      timeLabel = `${Math.ceil(daysUntilDue / 7)} weeks`;
-                      colorClass = 'bg-blue-50 text-blue-700';
-                    } else {
-                      timeLabel = `${Math.ceil(daysUntilDue / 30)} months`;
-                      colorClass = 'bg-gray-50 text-gray-700';
-                    }
-
-                    return (
-                      <div key={project.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                        <div className="flex-1 min-w-0 mr-4">
-                          <h3 className="font-semibold text-gray-900 truncate">{project.project_title}</h3>
-                          <p className="text-sm text-gray-500 truncate">
-                            {project.jobs?.length || 0} {project.jobs?.length === 1 ? 'job' : 'jobs'}
-                          </p>
-                        </div>
-                        <div className={`text-right font-semibold px-3 py-1 rounded-lg whitespace-nowrap ${colorClass}`}>
-                          {timeLabel}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
                 {projectsData.length > 0 && (
-                  <button className="w-full text-center py-3 text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2 mt-4 border-t pt-4">
-                    View all deadlines <ArrowRight size={16} />
-                  </button>
+                  <div className="flex gap-3 flex-shrink-0">
+                    <button 
+                      onClick={createNewProject}
+                      className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap">
+                      New Project
+                    </button>
+                    <button className="px-6 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 transition-colors whitespace-nowrap">
+                      Invite Team
+                    </button>
+                  </div>
                 )}
               </div>
-            )}
+
+              {projectsData.length === 0 ? (
+                /* Empty UI - Only this shows when no projects */
+                <div className=" p-16 shadow-sm border third-font h-[70vh] flex items-center justify-center border-gray-100">
+                  <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto">
+                    <div className="mb-6">
+                      {/* Custom bar chart using divs */}
+                      <div className="flex items-end justify-center gap-3 h-10 w-8">
+                        <div className="w-4 bg-gray-200 rounded-t" style={{ height: '50%' }}></div>
+                        <div className="w-4 bg-gray-300 rounded-t" style={{ height: '75%' }}></div>
+                        <div className="w-4 bg-gray-200 rounded-t" style={{ height: '90%' }}></div>
+                      </div>
+                    </div>
+                    <h2 className="text-sm font-normal text-[#6B7280] mb-2">Project activity chart would render here</h2>
+                    <p className="text-[#9CA3AF] text-xs">Using actual chart library in production</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Metrics Cards - Only show when there are projects */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {/* Active Projects */}
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="bg-blue-100 rounded-lg p-3">
+                          <Briefcase className="text-blue-600" size={24} />
+                        </div>
+                      </div>
+                      <h3 className="text-gray-600 text-sm font-medium mb-1">Active Projects</h3>
+                      <p className="text-3xl font-bold text-gray-900">{dashboardMetrics.activeProjects}</p>
+                    </div>
+
+                    {/* Completed Projects */}
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="bg-green-100 rounded-lg p-3">
+                          <CheckCircle className="text-green-600" size={24} />
+                        </div>
+                      </div>
+                      <h3 className="text-gray-600 text-sm font-medium mb-1">Completed Projects</h3>
+                      <p className="text-3xl font-bold text-gray-900">{dashboardMetrics.completedProjects}</p>
+                    </div>
+
+                    {/* Budget Spent */}
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="bg-indigo-600 rounded-lg p-3">
+                          <DollarSign className="text-white" size={24} />
+                        </div>
+                      </div>
+                      <h3 className="text-gray-600 text-sm font-medium mb-1">Budget Spent</h3>
+                      <p className="text-3xl font-bold text-gray-900">${dashboardMetrics.budgetSpent.toLocaleString()}</p>
+                    </div>
+
+                    {/* Upcoming Deadlines */}
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="bg-yellow-500 rounded-lg p-3">
+                          <Calendar className="text-white" size={24} />
+                        </div>
+                      </div>
+                      <h3 className="text-gray-600 text-sm font-medium mb-1">Upcoming Deadlines</h3>
+                      <p className="text-3xl font-bold text-gray-900">{dashboardMetrics.upcomingDeadlines}</p>
+                    </div>
+                  </div>
+
+                  {/* Main Content Grid - Active Projects and Recent Activity */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                    {/* Active Projects Section */}
+                    <div className="lg:col-span-2 bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                      <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-bold text-gray-900">Active Projects</h2>
+                        <Calendar size={20} className="text-gray-600" />
+                      </div>
+
+                      <div className="space-y-0">
+                        {projectsData.slice(0, 2).map((projectObj, index) => {
+                          const projectKey = Object.keys(projectObj)[0];
+                          const project = projectObj[projectKey];
+                          const progress = calculateProgress(project);
+                          const dueDate = calculateDueDate(project.init_date, project.duration);
+                          const isLast = index === projectsData.slice(0, 2).length - 1;
+
+                          return (
+                            <div key={project.id} className={`border-t border-gray-100 p-4 hover:bg-gray-50 transition-colors ${isLast ? 'border-b border-gray-100' : ''}`}>
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-semibold text-gray-900">{project.project_title}</h3>
+                                <span className={`text-xs font-semibold px-3 py-1 rounded-full text-white ${
+                                  project.status === 'ongoing' ? 'bg-blue-600' : 
+                                  project.status === 'completed' ? 'bg-green-500' : 'bg-gray-500'
+                                }`}>
+                                  {project.status === 'ongoing' ? 'In Progress' : 
+                                   project.status === 'completed' ? 'Completed' : 'Pending'}
+                                </span>
+                              </div>
+
+                              <div className="mb-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm text-gray-700">Progress</span>
+                                  <span className="text-sm font-semibold text-gray-700">{progress}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-3">
+                                  <div
+                                    className="bg-blue-600 h-full rounded-full transition-all duration-300"
+                                    style={{ width: `${progress}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+
+                              <div className="text-sm text-gray-500">
+                                Due: {dueDate.toLocaleDateString('en-US', {
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        <button className="w-full text-center py-3 text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2 border-t border-gray-100">
+                          View all projects <ArrowRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Recent Activity Section */}
+                    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h2>
+
+                      <div className="space-y-4">
+                        {recentActivity.length > 0 ? (
+                          recentActivity.map((activity) => (
+                            <div key={activity.id} className="flex gap-3 items-start pb-4 border-b border-gray-100 last:border-0">
+                              <span className="text-lg mt-0.5">{activity.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 line-clamp-2">
+                                  {activity.title}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1">{activity.timeAgo}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-8">No recent activity</p>
+                        )}
+
+                        {recentActivity.length > 0 && (
+                          <button className="w-full text-center py-3 text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2 mt-2">
+                            View all activity <ArrowRight size={16} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Upcoming Deadlines Section */}
+                  <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-gray-900">Upcoming Deadlines</h2>
+                      <Calendar size={20} className="text-gray-400" />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {projectsData.slice(0, 2).map((projectObj) => {
+                        const projectKey = Object.keys(projectObj)[0];
+                        const project = projectObj[projectKey];
+                        const dueDate = calculateDueDate(project.init_date, project.duration);
+                        const now = new Date();
+                        const daysUntilDue = Math.ceil((dueDate - now) / (1000 * 60 * 60 * 24));
+                        
+                        let timeLabel = '';
+                        let colorClass = '';
+                        
+                        if (daysUntilDue < 0) {
+                          timeLabel = 'Overdue';
+                          colorClass = 'bg-red-100 text-red-700';
+                        } else if (daysUntilDue === 0) {
+                          timeLabel = 'Today';
+                          colorClass = 'bg-red-50 text-red-700';
+                        } else if (daysUntilDue === 1) {
+                          timeLabel = 'Tomorrow';
+                          colorClass = 'bg-red-50 text-red-700';
+                        } else if (daysUntilDue <= 7) {
+                          timeLabel = `${daysUntilDue} days`;
+                          colorClass = 'bg-yellow-50 text-yellow-700';
+                        } else if (daysUntilDue <= 30) {
+                          timeLabel = `${Math.ceil(daysUntilDue / 7)} weeks`;
+                          colorClass = 'bg-blue-50 text-blue-700';
+                        } else {
+                          timeLabel = `${Math.ceil(daysUntilDue / 30)} months`;
+                          colorClass = 'bg-gray-50 text-gray-700';
+                        }
+
+                        return (
+                          <div key={project.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex-1 min-w-0 mr-4">
+                              <h3 className="font-semibold text-gray-900 truncate">{project.project_title}</h3>
+                              <p className="text-sm text-gray-500 truncate">
+                                {project.jobs?.length || 0} {project.jobs?.length === 1 ? 'job' : 'jobs'}
+                              </p>
+                            </div>
+                            <div className={`text-right font-semibold px-3 py-1 rounded-lg whitespace-nowrap ${colorClass}`}>
+                              {timeLabel}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <button className="w-full text-center py-3 text-blue-600 hover:text-blue-700 font-medium flex items-center justify-center gap-2 mt-4 border-t pt-4">
+                      View all deadlines <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Right Side Chat Assistant - Desktop */}
+      <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
+        {/* Chat Header */}
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <Sparkles className="text-white" size={20} />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900">Client Assistant</h3>
+              <p className="text-xs text-gray-500">10:01 AM</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Chat Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {chatMessages.map((message) => (
+            <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[85%] ${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-2xl px-4 py-3`}>
+                <p className="text-sm leading-relaxed">{message.content}</p>
+              </div>
+            </div>
+          ))}
+          <div ref={chatEndRef} />
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="px-4 pb-3 flex gap-2">
+          <button className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+            Start project
+          </button>
+          <button className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+            Watch Demo
+          </button>
+        </div>
+
+        {/* Chat Input */}
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+            <Paperclip className="text-gray-400" size={18} />
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="How can LancerAI help?"
+              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-400"
+            />
+            <button 
+              onClick={handleSendMessage}
+              className="p-1.5 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Send className="text-white" size={16} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            <Sparkles className="inline-block mr-1" size={12} />
+            The AI will help you define your project scope, required assets, and suggest tasks.
+          </p>
+        </div>
+      </div>
+
+      {/* Mobile Chat Toggle Button */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors z-50"
+      >
+        <MessageCircle className="text-white" size={24} />
+      </button>
+
+      {/* Mobile Chat Overlay */}
+      {isChatOpen && (
+        <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setIsChatOpen(false)}>
+          <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Mobile Chat Header */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
+                    <Sparkles className="text-white" size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Client Assistant</h3>
+                    <p className="text-xs text-gray-500">10:01 AM</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsChatOpen(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {chatMessages.map((message) => (
+                <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] ${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-2xl px-4 py-3`}>
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Mobile Quick Action Buttons */}
+            <div className="px-4 pb-3 flex gap-2">
+              <button className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                Start project
+              </button>
+              <button className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+                Watch Demo
+              </button>
+            </div>
+
+            {/* Mobile Chat Input */}
+            <div className="p-4 border-t border-gray-200">
+              <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
+                <Paperclip className="text-gray-400" size={18} />
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="How can LancerAI help?"
+                  className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-400"
+                />
+                <button 
+                  onClick={handleSendMessage}
+                  className="p-1.5 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Send className="text-white" size={16} />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                <Sparkles className="inline-block mr-1" size={12} />
+                The AI will help you define your project scope, required assets, and suggest tasks.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

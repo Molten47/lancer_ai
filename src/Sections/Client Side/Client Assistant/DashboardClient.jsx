@@ -359,42 +359,84 @@ const AIAssistantChat = ({
       setSocketError('Connection error. Please try refreshing the page.');
     });
 
-    socket.on('new_message', (data, callback) => {
+  socket.on('new_message', (data, callback) => {
       console.log('Received new message:', data);
       
       const userId = own_id || localStorage.getItem('user_id');
+      
+      // Extract all data first
+      const { message_content, sender_tag, own_id: socket_sender_id, recipient_id, sender_id, timestamp } = data;
+      
+      // Use sender_id if available, fallback to own_id from socket
+      const actualSenderId = sender_id || socket_sender_id;
+      
       const messageFilter = createClientAssistantMessageFilter(userId, 'client_assistant');
       
-      if (!messageFilter(data)) {
-        console.log('Message filtered out - not for this chat');
+      // Create a properly formatted data object for filtering
+      const messageDataForFilter = {
+        ...data,
+        sender_id: actualSenderId,
+        own_id: socket_sender_id,
+        recipient_id: recipient_id,
+        sender_tag: sender_tag
+      };
+      
+      if (!messageFilter(messageDataForFilter)) {
+        console.log('Message filtered out - not for this chat', {
+          userId,
+          actualSenderId,
+          recipient_id,
+          sender_tag
+        });
         if (callback && typeof callback === 'function') callback();
         return;
       }
       
+      console.log('Message passed filter, processing...', {
+        userId,
+        actualSenderId,
+        recipient_id,
+        sender_tag
+      });
+      
       // ✅ NEW: Mark last status as complete before adding new message
       markLastStatusComplete();
       
-      const { message_content, sender_tag, own_id: socket_sender_id, recipient_id } = data;
-      
       const { type: messageType, sender: senderName } = determineMessageType({
-        sender_id: socket_sender_id,
+        sender_id: actualSenderId,
         recipient_id: recipient_id,
         sender_tag: sender_tag
       }, userId);
 
       const newMessage = {
-        id: Date.now(),
+        id: `msg-${Date.now()}-${Math.random()}`,
         type: messageType,
         content: message_content,
-        timestamp: serverTimestamp ? new Date(serverTimestamp) : new Date(),
+        timestamp: timestamp ? new Date(timestamp) : new Date(),
         sender: senderName,
-        sender_id: socket_sender_id,
+        sender_id: actualSenderId,
         recipient_id: recipient_id,
         sender_tag: sender_tag,
         isStatus: false
       };
       
-      setMessages(prev => [...prev, newMessage]);
+      console.log('Adding new message to state:', newMessage);
+      
+      setMessages(prev => {
+        // Prevent duplicate messages
+        const isDuplicate = prev.some(msg => 
+          msg.content === newMessage.content && 
+          msg.sender_id === newMessage.sender_id &&
+          Math.abs(new Date(msg.timestamp) - new Date(newMessage.timestamp)) < 1000
+        );
+        
+        if (isDuplicate) {
+          console.log('Duplicate message detected, skipping');
+          return prev;
+        }
+        
+        return [...prev, newMessage];
+      });
       
       if (messageType === 'ai') {
         clearLoadingStates();

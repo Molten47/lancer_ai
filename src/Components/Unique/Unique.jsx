@@ -9,7 +9,7 @@ const Unique = () => {
 
 
   return (
-    <main className="bg-white h-auto lg:h-[380vh] third-font items-center justify-center flex flex-col py-8 md:py-12 lg:py-16 px-4">
+    <main className="bg-white h-auto lg:h-[365vh] third-font items-center justify-center flex flex-col py-8 md:py-12 lg:py-16 px-4">
       {/* Top section */}
       <div className='flex flex-col items-center justify-center gap-4 md:gap-6 mb-8 md:mb-12'>
         <span className='bg-[#F3F4F6] p-2.5 text-[#080026] rounded-[5px] border border-[#E5E7EB] text-sm md:text-base font-normal'>

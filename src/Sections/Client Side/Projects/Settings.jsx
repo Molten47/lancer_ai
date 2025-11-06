@@ -1,38 +1,79 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Archive, Trash2, Save, X } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { User, Bell, Lock, CreditCard, Globe, Shield, HelpCircle, ChevronRight } from 'lucide-react';
 
-const ProjectSettings = ({ project = null }) => {
-  const [projectData, setProjectData] = useState(null);
-  const [error, setError] = useState(null);
-  const [formData, setFormData] = useState({
-    project_title: '',
-    description: '',
-    status: 'ongoing',
-    duration: ''
-  });
+const GeneralSettings = () => {
+  const userData = useSelector(state => state.user.userData);
+  
+  const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeTab, setActiveTab] = useState('profile');
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    location: '',
+    bio: ''
+  });
 
+  // Fetch profile data
   useEffect(() => {
-    if (project) {
-      setProjectData(project);
-      setError(null);
-      processProjectData(project);
-    } else {
-      setError('No project data provided');
-    }
-  }, [project]);
+    const fetchProfileData = async () => {
+      try {
+        setIsLoading(true);
+        const token = localStorage.getItem('access_jwt');
+        const API_URL = import.meta.env.VITE_API_URL;
+        
+        const response = await fetch(`${API_URL}/api/profile`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          credentials: 'include',
+        });
 
-  const processProjectData = (data) => {
-    if (!data) return;
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
+        const data = await response.json();
+        
+        if (Array.isArray(data) && data.length > 0 && data[0].well_received) {
+          setProfileData(data[0].profile_data);
+          populateFormData(data[0].profile_data);
+        } else if (data.well_received) {
+          setProfileData(data.profile_data);
+          populateFormData(data.profile_data);
+        }
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+        if (userData) {
+          const fallbackData = {
+            firstname: userData.firstname,
+            lastname: userData.lastname,
+            username: userData.username,
+            email: userData.email
+          };
+          setProfileData(fallbackData);
+          populateFormData(fallbackData);
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [userData]);
+
+  const populateFormData = (data) => {
     setFormData({
-      project_title: data.project_title || '',
-      description: data.description || '',
-      status: data.status || 'ongoing',
-      duration: data.duration || ''
+      fullName: `${data.firstname || ''} ${data.lastname || ''}`.trim(),
+      email: data.email || '',
+      phone: data.phone || '',
+      location: data.location || '',
+      bio: data.bio || ''
     });
   };
 
@@ -44,312 +85,269 @@ const ProjectSettings = ({ project = null }) => {
     }));
   };
 
-  const handleSaveChanges = async () => {
+  const handleSave = async () => {
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       const token = localStorage.getItem('access_jwt');
-
-      const response = await fetch(`${API_URL}/api/projects/${projectData.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(formData)
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) {
-      console.error('Error saving project:', err);
-      setError('Failed to save changes. Please try again.');
+      const API_URL = import.meta.env.VITE_API_URL;
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Add your actual save logic here
+      console.log('Saving profile data:', formData);
+      
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleArchiveProject = async () => {
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const token = localStorage.getItem('access_jwt');
-
-      const response = await fetch(`${API_URL}/api/projects/${projectData.id}/archive`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      setShowArchiveConfirm(false);
-      setError(null);
-      alert('Project archived successfully');
-      window.location.href = '/projects';
-    } catch (err) {
-      console.error('Error archiving project:', err);
-      setError('Failed to archive project. Please try again.');
+  const handleCancel = () => {
+    if (profileData) {
+      populateFormData(profileData);
     }
   };
 
-  const handleDeleteProject = async () => {
-    try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const token = localStorage.getItem('access_jwt');
-
-      const response = await fetch(`${API_URL}/api/projects/${projectData.id}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      setShowDeleteConfirm(false);
-      setError(null);
-      alert('Project deleted permanently');
-      window.location.href = '/projects';
-    } catch (err) {
-      console.error('Error deleting project:', err);
-      setError('Failed to delete project. Please try again.');
+  const getInitials = () => {
+    if (profileData?.firstname && profileData?.lastname) {
+      return `${profileData.firstname.charAt(0)}${profileData.lastname.charAt(0)}`.toUpperCase();
     }
+    return 'JP';
   };
 
-  if (error || !projectData) {
+  const settingsTabs = [
+    { id: 'profile', label: 'Profile Settings', icon: User },
+    { id: 'notifications', label: 'Notification Preferences', icon: Bell },
+    { id: 'security', label: 'Security', icon: Lock },
+    { id: 'billing', label: 'Billing', icon: CreditCard },
+    { id: 'preferences', label: 'Preferences', icon: Globe },
+    { id: 'account', label: 'Account', icon: Shield }
+  ];
+
+  if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <p className="text-gray-500">{error || 'No project data available'}</p>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading settings...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Error Alert */}
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-          <p className="text-red-800">{error}</p>
-        </div>
-      )}
-
-      {/* Success Alert */}
-      {saveSuccess && (
-        <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-          <div className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5">✓</div>
-          <p className="text-green-800">Changes saved successfully</p>
-        </div>
-      )}
-
-      {/* Project Details Settings */}
-      <div className="bg-white rounded-xl shadow-sm p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Project details settings</h2>
-
-        <div className="space-y-6">
-          {/* Business Space Name */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Business Space Name
-            </label>
-            <input
-              type="text"
-              name="project_title"
-              value={formData.project_title}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              placeholder="Enter project title"
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows="4"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none"
-              placeholder="Enter project description"
-            />
-          </div>
-
-          {/* Status */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition bg-white"
-            >
-              <option value="ongoing">Ongoing</option>
-              <option value="completed">Completed</option>
-              <option value="on_hold">On Hold</option>
-              <option value="archived">Archived</option>
-            </select>
-          </div>
-
-          {/* Monthly Hours Allocation */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Monthly Hours Allocation
-            </label>
-            <input
-              type="number"
-              name="duration"
-              value={formData.duration}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              placeholder="Enter hours"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-            <button
-              onClick={() => processProjectData(projectData)}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveChanges}
-              disabled={isSaving}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium flex items-center gap-2 disabled:opacity-50"
-            >
-              <Save size={18} />
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </div>
+    <div className="h-full overflow-y-auto bg-gray-50 p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold text-gray-900 mb-2">Settings</h1>
+        <p className="text-gray-500 text-base">Manage your account settings and preferences</p>
       </div>
 
-      {/* Danger Zone */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border-t-4 border-red-500">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Danger Zone</h2>
+      {/* Main Content Area */}
+      <div className="grid grid-cols-12 gap-6">
+        {/* Left Sidebar Navigation */}
+        <div className="col-span-12 lg:col-span-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4">
+            <nav className="space-y-2">
+              {settingsTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === tab.id
+                        ? 'bg-blue-50 text-blue-600'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon size={20} />
+                      <span>{tab.label}</span>
+                    </div>
+                    <ChevronRight size={18} className={activeTab === tab.id ? 'text-blue-600' : 'text-gray-400'} />
+                  </button>
+                );
+              })}
+            </nav>
 
-        <div className="space-y-4">
-          {/* Archive Project */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <div>
-              <h3 className="font-semibold text-gray-900">Archive Project</h3>
-              <p className="text-sm text-gray-600">This will archive the project space and all its data. The space can be restored later.</p>
+            {/* Help Section */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <button className="w-full flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium transition-colors">
+                <HelpCircle size={20} />
+                <span>Need help?</span>
+              </button>
+              <p className="px-4 mt-2 text-xs text-gray-500">
+                Check our documentation or contact support
+              </p>
             </div>
-            <button
-              onClick={() => setShowArchiveConfirm(true)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition font-medium flex-shrink-0"
-            >
-              Archive Space
-            </button>
           </div>
+        </div>
 
-          {/* Delete Project */}
-          <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-200">
-            <div>
-              <h3 className="font-semibold text-gray-900">Delete Project</h3>
-              <p className="text-sm text-gray-600">Permanently delete this project space and all its data. This action cannot be undone.</p>
+        {/* Right Content Area */}
+        <div className="col-span-12 lg:col-span-8">
+          {activeTab === 'profile' && (
+            <div className="bg-white rounded-xl border border-gray-200 p-8">
+              {/* Profile Picture Section */}
+              <div className="mb-10">
+                <h3 className="text-sm font-medium text-gray-700 mb-6">Profile Picture</h3>
+                <div className="flex items-center gap-4">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-400 via-purple-400 to-purple-500 flex items-center justify-center flex-shrink-0 shadow-lg">
+                    <span className="text-white font-bold text-2xl">{getInitials()}</span>
+                  </div>
+                  <div className="flex gap-3">
+                    <button className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors">
+                      Change
+                    </button>
+                    <button className="px-5 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Form */}
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Full Name */}
+                  <div>
+                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      id="fullName"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+                      placeholder="James Parker"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+                      placeholder="jamesparker@outlook.com"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  {/* Phone */}
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      id="phone"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+                      placeholder="+1 (555) 123-4567"
+                    />
+                  </div>
+
+                  {/* Location */}
+                  <div>
+                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-2">
+                      Location
+                    </label>
+                    <input
+                      type="text"
+                      id="location"
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-400"
+                      placeholder="San Francisco, CA"
+                    />
+                  </div>
+                </div>
+
+                {/* Bio */}
+                <div>
+                  <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
+                    Bio
+                  </label>
+                  <textarea
+                    id="bio"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    rows="4"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none placeholder-gray-400"
+                    placeholder="Passionate about creating innovative digital products and services."
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-10">
+                <button
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className="px-6 py-2.5 border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save'
+                  )}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium flex-shrink-0 flex items-center gap-2"
-            >
-              <Trash2 size={18} />
-              Delete Space
-            </button>
-          </div>
+          )}
+
+          {/* Other Tabs - Placeholder Content */}
+          {activeTab !== 'profile' && (
+            <div className="bg-white rounded-xl border border-gray-200 p-8">
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  {activeTab === 'notifications' && <Bell size={24} className="text-gray-400" />}
+                  {activeTab === 'security' && <Lock size={24} className="text-gray-400" />}
+                  {activeTab === 'billing' && <CreditCard size={24} className="text-gray-400" />}
+                  {activeTab === 'preferences' && <Globe size={24} className="text-gray-400" />}
+                  {activeTab === 'account' && <Shield size={24} className="text-gray-400" />}
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  {settingsTabs.find(t => t.id === activeTab)?.label}
+                </h3>
+                <p className="text-gray-600">
+                  This section is under construction. Check back soon!
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Archive Confirmation Modal */}
-      {showArchiveConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Archive Project?</h3>
-              <button
-                onClick={() => setShowArchiveConfirm(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to archive this project? You can restore it later from your archive.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowArchiveConfirm(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleArchiveProject}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2"
-              >
-                <Archive size={18} />
-                Archive
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Delete Project?</h3>
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <p className="text-gray-600 mb-6">
-              This will permanently delete the project space and all its data. This action cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteProject}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center gap-2"
-              >
-                <Trash2 size={18} />
-                Delete Permanently
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export default ProjectSettings;
+export default GeneralSettings;

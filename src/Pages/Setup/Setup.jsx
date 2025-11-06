@@ -120,8 +120,7 @@ const getInitialFormData = () => {
     firstname: '',
     lastname: '',
     country: '',
-    state: '',
-    user_mail: '',           // Add this
+    state: '',       
     business_name: '',       // Add this
     description: '',         // Add this
     industry_category: '',   // Add this
@@ -282,7 +281,7 @@ const validateForm = () => {
     if (isEmpty(formData.skill)) newErrors.skill = 'Please select a skill';
   } else {
     // Client validations
-    if (isEmpty(formData.user_mail)) newErrors.user_mail = 'Email is required';
+    
     if (isEmpty(formData.business_name)) newErrors.business_name = 'Business name is required';
     if (isEmpty(formData.description)) newErrors.description = 'Business description is required';
     if (isEmpty(formData.industry_category)) newErrors.industry_category = 'Industry category is required';
@@ -335,7 +334,6 @@ const validateForm = () => {
           lastname: formData.lastname.trim(),
           country: formData.country,
           state: formData.state,
-          user_mail: formData.user_mail.trim(),
           business_name: formData.business_name.trim(),
           description: formData.description.trim(),
           industry_category: formData.industry_category,
@@ -647,18 +645,6 @@ const validateForm = () => {
                           error={errors.business_name}
                           required
                         />
-
-                    <FormInput
-                      label="Email"
-                      id="email"
-                      name="user_mail"
-                      type="email"
-                      value={formData.user_mail}
-                      onChange={handleChange}
-                      placeholder="john@example.com"
-                      error={errors.user_mail}
-                      required
-                    />
 
                         <FormTextarea
                           label="Business Description"
