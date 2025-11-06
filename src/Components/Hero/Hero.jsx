@@ -69,7 +69,7 @@ const Hero = ({ onExplore }) => {
               href='https://forms.gle/BPQ4XXApoRNbRBXR7'
              target="_blank" // Opens in new tab
              rel="noopener noreferrer"
-              className='py-3 px-6 sm:py-3 sm:px-6 md:py-3.5 md:px-7 lg:py-4 lg:px-8 bg-[#2255D7] text-white font-semibold rounded-lg shadow-xl hover:bg-[#1447e6] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-sm sm:text-base md:text-base lg:text-base flex items-center justify-center gap-2 w-full sm:w-auto'
+              className='py-3 px-6 sm:py-3 sm:px-6 md:py-3.5 md:px-7 lg:py-4 lg:px-8 bg-linear-to-r from-[#2563EB] to-[#2563EB] text-white font-semibold rounded-lg shadow-xl hover:bg-[#1447e6] transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:ring-opacity-50 text-sm sm:text-base md:text-base lg:text-base flex items-center justify-center gap-2 w-full sm:w-auto'
             >
               Join Waitlist 
             </a>
