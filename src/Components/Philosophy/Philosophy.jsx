@@ -37,7 +37,7 @@ const Philosophy = () => {
   ];
 
   return (
-    <div className={`w-full ${isMobile ? 'min-h-[95vh]' : 'min-h-[85vh]'} bg-[#151B25] third-font py-6 sm:py-8 md:py-10 lg:py-12 flex flex-col justify-center items-center px-4 sm:px-6 md:px-8`}>      
+    <div className={`w-full ${isMobile ? 'min-h-[70vh]' : 'min-h-[85vh]'} bg-[#151B25] third-font py-6 sm:py-2 md:py-10 lg:py-10 flex flex-col justify-center items-center px-4 sm:px-6 md:px-8`}>      
       
       {/* Logo Scroll Container */}
       <div className='w-full overflow-hidden relative py-6 sm:py-8 mb-6 sm:mb-8'>
