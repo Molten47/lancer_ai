@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, DollarSign, TrendingUp, Clock, MessageCircle, ArrowRight, Briefcase, CheckCircle, CircleCheck, Send, Paperclip, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, DollarSign, Bot, ArrowRight, Briefcase, CheckCircle, Sparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AISidebarChat from '../../Sections/Client Side/Client Assistant/SideAsssistant';
 
 const DynamicDashboard = () => {
   const [profileData, setProfileData] = useState(null);
@@ -17,18 +18,9 @@ const DynamicDashboard = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   
-  // Chat assistant state
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 1,
-      type: 'assistant',
-      content: "Hi there! I'm your AI assistant. I'll help you create and plan your new project. What do you want to do today?",
-      timestamp: new Date()
-    }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const chatEndRef = useRef(null);
+  // Mobile chat state
+const [isChatOpen, setIsChatOpen] = useState(false);
+
 
   // Fetch profile data
   const fetchProfileData = async (token, apiUrl) => {
@@ -126,8 +118,18 @@ const DynamicDashboard = () => {
   };
 
   const createNewProject = () => {
-    console.log('Navigating to client dashboard...');
+    console.log('Navigating to client assistant...');
     navigate('/client-assistant');
+  };
+
+  // Handle action clicks from chat
+  const handleChatAction = (action) => {
+    if (action === 'start') {
+      createNewProject();
+    } else if (action === 'demo') {
+      console.log('Watch demo clicked');
+      // Add your demo logic here
+    }
   };
 
   // Process projects data for metrics and activity
@@ -263,46 +265,6 @@ const DynamicDashboard = () => {
     fetchAllData();
   }, []);
 
-  // Scroll chat to bottom when messages change
-  useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [chatMessages]);
-
-  // Handle chat message send
-  const handleSendMessage = () => {
-    if (!chatInput.trim()) return;
-
-    const userMessage = {
-      id: chatMessages.length + 1,
-      type: 'user',
-      content: chatInput,
-      timestamp: new Date()
-    };
-
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput('');
-
-    // Simulate AI response after a delay
-    setTimeout(() => {
-      const aiResponse = {
-        id: chatMessages.length + 2,
-        type: 'assistant',
-        content: "I understand you want to work on that. Let me help you set things up. Would you like to start a new project or manage an existing one?",
-        timestamp: new Date()
-      };
-      setChatMessages(prev => [...prev, aiResponse]);
-    }, 1000);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-gray-50">
@@ -315,6 +277,7 @@ const DynamicDashboard = () => {
   }
 
   const firstName = profileData?.firstname || 'User';
+  const userInitials = firstName.charAt(0).toUpperCase();
 
   return (
     <div className="w-full h-full bg-gray-50 third-font flex overflow-hidden">
@@ -348,7 +311,7 @@ const DynamicDashboard = () => {
 
               {projectsData.length === 0 ? (
                 /* Empty UI - Only this shows when no projects */
-                <div className=" p-16 shadow-sm border third-font h-[70vh] flex items-center justify-center border-gray-100">
+                <div className="p-16 shadow-sm border third-font h-[70vh] flex items-center justify-center border-gray-100">
                   <div className="flex flex-col items-center justify-center text-center max-w-md mx-auto">
                     <div className="mb-6">
                       {/* Custom bar chart using divs */}
@@ -566,147 +529,90 @@ const DynamicDashboard = () => {
         </div>
       </div>
 
-      {/* Right Side Chat Assistant - Desktop */}
-      <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
-        {/* Chat Header */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <Sparkles className="text-white" size={20} />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-gray-900">Client Assistant</h3>
-              <p className="text-xs text-gray-500">10:01 AM</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {chatMessages.map((message) => (
-            <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[85%] ${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-2xl px-4 py-3`}>
-                <p className="text-sm leading-relaxed">{message.content}</p>
+      {/* Right Side Chat Assistant - Desktop (toggleable) */}
+{isChatOpen && (
+          <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
+            {/* Chat Header */}
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
+                  <Sparkles className="text-white" size={20} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900">Client Assistant</h3>
+                  <p className="text-xs text-gray-500">
+                    {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setIsChatOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 p-1 lg:block hidden"
+                >
+                  <X size={20} />
+                </button>
               </div>
             </div>
-          ))}
-          <div ref={chatEndRef} />
-        </div>
 
-        {/* Quick Action Buttons */}
-        <div className="px-4 pb-3 flex gap-2">
-          <button className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-            Start project
-          </button>
-          <button className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
-            Watch Demo
-          </button>
-        </div>
+    {/* Chat Component */}
+    <div className="flex-1 overflow-hidden">
+      <AISidebarChat 
+        assistantName="Client Assistant"
+        userName={firstName}
+        userAvatar={userInitials}
+        onActionClick={handleChatAction}
+      />
+    </div>
+  </div>
+)}
 
-        {/* Chat Input */}
-        <div className="p-4 border-t border-gray-200">
-          <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
-            <Paperclip className="text-gray-400" size={18} />
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="How can LancerAI help?"
-              className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-400"
-            />
-            <button 
-              onClick={handleSendMessage}
-              className="p-1.5 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Send className="text-white" size={16} />
-            </button>
-          </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            <Sparkles className="inline-block mr-1" size={12} />
-            The AI will help you define your project scope, required assets, and suggest tasks.
-          </p>
-        </div>
-      </div>
 
-      {/* Mobile Chat Toggle Button */}
-      <button
-        onClick={() => setIsChatOpen(!isChatOpen)}
-        className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors z-50"
-      >
-        <MessageCircle className="text-white" size={24} />
-      </button>
+<button
+  onClick={() => setIsChatOpen(!isChatOpen)}
+  className="fixed bottom-14 right-10 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors z-50"
+  aria-label={isChatOpen ? "Close chat" : "Open chat"}
+>
+  {isChatOpen ? (
+    <Bot className="text-white" size={24} />
+  ) : (
+    <Bot className="text-white" size={24} />
+  )}
+</button>
 
       {/* Mobile Chat Overlay */}
       {isChatOpen && (
         <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setIsChatOpen(false)}>
           <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* Mobile Chat Header */}
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between mb-2">
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
                     <Sparkles className="text-white" size={20} />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Client Assistant</h3>
-                    <p className="text-xs text-gray-500">10:01 AM</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setIsChatOpen(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-gray-700 p-1"
                 >
-                  ✕
+                  <X size={20} />
                 </button>
               </div>
             </div>
 
-            {/* Mobile Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {chatMessages.map((message) => (
-                <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] ${message.type === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'} rounded-2xl px-4 py-3`}>
-                    <p className="text-sm leading-relaxed">{message.content}</p>
-                  </div>
-                </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Mobile Quick Action Buttons */}
-            <div className="px-4 pb-3 flex gap-2">
-              <button className="flex-1 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors">
-                Start project
-              </button>
-              <button className="px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
-                Watch Demo
-              </button>
-            </div>
-
-            {/* Mobile Chat Input */}
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 border border-gray-200 focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
-                <Paperclip className="text-gray-400" size={18} />
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="How can LancerAI help?"
-                  className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 placeholder-gray-400"
-                />
-                <button 
-                  onClick={handleSendMessage}
-                  className="p-1.5 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  <Send className="text-white" size={16} />
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                <Sparkles className="inline-block mr-1" size={12} />
-                The AI will help you define your project scope, required assets, and suggest tasks.
-              </p>
+            {/* Mobile Chat Component */}
+            <div className="flex-1 overflow-hidden">
+              <AISidebarChat 
+                assistantName="Client Assistant"
+                userName={firstName}
+                userAvatar={userInitials}
+                onActionClick={handleChatAction}
+              />
             </div>
           </div>
         </div>

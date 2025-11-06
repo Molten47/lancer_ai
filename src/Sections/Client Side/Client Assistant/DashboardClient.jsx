@@ -888,11 +888,11 @@ const AIAssistantChat = ({
               />
               
               {/* Icons inside input */}
-              <div className="absolute left-3 top-1/2 transform translate-y-1/2 flex items-center gap-2">
+              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
                 <button 
                   onClick={() => fileInputRef.current?.click()}
                   disabled={!isConnected || isLoadingAnswer}
-                  className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                  className="text-gray-500 hover:text-gray-700 transition-colors disabled:text-gray-300"
                   title="Attach file"
                 >
                   <Paperclip size={16} />
@@ -907,22 +907,13 @@ const AIAssistantChat = ({
                 />
                 
                 <button 
-                  className="flex items-center justify-center hover:text-gray-700 transition-colors disabled:text-gray-300 disabled:cursor-not-allowed text-gray-500"
+                  className="text-gray-500 hover:text-gray-700 transition-colors disabled:text-gray-300"
                   title="Add emoji"
                   disabled={!isConnected || isLoadingAnswer}
                 >
                   <Smile size={16} />
                 </button>
               </div>
-
-              {inputValue && (
-                <button 
-                  onClick={() => setInputValue('')}
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  ×
-                </button>
-              )}
             </div>
 
             {/* Send Button */}
