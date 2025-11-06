@@ -9,7 +9,7 @@ const Unique = () => {
 
 
   return (
-    <main className="bg-white h-auto lg:h-[365vh] third-font items-center justify-center flex flex-col py-8 md:py-12 lg:py-16 px-4">
+    <main className="bg-white h-auto lg:h-[365vh] third-font items-center justify-center flex flex-col py-8 md:py-12 lg:py-8 px-4">
       {/* Top section */}
       <div className='flex flex-col items-center justify-center gap-4 md:gap-6 mb-8 md:mb-12'>
         <span className='bg-[#F3F4F6] p-2.5 text-[#080026] rounded-[5px] border border-[#E5E7EB] text-sm md:text-base font-normal'>
@@ -50,8 +50,8 @@ const Unique = () => {
         {/*Call to action buttons */}
         <motion.div 
           className='flex flex-col sm:flex-row gap-3 md:gap-4 w-full px-4 sm:w-auto'
-          initial={{ x: -100, opacity: 0 }}
-          whileInView={{ x: 0, opacity: 1 }}
+          initial={{ y: -100, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           viewport={{ once: true, amount: 0.3 }}
         >
@@ -61,8 +61,8 @@ const Unique = () => {
         {/*Demo-image */}
         <motion.div 
           className='flex items-center justify-center w-full px-4'
-          initial={{ x: 100, opacity: 0 }}
-          whileInView={{ x: 0, opacity: 1 }}
+          initial={{ y: -100, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
           viewport={{ once: true, amount: 0.3 }}
         >
@@ -90,8 +90,8 @@ const Unique = () => {
         {/*Call to action buttons */}
         <motion.div 
           className='flex flex-col sm:flex-row gap-3 md:gap-4 w-full px-4 sm:w-auto'
-          initial={{ x: 100, opacity: 0 }}
-          whileInView={{ x: 0, opacity: 1 }}
+          initial={{ y: 100, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
           viewport={{ once: true, amount: 0.3 }}
         >
@@ -101,8 +101,8 @@ const Unique = () => {
         {/*Demo-image */}
         <motion.div 
           className='flex items-center justify-center w-full px-4'
-          initial={{ x: -100, opacity: 0 }}
-          whileInView={{ x: 0, opacity: 1 }}
+          initial={{ y: -100, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
           viewport={{ once: true, amount: 0.3 }}
         >

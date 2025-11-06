@@ -31,7 +31,7 @@ const LancerBanner = () => {
     ];
 
     return (
-        <div className="relative flex flex-col bg-white min-h-screen items-center w-full py-8 sm:py-10 md:py-12 lg:py-12 px-4 sm:px-6 md:px-8 third-font overflow-hidden">
+        <div className="relative flex flex-col bg-white h-[80vh] items-center w-full py-8 sm:py-10 md:py-12 lg:py-12 px-4 sm:px-6 md:px-8 third-font overflow-hidden">
             {/* Background GIF */}
             <div className="absolute inset-0 z-0">
                 <img 
