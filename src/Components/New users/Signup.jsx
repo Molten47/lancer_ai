@@ -8,8 +8,6 @@ const Signup = () => {
   const navigate = useNavigate();
 
   const ADMIN_SECRET = import.meta.env.VITE_ADMIN_SECRET; 
-  //console.log('ADMIN_SECRET loaded:', ADMIN_SECRET); // Debug line
-  //console.log('Env check:', import.meta.env.VITE_ADMIN_SECRET); 
   
   // Get preselected role from navigation state
   const preselectedRole = location.state?.preselectedRole || '';
@@ -187,34 +185,34 @@ const Signup = () => {
   };
 
   return (
-<div className='flex justify-center items-center bg-[#F9FAFB] min-h-screen w-full p-8'>
-  <div className="flex flex-row items-stretch justify-center w-2/4 bg-white third-font rounded-lg overflow-hidden shadow-lg">
+<div className='flex justify-center items-center bg-[#F9FAFB] min-h-screen w-full p-4 sm:p-6 md:p-8'>
+  <div className="flex flex-row items-stretch justify-center w-full max-w-md lg:w-2/4 lg:max-w-5xl bg-white third-font rounded-lg overflow-hidden shadow-lg">
     
     {/* Left Section - Form */}
-    <div className="p-8 w-1/2 sm:max-w-md md:max-w-lg lg:max-w-xl flex flex-col">
+    <div className="p-6 sm:p-8 w-full lg:w-1/2 flex flex-col">
     {/*User Icon */}
-     <div className="flex justify-center mb-6">
-            <div className='p-4 h-14 w-14 bg-white border-2 border-[#E5E7EB] rounded-full flex items-center justify-center'>
-              <div className="p-2 bg-[#2255D7] rounded-full flex items-center justify-center">
-              <User className='text-white' size={20}/>
+     <div className="flex justify-center mb-4 sm:mb-6">
+            <div className='p-3 sm:p-4 h-12 w-12 sm:h-14 sm:w-14 bg-white border-2 border-[#E5E7EB] rounded-full flex items-center justify-center'>
+              <div className="p-1.5 sm:p-2 bg-[#2255D7] rounded-full flex items-center justify-center">
+              <User className='text-white' size={18}/>
             </div>
             </div>
           </div>
 
-      <div className="text-center mb-8">
-        <h1 className="text-xl sm:text-xl font-medium text-primary">Create your account</h1>
-        <p className="mt-2 text-[#6B7280]">
+      <div className="text-center mb-6 sm:mb-8">
+        <h1 className="text-lg sm:text-xl font-medium text-primary">Create your account</h1>
+        <p className="mt-2 text-sm sm:text-base text-[#6B7280]">
           Enter your details to create your account
         </p>
       </div>
 
       {apiError && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded relative mb-4 text-sm" role="alert">
           <strong className="font-bold">Error!</strong>
           <span className="block sm:inline"> {apiError}</span>
           <button
             onClick={() => setApiError('')}
-            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+            className="absolute top-0 bottom-0 right-0 px-3 sm:px-4 py-2 sm:py-3"
             aria-label="Close error message"
           >
             <span aria-hidden="true">&times;</span>
@@ -222,12 +220,12 @@ const Signup = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-dark">Email Address</label>
+          <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-dark">Email Address</label>
           <div className="mt-1 relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Mail className="h-5 w-5 text-dark" />
+              <Mail className="h-4 w-4 sm:h-5 sm:w-5 text-dark" />
             </div>
             <input
               type="email"
@@ -235,23 +233,23 @@ const Signup = () => {
               id="email"
               value={formData.email}
               onChange={handleChange}
-              className={`block w-full pl-10 pr-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+              className={`block w-full pl-9 sm:pl-10 pr-3 py-2 border ${errors.email ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs sm:text-sm`}
               placeholder="user@example.com"
             />
             {errors.email && (
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <AlertCircle className="h-5 w-5 text-red-500" />
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
               </div>
             )}
           </div>
-          {errors.email && <p className="mt-2 text-sm text-red-600">{errors.email}</p>}
+          {errors.email && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.email}</p>}
         </div>
 
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-dark">Password</label>
+          <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-dark">Password</label>
           <div className="mt-1 relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-dark" />
+              <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-dark" />
             </div>
             <input
               type={showPassword ? 'text' : 'password'}
@@ -259,7 +257,7 @@ const Signup = () => {
               id="password"
               value={formData.password}
               onChange={handleChange}
-              className={`block w-full pl-10 pr-10 py-2 border ${errors.password ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+              className={`block w-full pl-9 sm:pl-10 pr-10 py-2 border ${errors.password ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs sm:text-sm`}
               placeholder="••••••••"
             />
             <button
@@ -269,25 +267,25 @@ const Signup = () => {
               aria-label={showPassword ? 'Hide password' : 'Show password'}
             >
               {showPassword ? (
-                <EyeOff className="h-5 w-5" />
+                <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <Eye className="h-5 w-5" />
+                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
             {errors.password && (
               <div className="absolute inset-y-0 right-10 pr-3 flex items-center pointer-events-none">
-                <AlertCircle className="h-5 w-5 text-red-500" />
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
               </div>
             )}
           </div>
-          {errors.password && <p className="mt-2 text-sm text-red-600">{errors.password}</p>}
+          {errors.password && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.password}</p>}
         </div>
 
         <div>
-          <label htmlFor="confirm_password" className="block text-sm font-medium text-dark">Confirm Password</label>
+          <label htmlFor="confirm_password" className="block text-xs sm:text-sm font-medium text-dark">Confirm Password</label>
           <div className="mt-1 relative rounded-md shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Lock className="h-5 w-5 text-dark" />
+              <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-dark" />
             </div>
             <input
               type={showConfirmPassword ? 'text' : 'password'}
@@ -295,7 +293,7 @@ const Signup = () => {
               id="confirm_password"
               value={formData.confirm_password}
               onChange={handleChange}
-              className={`block w-full pl-10 pr-10 py-2 border ${errors.confirm_password ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm`}
+              className={`block w-full pl-9 sm:pl-10 pr-10 py-2 border ${errors.confirm_password ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs sm:text-sm`}
               placeholder="••••••••"
             />
             <button
@@ -305,47 +303,47 @@ const Signup = () => {
               aria-label={showConfirmPassword ? 'Hide confirmed password' : 'Show confirmed password'}
             >
               {showConfirmPassword ? (
-                <EyeOff className="h-5 w-5" />
+                <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
               ) : (
-                <Eye className="h-5 w-5" />
+                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
               )}
             </button>
             {errors.confirm_password && (
               <div className="absolute inset-y-0 right-10 pr-3 flex items-center pointer-events-none">
-                <AlertCircle className="h-5 w-5 text-red-500" />
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
               </div>
             )}
           </div>
-          {errors.confirm_password && <p className="mt-2 text-sm text-red-600">{errors.confirm_password}</p>}
+          {errors.confirm_password && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.confirm_password}</p>}
         </div>
 
         <div>
-          <label htmlFor="role" className="block text-sm font-medium text-dark">Select Role</label>
+          <label htmlFor="role" className="block text-xs sm:text-sm font-medium text-dark">Select Role</label>
           <div className="mt-1 relative rounded-md shadow-sm">
             <select
               name="role"
               id="role"
               value={formData.role}
               onChange={handleChange}
-              className={`block w-full pl-3 pr-3 py-2 border ${errors.role ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-dark`}
+              className={`block w-full pl-3 pr-3 py-2 border ${errors.role ? 'border-red-300' : 'border-gray-300'} rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-xs sm:text-sm text-dark`}
             >
               <option value="">Select Role</option>
               <option value="freelancer">Freelancer</option>
               <option value="client">Client</option>
             </select>
-            {errors.role && <p className="mt-2 text-sm text-red-600">{errors.role}</p>}
+            {errors.role && <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-red-600">{errors.role}</p>}
           </div>
         </div>
 
         <div className='flex items-center gap-2'>
-          <input type="checkbox" name="consent" id="consent" />
-          <label htmlFor="consent" className='text-[14px] font-normal'>I agree to the <span className='text-[#2255D7]'>Terms of use</span> and <span className='text-[#2255D7]'>Privacy Policy</span></label>
+          <input type="checkbox" name="consent" id="consent" className='w-3 h-3 sm:w-4 sm:h-4' />
+          <label htmlFor="consent" className='text-xs sm:text-[14px] font-normal'>I agree to the <span className='text-[#2255D7]'>Terms of use</span> and <span className='text-[#2255D7]'>Privacy Policy</span></label>
         </div>
 
         <div>
           <button
             type="submit"
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cta hover:bg-[#1447e6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-xs sm:text-sm font-medium text-white bg-cta hover:bg-[#1447e6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isLoading}
           >
             {isLoading ? 'Signing Up...' : 'Sign Up'}
@@ -353,22 +351,22 @@ const Signup = () => {
         </div>
       </form>
 
-      <div className="mt-6 relative">
+      <div className="mt-4 sm:mt-6 relative">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-gray-300"></div>
         </div>
-        <div className="relative flex justify-center text-sm">
+        <div className="relative flex justify-center text-xs sm:text-sm">
           <span className="px-2 bg-white text-[#6B7280]">OR</span>
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4 sm:mt-6">
         <button
           onClick={handleGoogleSignIn}
-          className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
           disabled={isLoading}
         >
-          <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
+          <svg className="h-4 w-4 sm:h-5 sm:w-5 mr-2" viewBox="0 0 24 24">
             <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
               <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
               <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />
@@ -380,13 +378,13 @@ const Signup = () => {
         </button>
       </div>
 
-      <div className="mt-6 text-center text-sm">
+      <div className="mt-4 sm:mt-6 text-center text-xs sm:text-sm">
         <p className="text-dark">Already have an account? <Link to="/login" className="font-medium text-cta">Sign in</Link></p>
       </div>
     </div>
 
-    {/* Right Section - Image with Blur Overlay (all inside white bg) */}
-    <div className='relative w-1/2 sm:max-w-md md:max-w-lg lg:max-w-xl p-7'>
+    {/* Right Section - Image with Blur Overlay (hidden on mobile/tablet) */}
+    <div className='hidden lg:block relative w-1/2 p-7'>
       <div className='relative h-full rounded-lg overflow-hidden'>
         <img 
         loading='lazy'
