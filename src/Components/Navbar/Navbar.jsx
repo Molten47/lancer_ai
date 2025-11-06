@@ -79,7 +79,7 @@ const Navbar = () => {
             <button 
               onClick={toggleMenu} 
               className={`p-2 focus:outline-none transition-colors duration-300 ${
-                isScrolled ? 'text-gray-800' : 'text-white'
+                isScrolled ? 'text-gray-800' : 'text-[#151B25]'
               }`}
             >
               {isMenuOpen ? 
