@@ -40,7 +40,7 @@ const Philosophy = () => {
     <div className={`w-full ${isMobile ? 'min-h-[70vh]' : 'min-h-[85vh]'} bg-[#151B25] third-font py-6 sm:py-2 md:py-10 lg:py-10 flex flex-col justify-center items-center px-4 sm:px-6 md:px-8`}>      
       
       {/* Logo Scroll Container */}
-      <div className='w-full overflow-hidden relative py-6 sm:py-8 mb-6 sm:mb-8'>
+      <div className='w-full overflow-hidden relative py-6 sm:py-2 mb-6 sm:mb-8'>
         {/* Gradient borders to mask edges */}
         <div className='absolute left-0 top-0 bottom-0 w-12 sm:w-16 md:w-20 bg-gradient-to-r from-[#151B25] to-transparent z-10'></div>
         <div className='absolute right-0 top-0 bottom-0 w-12 sm:w-16 md:w-20 bg-gradient-to-l from-[#151B25] to-transparent z-10'></div>
