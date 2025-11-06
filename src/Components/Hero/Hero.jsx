@@ -13,7 +13,7 @@ const Hero = ({ onExplore }) => {
       
       {/* Decorative Floating Name Tags */}
       {/* Peter - Top Left */}
-      <div className='hidden lg:block absolute top-78 left-107 animate-float'>
+      <div className='hidden lg:block absolute top-78 left-117 animate-float'>
         <div className='relative'>
           <div className='bg-[#A4B4CB] text-white px-5 py-2.5 rounded-br-xl rounded-bl-xl rounded-tr-xl rounded-tl-0 shadow-lg font-medium  text-base'>
             Peter
