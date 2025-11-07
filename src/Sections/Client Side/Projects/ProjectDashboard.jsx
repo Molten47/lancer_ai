@@ -18,23 +18,19 @@ import {
   Plus,
   ChevronRight,
   FileText,
-  Star
+  Star,
+  Bot,
+  X,
+  Sparkles
 } from 'lucide-react';
-import AssistantModal from '../Client Assistant/AssistantModal';
+import AISidebarChat from '../Client Assistant/SideAsssistant';
 import { useNavigate } from 'react-router-dom';
 
 // Update EmptyProjectsState
-const EmptyProjectsState = ({ onOpenModal }) => {
-  console.log('EmptyProjectsState rendered, onOpenModal:', onOpenModal);
-  
+const EmptyProjectsState = ({ onOpenSidebar }) => {
   const handleNewProject = () => {
-    console.log('handleNewProject called');
-    console.log('onOpenModal exists?', !!onOpenModal);
-    if (onOpenModal) {
-      console.log('Calling onOpenModal...');
-      onOpenModal();
-    } else {
-      console.log('onOpenModal is undefined!');
+    if (onOpenSidebar) {
+      onOpenSidebar();
     }
   };
 
@@ -91,45 +87,33 @@ const ProjectDashboard = ({ onSelectProject }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showFAB, setShowFAB] = useState(true);
+  const [fabTimeout, setFabTimeout] = useState(null);
 
-   useEffect(() => {
-    console.log('isChatOpen changed to:', isChatOpen);
-  }, [isChatOpen]);
+  const toggleChat = () => setIsChatOpen(prev => !prev);
 
-  
+  // Function is now synchronous and only accepts the jobs array.
+  const calculateTaskCompletion = (jobs) => {
+    if (!jobs || jobs.length === 0) {
+      return { completed: 0, total: 0 };
+    }
 
-// Function is now synchronous and only accepts the jobs array.
-const calculateTaskCompletion = (jobs) => {
-  if (!jobs || jobs.length === 0) {
-    return { completed: 0, total: 0 };
-  }
+    const totalJobs = jobs.length;
+    const totalTasks = totalJobs * 10;
+    
+    let completedTasks = totalJobs * 5; 
 
-  // LOGIC: Since the provided JSON data structure does not include a 'tasks' array 
-  // inside the job object, we'll use a simple placeholder calculation based on the 
-  // number of jobs to prevent the UI from showing 0/0 for all projects.
-  
-  // Each job is assumed to represent a significant block of work.
-  // We'll simulate 10 total tasks per job, with 5 completed.
+    const projectStatus = jobs[0].project_id === 1 ? 'ongoing' : 'unknown';
+    if (projectStatus === 'ongoing') {
+        completedTasks = Math.floor(totalTasks * 0.45);
+    } else if (projectStatus === 'completed') {
+        completedTasks = totalTasks; 
+    }
 
-  const totalJobs = jobs.length;
-  const totalTasks = totalJobs * 10;
-  
-  // Set a placeholder completion rate (e.g., 50% complete)
-  let completedTasks = totalJobs * 5; 
+    completedTasks = Math.min(completedTasks, totalTasks);
 
-  // Optional: Add logic to slightly vary completion based on project status
-  const projectStatus = jobs[0].project_id === 1 ? 'ongoing' : 'unknown'; // Basic guess
-  if (projectStatus === 'ongoing') {
-      completedTasks = Math.floor(totalTasks * 0.45); // ~45% for ongoing
-  } else if (projectStatus === 'completed') {
-      completedTasks = totalTasks; 
-  }
-
-  // Ensure completedTasks is not greater than totalTasks
-  completedTasks = Math.min(completedTasks, totalTasks);
-
-  return { completed: completedTasks, total: totalTasks };
-};
+    return { completed: completedTasks, total: totalTasks };
+  };
 
   // Fetch projects data
   const fetchProjectsData = async () => {
@@ -185,9 +169,9 @@ const calculateTaskCompletion = (jobs) => {
       const projectKey = Object.keys(projectObj)[0];
       const project = projectObj[projectKey];
 
-        const taskCompletion = calculateTaskCompletion(project.jobs || []);
-        const totalTasks = taskCompletion.total;
-        const completedTasks = taskCompletion.completed;
+      const taskCompletion = calculateTaskCompletion(project.jobs || []);
+      const totalTasks = taskCompletion.total;
+      const completedTasks = taskCompletion.completed;
 
       // Calculate budget from employed workers
       let budget = 0;
@@ -292,6 +276,17 @@ const calculateTaskCompletion = (jobs) => {
     return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''} ago`;
   };
 
+  // Handle action clicks from chat
+  const handleChatAction = (action) => {
+    if (action === 'start') {
+      console.log('Start new project');
+      // Add your logic here
+    } else if (action === 'demo') {
+      console.log('Watch demo clicked');
+      // Add your demo logic here
+    }
+  };
+
   // Filter projects
   useEffect(() => {
     let filtered = [...projectsData];
@@ -318,6 +313,32 @@ const calculateTaskCompletion = (jobs) => {
   useEffect(() => {
     fetchProjectsData();
   }, []);
+
+  // FAB appearance control
+  useEffect(() => {
+    const handleMouseMove = () => {
+      setShowFAB(true);
+      
+      if (fabTimeout) {
+        clearTimeout(fabTimeout);
+      }
+      
+      const timeout = setTimeout(() => {
+        setShowFAB(false);
+      }, 3000);
+      
+      setFabTimeout(timeout);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (fabTimeout) {
+        clearTimeout(fabTimeout);
+      }
+    };
+  }, [fabTimeout]);
 
   // Render project icon
   const renderIcon = (iconType) => {
@@ -375,124 +396,115 @@ const calculateTaskCompletion = (jobs) => {
     return num.toString().padStart(2, '0');
   };
 
-
-
-const TileView = () => (
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-    {/*Project cards*/}
-    {filteredProjects.map((project) => (
-      <div 
-        key={project.id} 
-        className="bg-white rounded-lg max-w-86 shadow-sm border border-gray-200 p-2 mb-6"
-      >
-        {/* Upper Section with  White Background */}
-        <div className="bg-white p-3 sm:p-4 lg:p-6 border-b border-gray-200">
-          <div className="flex items-start  mb-2 sm:mb-3 gap-2">
-            <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
-              <div className={`${getIconBgColor(project.icon)} rounded-lg  p-2 sm:p-2.5 lg:p-3 flex-shrink-0`}>
-                <div className="w-3 h-3 sm:w-4 sm:h-4 items-center flex">
-                  {renderIcon(project.icon)}
+  const TileView = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+      {filteredProjects.map((project) => (
+        <div 
+          key={project.id} 
+          className="bg-white rounded-lg max-w-86 shadow-sm border border-gray-200 p-2 mb-6"
+        >
+          <div className="bg-white p-3 sm:p-4 lg:p-6 border-b border-gray-200">
+            <div className="flex items-start  mb-2 sm:mb-3 gap-2">
+              <div className="flex items-start gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className={`${getIconBgColor(project.icon)} rounded-lg  p-2 sm:p-2.5 lg:p-3 flex-shrink-0`}>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 items-center flex">
+                    {renderIcon(project.icon)}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-sm sm:text-base text-gray-900 line-clamp-1 mb-0.5 sm:mb-1">
+                    {project.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-500 truncate">
+                    {project.companyName}
+                  </p>
                 </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-sm sm:text-base text-gray-900 line-clamp-1 mb-0.5 sm:mb-1">
-                  {project.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-500 truncate">
-                  {project.companyName}
+              <div className="flex-shrink-0">
+                {getStatusBadge(project)}
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 leading-relaxed">
+              {project.description}
+            </p>
+          </div>
+
+          <div className="bg-[#F9FAFB] p-3 sm:p-4 lg:p-6 flex flex-col flex-1">
+            <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+                <div className="flex -space-x-1.5 sm:-space-x-2 flex-shrink-0">
+                  {project.teamMembers.slice(0, 3).map((member, idx) => (
+                    <div
+                      key={member.id || idx}
+                      className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 border-2 border-white flex items-center justify-center text-white text-[9px] sm:text-[10px] lg:text-xs font-medium"
+                      title={`${member.firstname} ${member.lastname}`}
+                    >
+                      {member.firstname?.[0]?.toUpperCase()}
+                      {member.lastname?.[0]?.toUpperCase()}
+                    </div>
+                  ))}
+                  {project.teamMembers.length > 3 && (
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-gray-600 text-[9px] sm:text-[10px] lg:text-xs font-medium">
+                      +{project.teamMembers.length - 3}
+                    </div>
+                  )}
+                  {project.teamMembers.length === 0 && (
+                    <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-gray-400 text-[9px] sm:text-[10px] lg:text-xs">
+                      --
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] sm:text-xs text-gray-600 truncate">
+                  {project.teamMembers.length} {project.teamMembers.length === 1 ? 'member' : 'members'}
+                </span>
+              </div>
+              <span className="text-[10px] sm:text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
+                {project.lastActivity}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 mb-3 sm:mb-4 lg:mb-6">
+              <div className="border border-gray-200 bg-white rounded-md sm:rounded-lg p-2 sm:p-2.5 lg:p-3 text-center min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1 truncate">Budget</p>
+                <p className="font-semibold text-gray-900 text-[10px] sm:text-xs lg:text-sm break-words leading-tight">
+                  ${project.budget.toLocaleString()}
+                </p>
+              </div>
+              <div className="border border-gray-200 rounded-md sm:rounded-lg bg-white p-2 sm:p-2.5 lg:p-3 text-center min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1 truncate">Tasks</p>
+                <p className="font-semibold text-gray-900 text-[10px] sm:text-xs lg:text-sm leading-tight">
+                  {formatTaskNumber(project.tasks.completed)}/{formatTaskNumber(project.tasks.total)}
+                </p>
+              </div>
+              <div className="border border-gray-200 bg-white rounded-md sm:rounded-lg p-2 sm:p-2.5 lg:p-3 text-center min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1 truncate">Due</p>
+                <p className="font-semibold text-gray-900 text-[10px] sm:text-xs lg:text-sm leading-tight break-words">
+                  {project.dueDate.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric'
+                  })}
                 </p>
               </div>
             </div>
-            <div className="flex-shrink-0">
-              {getStatusBadge(project)}
-            </div>
-          </div>
 
-          <p className="text-xs sm:text-sm text-gray-600 line-clamp-2 leading-relaxed">
-            {project.description}
-          </p>
-        </div>
-
-        {/* Lower Section - Gray Background */}
-        <div className="bg-[#F9FAFB] p-3 sm:p-4 lg:p-6 flex flex-col flex-1">
-          {/* Team Members & Activity */}
-          <div className="flex items-center justify-between mb-3 sm:mb-4 lg:mb-6 gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
-              <div className="flex -space-x-1.5 sm:-space-x-2 flex-shrink-0">
-                {project.teamMembers.slice(0, 3).map((member, idx) => (
-                  <div
-                    key={member.id || idx}
-                    className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 border-2 border-white flex items-center justify-center text-white text-[9px] sm:text-[10px] lg:text-xs font-medium"
-                    title={`${member.firstname} ${member.lastname}`}
-                  >
-                    {member.firstname?.[0]?.toUpperCase()}
-                    {member.lastname?.[0]?.toUpperCase()}
-                  </div>
-                ))}
-                {project.teamMembers.length > 3 && (
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-gray-600 text-[9px] sm:text-[10px] lg:text-xs font-medium">
-                    +{project.teamMembers.length - 3}
-                  </div>
-                )}
-                {project.teamMembers.length === 0 && (
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-gray-400 text-[9px] sm:text-[10px] lg:text-xs">
-                    --
-                  </div>
-                )}
-              </div>
-              <span className="text-[10px] sm:text-xs text-gray-600 truncate">
-                {project.teamMembers.length} {project.teamMembers.length === 1 ? 'member' : 'members'}
-              </span>
+            <div className="flex gap-4 justify-end">
+              <button 
+                onClick={() => onSelectProject(project.rawProject)}
+                className="px-2 sm:px-4 lg:px-4 py-2 sm:py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-xs sm:text-sm"
+              >
+                View Details
+              </button>
             </div>
-            <span className="text-[10px] sm:text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-              {project.lastActivity}
-            </span>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 mb-3 sm:mb-4 lg:mb-6">
-            <div className="border border-gray-200 bg-white rounded-md sm:rounded-lg p-2 sm:p-2.5 lg:p-3 text-center min-w-0">
-              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1 truncate">Budget</p>
-              <p className="font-semibold text-gray-900 text-[10px] sm:text-xs lg:text-sm break-words leading-tight">
-                ${project.budget.toLocaleString()}
-              </p>
-            </div>
-            <div className="border border-gray-200 rounded-md sm:rounded-lg bg-white p-2 sm:p-2.5 lg:p-3 text-center min-w-0">
-              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1 truncate">Tasks</p>
-              <p className="font-semibold text-gray-900 text-[10px] sm:text-xs lg:text-sm leading-tight">
-                {formatTaskNumber(project.tasks.completed)}/{formatTaskNumber(project.tasks.total)}
-              </p>
-            </div>
-            <div className="border border-gray-200 bg-white rounded-md sm:rounded-lg p-2 sm:p-2.5 lg:p-3 text-center min-w-0">
-              <p className="text-[10px] sm:text-xs text-gray-500 mb-0.5 sm:mb-1 truncate">Due</p>
-              <p className="font-semibold text-gray-900 text-[10px] sm:text-xs lg:text-sm leading-tight break-words">
-                {project.dueDate.toLocaleDateString('en-US', { 
-                  month: 'short', 
-                  day: 'numeric'
-                })}
-              </p>
-            </div>
-          </div>
-
-          {/* Action Button */}
-          <div className="flex gap-4 justify-end">
-            <button 
-              onClick={() => onSelectProject(project.rawProject)}
-              className="px-2 sm:px-4 lg:px-4 py-2 sm:py-2.5 bg-primary text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-xs sm:text-sm"
-            >
-              View Details
-            </button>
           </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
 
   // Line View Component
   const LineView = () => (
     <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-      {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
           <thead>
@@ -575,7 +587,6 @@ const TileView = () => (
         </table>
       </div>
 
-      {/* Mobile/Tablet Card View */}
       <div className="lg:hidden divide-y divide-gray-200">
         {filteredProjects.map((project) => (
           <div key={project.id} className="p-4 hover:bg-gray-50 transition-colors">
@@ -675,149 +686,209 @@ const TileView = () => (
     );
   }
 
-if (projectsData.length === 0) {
-  return (
-    <>
-      <EmptyProjectsState onOpenModal={() => {
-        console.log('onOpenModal callback called from EmptyProjectsState');
-        setIsChatOpen(true);
-        console.log('setIsChatOpen(true) executed');
-      }} />
-      <AssistantModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-    </>
-  );
-}
+  if (projectsData.length === 0) {
+    return <EmptyProjectsState onOpenSidebar={() => setIsChatOpen(true)} />;
+  }
 
   return (
-    <div className="w-full bg-[#F9FAFB] overflow-y-auto third-font h-full ">
-      <div className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 pb-24">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 md:mb-6 gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Projects</h1>
-            <p className="text-xs sm:text-sm text-gray-600">Manage your projects and track their progress.</p>
-          </div>
-         
-            <button 
-              onClick={() => setIsChatOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 md:px-5 py-2 md:py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm w-full sm:w-auto"
-            >
-              <Plus size={18} />
-              Create New Project
-            </button>
-        </div>
+    <div className="w-full h-full bg-gray-50 third-font flex overflow-hidden">
+      {/* Main Dashboard Content */}
+      <div className="flex-1 flex flex-col overflow-hidden pt-10">
+        {/* Scrollable content container */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 pb-24">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 md:mb-6 gap-3">
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Projects</h1>
+                <p className="text-xs sm:text-sm text-gray-600">Manage your projects and track their progress.</p>
+              </div>
+             
+            </div>
 
-        {/* White container with borders */}
-        <div className="bg-white rounded-lg shadow-sm border h-full border-gray-100 overflow-hidden">
-          {/* Tabs and search Section */}
-          <div className="px-3 sm:px-4 md:px-6 py-3 md:py-4 border-b border-gray-200">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 md:gap-4">
-              {/* Tabs - Scrollable on mobile */}
-              <div className="overflow-x-auto -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0">
-                <div className="flex items-center gap-2 min-w-max">
-                  <button
-                    onClick={() => setActiveTab('all')}
-                    className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
-                      activeTab === 'all' 
-                        ? 'text-blue-600 bg-blue-50' 
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    All Projects
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('in_progress')}
-                    className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
-                      activeTab === 'in_progress' 
-                        ? 'text-blue-600 bg-blue-50' 
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    In Progress
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('completed')}
-                    className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
-                      activeTab === 'completed' 
-                        ? 'text-blue-600 bg-blue-50' 
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    Completed
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('at_risk')}
-                    className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
-                      activeTab === 'at_risk' 
-                        ? 'text-blue-600 bg-blue-50' 
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    At Risk
-                  </button>
+            {/* White container with borders */}
+            <div className="bg-white rounded-lg shadow-sm border h-full border-gray-100 overflow-hidden">
+              {/* Tabs and search Section */}
+              <div className="px-3 sm:px-4 md:px-6 py-3 md:py-4 border-b border-gray-200">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 md:gap-4">
+                  {/* Tabs - Scrollable on mobile */}
+                  <div className="overflow-x-auto -mx-3 px-3 sm:-mx-4 sm:px-4 md:mx-0 md:px-0">
+                    <div className="flex items-center gap-2 min-w-max">
+                      <button
+                        onClick={() => setActiveTab('all')}
+                        className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
+                          activeTab === 'all' 
+                            ? 'text-blue-600 bg-blue-50' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        All Projects
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('in_progress')}
+                        className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
+                          activeTab === 'in_progress' 
+                            ? 'text-blue-600 bg-blue-50' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        In Progress
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('completed')}
+                        className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
+                          activeTab === 'completed' 
+                            ? 'text-blue-600 bg-blue-50' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        Completed
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('at_risk')}
+                        className={`px-3 md:px-4 py-2 font-medium text-xs sm:text-sm rounded-lg transition-colors whitespace-nowrap ${
+                          activeTab === 'at_risk' 
+                            ? 'text-blue-600 bg-blue-50' 
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        At Risk
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Search and View Controls */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1 sm:flex-initial">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                      <input
+                        type="text"
+                        placeholder="Search Project"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full sm:w-auto pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs sm:text-sm"
+                      />
+                    </div>
+                    <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex-shrink-0">
+                      <Filter size={18} className="text-gray-600" />
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('tile')}
+                      className={`p-2 border rounded-lg transition-colors flex-shrink-0 ${
+                        viewMode === 'tile' 
+                          ? 'border-blue-600 bg-blue-50' 
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <LayoutDashboard size={18} className={viewMode === 'tile' ? 'text-blue-600' : 'text-gray-600'} />
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('line')}
+                      className={`p-2 border rounded-lg transition-colors flex-shrink-0 ${
+                        viewMode === 'line' 
+                          ? 'border-blue-600 bg-blue-50' 
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <List size={18} className={viewMode === 'line' ? 'text-blue-600' : 'text-gray-600'} />
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Search and View Controls */}
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 sm:flex-initial">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                  <input
-                    type="text"
-                    placeholder="Search Project"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full sm:w-auto pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs sm:text-sm"
-                  />
-                </div>
-                <button className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex-shrink-0">
-                  <Filter size={18} className="text-gray-600" />
-                </button>
-                <button 
-                  onClick={() => setViewMode('tile')}
-                  className={`p-2 border rounded-lg transition-colors flex-shrink-0 ${
-                    viewMode === 'tile' 
-                      ? 'border-blue-600 bg-blue-50' 
-                      : 'border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <LayoutDashboard size={18} className={viewMode === 'tile' ? 'text-blue-600' : 'text-gray-600'} />
-                </button>
-                <button 
-                  onClick={() => setViewMode('line')}
-                  className={`p-2 border rounded-lg transition-colors flex-shrink-0 ${
-                    viewMode === 'line' 
-                      ? 'border-blue-600 bg-blue-50' 
-                      : 'border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <List size={18} className={viewMode === 'line' ? 'text-blue-600' : 'text-gray-600'} />
-                </button>
+              {/* Projects Content Area */}
+              <div className="px-3 sm:px-4 md:px-6 py-4 md:py-6">
+                {filteredProjects.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">No projects found</p>
+                  </div>
+                ) : (
+                  viewMode === 'tile' ? <TileView /> : <LineView />
+                )}
               </div>
             </div>
-          </div>
-
-          {/* Projects Content Area */}
-          <div className="px-3 sm:px-4 md:px-6 py-4 md:py-6">
-            {filteredProjects.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500">No projects found</p>
-              </div>
-            ) : (
-              viewMode === 'tile' ? <TileView /> : <LineView />
-            )}
           </div>
         </div>
       </div>
 
-      <button 
-        onClick={() => setIsChatOpen(true)}
-        className="fixed bottom-6 right-6 sm:bottom-8 sm:right-8 w-12 h-12 sm:w-14 sm:h-14 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:shadow-xl z-30"
+      {/* Right Side Chat Assistant - Desktop (toggleable) */}
+      {isChatOpen && (
+        <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
+          {/* Chat Component */}
+          <div className="flex-1 overflow-hidden">
+            <AISidebarChat 
+              onClose={toggleChat}
+              onActionClick={handleChatAction}
+              className="w-full h-full pt-10"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Pulsing indicator when FAB is hidden */}
+      {!showFAB && (
+        <div className="fixed bottom-12 right-12 z-40 pointer-events-none">
+          <div className="relative w-6 h-6">
+            <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+            <div className="absolute inset-0 bg-blue-500 rounded-full animate-pulse opacity-50"></div>
+            <div className="absolute inset-0 m-auto w-3 h-3 bg-blue-600 rounded-full"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Toggle FAB - Auto-hides on inactivity */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        onMouseEnter={() => setShowFAB(true)}
+        className={`fixed bottom-16 right-16 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300 z-50 ${
+          showFAB ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+        aria-label={isChatOpen ? "Close chat" : "Open chat"}
       >
-        <Star size={20} className="sm:w-6 sm:h-6 text-white" fill="white" />
+        {isChatOpen ? (
+          <Bot className="text-white" size={24} />
+        ) : (
+          <Bot className="text-white" size={24} />
+        )}
       </button>
 
-      <AssistantModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      {/* Mobile Chat Overlay */}
+      {isChatOpen && (
+        <div className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setIsChatOpen(false)}>
+          <div className="absolute right-0 top-0 bottom-0 w-full max-w-sm bg-white flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Mobile Chat Header */}
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
+                    <Sparkles className="text-white" size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Project Assistant</h3>
+                    <p className="text-xs text-gray-500">
+                      {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsChatOpen(false)}
+                  className="text-gray-500 hover:text-gray-700 p-1"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Chat Component */}
+            <div className="flex-1 overflow-hidden">
+              <AISidebarChat 
+                assistantName="Project Assistant"
+                onActionClick={handleChatAction}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
