@@ -574,35 +574,35 @@ useEffect(() => {
             />
             </div>
          </div>
-)}
-{!showFAB && (
-  <div className="fixed bottom-12 right-12 z-40 pointer-events-none">
-    <div className="relative w-6 h-6">
-      {/* Outer pulsing ring */}
-      <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
-      {/* Middle ring */}
-      <div className="absolute inset-0 bg-blue-500 rounded-full animate-pulse opacity-50"></div>
-      {/* Center dot */}
-      <div className="absolute inset-0 m-auto w-3 h-3 bg-blue-600 rounded-full"></div>
-    </div>
-  </div>
-)}
+          )}
+        {!showFAB && (
+          <div className="fixed bottom-12 right-12 z-40 pointer-events-none">
+            <div className="relative w-6 h-6">
+              {/* Outer pulsing ring */}
+              <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+              {/* Middle ring */}
+              <div className="absolute inset-0 bg-blue-500 rounded-full animate-pulse opacity-50"></div>
+              {/* Center dot */}
+              <div className="absolute inset-0 m-auto w-3 h-3 bg-blue-600 rounded-full"></div>
+            </div>
+          </div>
+        )}
 
 {/* Chat Toggle FAB - Auto-hides on inactivity */}
-<button
-  onClick={() => setIsChatOpen(!isChatOpen)}
-  onMouseEnter={() => setShowFAB(true)}
-  className={`fixed bottom-16 right-16 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300 z-50 ${
-    showFAB ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-  }`}
-  aria-label={isChatOpen ? "Close chat" : "Open chat"}
->
-  {isChatOpen ? (
-    <Bot className="text-white" size={24} />
-  ) : (
-    <Bot className="text-white" size={24} />
-  )}
-</button>
+          <button
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            onMouseEnter={() => setShowFAB(true)}
+            className={`fixed bottom-16 right-16 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300 z-50 ${
+              showFAB ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+            }`}
+            aria-label={isChatOpen ? "Close chat" : "Open chat"}
+          >
+            {isChatOpen ? (
+              <Bot className="text-white" size={24} />
+            ) : (
+              <Bot className="text-white" size={24} />
+            )}
+          </button>
 
       {/* Mobile Chat Overlay */}
       {isChatOpen && (

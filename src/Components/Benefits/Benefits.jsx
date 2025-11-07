@@ -7,25 +7,25 @@ const LancerBanner = () => {
         {
             icon: Briefcase,
             title: "Digital Freelancer",
-            description: "Custom websites designed to meet your unique business needs, from simple landing pages to complex web applications.",
+            description: "Skilled individuals, freelancers, and specialists in digital fields who want access to projects, collaborations, and job opportunities with startups, agencies, and enterprises.",
             bgColor: "bg-linear-to-r from-[#60A5FA] to-[#2563EB]"
         },
         {
             icon: Users,
             title: "Startup Founder",
-            description: "Native and cross-platform mobile applications that provide seamless experience across all devices.",
+            description: "Entrepreneurs looking for an efficient way to build, manage, and scale their digital businesses using expert talent and AI-powered tools.",
             bgColor: "bg-linear-to-r from-[#818CF8] to-[#4F46E5]"
         },
         {
             icon: Building,
             title: "Corporate Organization",
-            description: "Extract valuable data from websites to gain insights and make informed business decisions.",
+            description: "Established organizations seeking to run or expand digital operations, onboard skilled professionals, and manage projects seamlessly within one integrated platform.",
             bgColor: "bg-linear-to-r from-[#C084FC] to-[#9333EA]"
         },
         {
             icon: TvMinimalPlay,
             title: "Digital Agencies",
-            description: "Seamlessly connect your systems with third party services to enhance functionality and streamline operations.",
+            description: "Creative and tech-focused agencies that need a platform to manage client projects, collaborate with professionals, and deliver high-quality digital solutions faster.",
             bgColor: "bg-linear-to-r from-[#22D3EE] to-[#0891B2]"
         }
     ];
@@ -42,9 +42,9 @@ const LancerBanner = () => {
             </div>
 
             {/* Content wrapper with z-index */}
-            <div className="relative z-10 w-full max-w-6xl">
+            <div className="relative z-10 w-full max-w-7xl">
                 {/* Top section */}
-                <div className='flex flex-col items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-10 md:mb-12'>
+                <div className='flex flex-col items-center justify-center gap-2 sm:gap-4 mb-8 sm:mb-10 md:mb-12'>
                     <span className='bg-[#F3F4F6] py-2 px-4 sm:px-5 text-[#151B25] rounded-lg border border-[#E5E7EB] text-sm sm:text-base font-medium'>
                         Our Services
                     </span>
@@ -67,7 +67,7 @@ const LancerBanner = () => {
                                 <div className={`${service.bgColor} rounded-[10px] p-2 flex-shrink-0`}>
                                     <service.icon size={30} className="text-white sm:w-[38px] sm:h-[38px]" strokeWidth={1} />
                                 </div>
-                                <div className='flex flex-col gap-2 sm:gap-3'>
+                                <div className='flex flex-col gap-1 sm:gap-3'>
                                     <h3 className='text-[#080026] font-medium text-base sm:text-lg md:text-xl'>
                                         {service.title}
                                     </h3>

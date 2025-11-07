@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {useDispatch} from 'react-redux'
 import { setUserData, setAuthData } from '../../store/userSlice';
 import useAuthService from '../auth'
-import SignupImage from '../../assets/Images/SignUpImage.jpg'
+import SignupImage from '../../assets/Images/business.jpg'
 
 
 const Signin = () => {
@@ -344,7 +344,7 @@ dispatch(setAuthData({
         <img 
         loading='lazy'
         src={SignupImage} 
-        className='w-full h-full object-cover rounded-lg ' alt="CRM Platform" />
+        className='w-full h-full object-cover object-center opacity-75 rounded-lg ' alt="CRM Platform" />
         
         {/* Blur Overlay with Text */}
         <div className='absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-md p-6 text-white rounded-b-lg gap-2'>

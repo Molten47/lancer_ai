@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy } from 'react';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import SignupImage from '../../assets/Images/SignUpImage.jpg'
+import SignupImage from '../../assets/Images/business.jpg'
 
 const Signup = () => {
   const location = useLocation();
@@ -389,7 +389,7 @@ const Signup = () => {
         <img 
         loading='lazy'
         src={SignupImage} 
-        className='w-full h-full object-cover rounded-lg' alt="CRM Platform" />
+        className='w-full h-full object-cover object-center opacity-75 rounded-lg' alt="CRM Platform" />
         
         {/* Blur Overlay with Text */}
         <div className='absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-md p-6 text-white rounded-b-lg'>

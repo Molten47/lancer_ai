@@ -21,7 +21,8 @@ import {
   Star,
   Bot,
   X,
-  Sparkles
+  Sparkles,
+  ChevronDown
 } from 'lucide-react';
 import AISidebarChat from '../Client Assistant/SideAsssistant';
 import { useNavigate } from 'react-router-dom';
@@ -89,6 +90,8 @@ const ProjectDashboard = ({ onSelectProject }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showFAB, setShowFAB] = useState(true);
   const [fabTimeout, setFabTimeout] = useState(null);
+  const [selectedAssistant, setSelectedAssistant] = useState('client');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const toggleChat = () => setIsChatOpen(prev => !prev);
 
@@ -287,6 +290,17 @@ const ProjectDashboard = ({ onSelectProject }) => {
     }
   };
 
+  // Handle assistant selection
+  const handleAssistantSelect = (assistant) => {
+    setSelectedAssistant(assistant);
+    setIsDropdownOpen(false);
+  };
+
+  // Get assistant display name
+  const getAssistantName = () => {
+    return selectedAssistant === 'client' ? 'Client Assistant' : 'Project Manager';
+  };
+
   // Filter projects
   useEffect(() => {
     let filtered = [...projectsData];
@@ -313,6 +327,18 @@ const ProjectDashboard = ({ onSelectProject }) => {
   useEffect(() => {
     fetchProjectsData();
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.relative')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
 
   // FAB appearance control
   useEffect(() => {
@@ -813,13 +839,60 @@ const ProjectDashboard = ({ onSelectProject }) => {
 
       {/* Right Side Chat Assistant - Desktop (toggleable) */}
       {isChatOpen && (
-        <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
+        <div className="hidden lg:flex lg:w-96 h-full bg-white border-l border-gray-200 flex-col pt-4">
+          {/* Chat Header with Dropdown */}
+          <div className="p-2 pt-10 border-b border-gray-200 flex-shrink-0 ">
+            {/* Dropdown Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700"
+              >
+                <span className="flex items-center gap-2">
+                  <Bot size={16} className="text-blue-600" />
+                  {getAssistantName()}
+                </span>
+                <ChevronDown size={16} className={`text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                  <button
+                    onClick={() => handleAssistantSelect('client')}
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                      selectedAssistant === 'client' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                    }`}
+                  >
+                    <Bot size={16} className={selectedAssistant === 'client' ? 'text-blue-600' : 'text-gray-500'} />
+                    <span className="font-medium">Client Assistant</span>
+                    {selectedAssistant === 'client' && (
+                      <CheckCircle size={14} className="ml-auto text-blue-600" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleAssistantSelect('manager')}
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                      selectedAssistant === 'manager' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                    }`}
+                  >
+                    <Briefcase size={16} className={selectedAssistant === 'manager' ? 'text-blue-600' : 'text-gray-500'} />
+                    <span className="font-medium">Project Manager</span>
+                    {selectedAssistant === 'manager' && (
+                      <CheckCircle size={14} className="ml-auto text-blue-600" />
+                    )}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Chat Component */}
           <div className="flex-1 overflow-hidden">
             <AISidebarChat 
               onClose={toggleChat}
               onActionClick={handleChatAction}
-              className="w-full h-full pt-10"
+              className="w-full h-full"
             />
           </div>
         </div>
