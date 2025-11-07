@@ -18,8 +18,11 @@ const DynamicDashboard = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   
-  // Mobile chat state
 const [isChatOpen, setIsChatOpen] = useState(false);
+const [showFAB, setShowFAB] = useState(true);
+const [fabTimeout, setFabTimeout] = useState(null);
+
+const toggleChat = () => setIsChatOpen(prev => !prev);
 
 
   // Fetch profile data
@@ -264,6 +267,36 @@ const [isChatOpen, setIsChatOpen] = useState(false);
 
     fetchAllData();
   }, []);
+  //FAB appearance control
+useEffect(() => {
+  const handleMouseMove = () => {
+    // Show FAB on mouse movement
+    setShowFAB(true);
+    
+    // Clear existing timeout
+    if (fabTimeout) {
+      clearTimeout(fabTimeout);
+    }
+    
+    // Set new timeout to hide FAB after 3 seconds of inactivity
+    const timeout = setTimeout(() => {
+      setShowFAB(false);
+    }, 3000);
+    
+    setFabTimeout(timeout);
+  };
+
+  // Add mouse move listener
+  window.addEventListener('mousemove', handleMouseMove);
+  
+  // Cleanup
+  return () => {
+    window.removeEventListener('mousemove', handleMouseMove);
+    if (fabTimeout) {
+      clearTimeout(fabTimeout);
+    }
+  };
+}, [fabTimeout]);
 
   if (loading) {
     return (
@@ -530,45 +563,38 @@ const [isChatOpen, setIsChatOpen] = useState(false);
       </div>
 
       {/* Right Side Chat Assistant - Desktop (toggleable) */}
-{isChatOpen && (
-          <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
-            {/* Chat Header */}
-            <div className="p-4 border-b border-gray-200 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
-                  <Sparkles className="text-white" size={20} />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Client Assistant</h3>
-                  <p className="text-xs text-gray-500">
-                    {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => setIsChatOpen(false)}
-                  className="text-gray-500 hover:text-gray-700 p-1 lg:block hidden"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+          {isChatOpen && (
+            <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
+           {/* Chat Component */}
+           <div className="flex-1 overflow-hidden">
+           <AISidebarChat 
+              onClose={toggleChat} // Pass the function to close the sidebar
+              onActionClick={handleChatAction}
+              className="w-full h-full" //
+            />
             </div>
-
-    {/* Chat Component */}
-    <div className="flex-1 overflow-hidden">
-      <AISidebarChat 
-        assistantName="Client Assistant"
-        userName={firstName}
-        userAvatar={userInitials}
-        onActionClick={handleChatAction}
-      />
+         </div>
+)}
+{!showFAB && (
+  <div className="fixed bottom-12 right-12 z-40 pointer-events-none">
+    <div className="relative w-6 h-6">
+      {/* Outer pulsing ring */}
+      <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+      {/* Middle ring */}
+      <div className="absolute inset-0 bg-blue-500 rounded-full animate-pulse opacity-50"></div>
+      {/* Center dot */}
+      <div className="absolute inset-0 m-auto w-3 h-3 bg-blue-600 rounded-full"></div>
     </div>
   </div>
 )}
 
-
+{/* Chat Toggle FAB - Auto-hides on inactivity */}
 <button
   onClick={() => setIsChatOpen(!isChatOpen)}
-  className="fixed bottom-14 right-10 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors z-50"
+  onMouseEnter={() => setShowFAB(true)}
+  className={`fixed bottom-16 right-16 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300 z-50 ${
+    showFAB ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+  }`}
   aria-label={isChatOpen ? "Close chat" : "Open chat"}
 >
   {isChatOpen ? (
