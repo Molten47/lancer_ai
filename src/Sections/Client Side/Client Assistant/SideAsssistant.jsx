@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Paperclip, Loader2, CheckCircle, Bot, X } from 'lucide-react';
-import socket from '../../../Components/socket';
+import socket, { initializeSocket, getConnectionStatus, hasJoinedRoom } from '../../../Components/socket';
 
 const STATUS_MESSAGE_MAP = {
   'initializing': 'Setting up your AI assistant...',
@@ -27,15 +27,14 @@ const AISidebarChat = ({
   const [socketError, setSocketError] = useState('');
   const [userName, setSenderName] = useState('You');
   const [userAvatar, setUserAvatar] = useState('U');
+  const [roomJoined, setRoomJoined] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
   const processedMessageIds = useRef(new Set());
   const own_id = useRef(localStorage.getItem('user_id'));
-
-  // Use ref to track if we're currently processing to prevent race conditions
-  const isProcessingMessage = useRef(false);
+  const socketInitialized = useRef(false);
 
   // Mark last status complete using functional update
   const markLastStatusComplete = useCallback(() => {
@@ -60,7 +59,6 @@ const AISidebarChat = ({
   const clearLoadingStates = useCallback(() => {
     setIsTyping(false);
     setIsLoadingAnswer(false);
-    isProcessingMessage.current = false;
   }, []);
 
   const determineMessageType = useCallback((messageData, currentUserId) => {
@@ -182,10 +180,13 @@ const AISidebarChat = ({
     }
   }, [determineMessageType]);
 
-  // FIXED: Handle new messages with better race condition handling
+  // Handle new messages with better race condition handling
   const handleNewMessage = useCallback((data, callback) => {
+    console.log('📨 New message received:', data);
+    
     const userId = own_id.current;
     if (!userId) {
+      console.warn('⚠️ No user ID, ignoring message');
       if (callback) callback();
       return;
     }
@@ -201,6 +202,7 @@ const AISidebarChat = ({
     };
 
     if (!messageFilter(messageDataForFilter)) {
+      console.log('❌ Message filtered out:', messageDataForFilter);
       if (callback) callback();
       return;
     }
@@ -209,9 +211,12 @@ const AISidebarChat = ({
     
     // Check if already processed
     if (processedMessageIds.current.has(messageId)) {
+      console.log('⚠️ Duplicate message ignored:', messageId);
       if (callback) callback();
       return;
     }
+    
+    console.log('✅ Processing new message:', messageId);
     
     // Mark as processing
     processedMessageIds.current.add(messageId);
@@ -241,20 +246,27 @@ const AISidebarChat = ({
     setMessages(prev => {
       // Double-check message doesn't already exist in state
       const exists = prev.some(msg => msg.id === messageId);
-      if (exists) return prev;
+      if (exists) {
+        console.warn('⚠️ Message already in state:', messageId);
+        return prev;
+      }
+      console.log('➕ Adding message to state:', messageId);
       return [...prev, newMessage];
     });
     
     // Clear loading states if this is an AI message
     if (messageType === 'ai') {
+      console.log('🤖 AI message received, clearing loading states');
       setTimeout(() => clearLoadingStates(), 100);
     }
     
     if (callback) callback();
   }, [createMessageFilter, determineMessageType, markLastStatusComplete, clearLoadingStates]);
 
-  // FIXED: Handle status updates
+  // Handle status updates
   const handleStatusUpdate = useCallback((data, callback) => {
+    console.log('📊 Status update:', data);
+    
     if (data.update) {
       const customMessage = STATUS_MESSAGE_MAP[data.update];
       if (customMessage) {
@@ -278,8 +290,10 @@ const AISidebarChat = ({
     if (callback) callback();
   }, [markLastStatusComplete]);
 
-  // FIXED: Handle control instructions
+  // Handle control instructions
   const handleControlInstruction = useCallback((data, callback) => {
+    console.log('🎮 Control instruction:', data);
+    
     if (data.command === 'redirect' && data.data?.url) {
       window.location.href = data.data.url;
     }
@@ -290,53 +304,119 @@ const AISidebarChat = ({
     if (callback) callback();
   }, [clearLoadingStates]);
 
-  // FIXED: Setup socket listeners with proper cleanup and dependencies
+  // CRITICAL: Setup socket listeners with proper cleanup and dependencies
   useEffect(() => {
     const handleConnect = () => { 
+      console.log('✅ Socket connected');
       setIsConnected(true); 
       setSocketError(''); 
+      
+      // Check room join status
+      const checkRoomStatus = () => {
+        const joined = hasJoinedRoom();
+        console.log('🚪 Room joined status:', joined);
+        setRoomJoined(joined);
+        
+        if (!joined) {
+          // Retry checking after a short delay
+          setTimeout(checkRoomStatus, 500);
+        }
+      };
+      
+      setTimeout(checkRoomStatus, 200);
     };
     
     const handleDisconnect = () => { 
+      console.log('❌ Socket disconnected');
       setIsConnected(false); 
+      setRoomJoined(false);
       clearLoadingStates(); 
     };
     
-    const handleConnectError = () => { 
+    const handleConnectError = (error) => { 
+      console.error('❌ Socket connection error:', error);
       setIsConnected(false); 
+      setRoomJoined(false);
       clearLoadingStates(); 
       setSocketError('Connection error. Please try refreshing the page.'); 
+    };
+
+    const handleJoined = (data) => {
+      console.log('✅ Room joined confirmed:', data);
+      setRoomJoined(true);
+    };
+
+    const handleJoinError = (error) => {
+      console.error('❌ Room join error:', error);
+      setRoomJoined(false);
     };
 
     socket.on('connect', handleConnect);
     socket.on('disconnect', handleDisconnect);
     socket.on('connect_error', handleConnectError);
+    socket.on('joined', handleJoined);
+    socket.on('join_error', handleJoinError);
     socket.on('new_message', handleNewMessage);
     socket.on('status_update', handleStatusUpdate);
     socket.on('control_instruction', handleControlInstruction);
 
+    // Set initial connection state
     setIsConnected(socket.connected);
+    if (socket.connected) {
+      setRoomJoined(hasJoinedRoom());
+    }
 
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
       socket.off('connect_error', handleConnectError);
+      socket.off('joined', handleJoined);
+      socket.off('join_error', handleJoinError);
       socket.off('new_message', handleNewMessage);
       socket.off('status_update', handleStatusUpdate);
       socket.off('control_instruction', handleControlInstruction);
     };
   }, [handleNewMessage, handleStatusUpdate, handleControlInstruction, clearLoadingStates]);
 
-  // Initialize chat on mount
+  // Initialize socket and chat on mount
   useEffect(() => {
     const currentUserId = own_id.current;
-    if (currentUserId) {
-      fetchUserProfile();
-      initializeChat(currentUserId);
-    } else {
-      setIsLoadingChat(false);
-    }
-  }, [fetchUserProfile, initializeChat]);
+    
+    const initialize = async () => {
+      if (!currentUserId) {
+        setIsLoadingChat(false);
+        return;
+      }
+
+      try {
+        console.log('🚀 Initializing socket connection...');
+        
+        // Initialize socket first
+        if (!socketInitialized.current) {
+          await initializeSocket();
+          socketInitialized.current = true;
+          console.log('✅ Socket initialized successfully');
+        }
+
+        // Wait a bit for room join to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Fetch profile and chat history
+        await Promise.all([
+          fetchUserProfile(),
+          initializeChat(currentUserId)
+        ]);
+
+        console.log('✅ Chat initialization complete');
+      } catch (error) {
+        console.error('❌ Initialization error:', error);
+        setSocketError('Failed to connect. Please refresh the page.');
+        setIsLoadingChat(false);
+      }
+    };
+
+    initialize();
+  }, []); // Empty deps - only run once on mount
 
   // Auto-scroll
   useEffect(() => {
@@ -344,8 +424,19 @@ const AISidebarChat = ({
   }, [messages, isTyping]);
 
   const handleSendMessage = () => {
-    if (!inputValue.trim() || !isConnected) return;
+    if (!inputValue.trim() || !isConnected) {
+      console.warn('⚠️ Cannot send: No input or not connected');
+      return;
+    }
+
+    // CRITICAL: Check if room is joined before sending
+    if (!roomJoined) {
+      console.error('❌ Cannot send message: Room not joined yet');
+      setSocketError('Please wait, connecting to chat...');
+      return;
+    }
     
+    console.log('📤 Sending message...');
     markLastStatusComplete();
 
     const userId = own_id.current;
@@ -368,10 +459,20 @@ const AISidebarChat = ({
     
     setMessages(prev => [...prev, userMessage]);
     
-    socket.emit('send_message', { 
+    const messagePayload = { 
       message_content: inputValue.trim(), 
       own_id: parseInt(userId), 
       recipient_id: ASSISTANT_ID 
+    };
+    
+    console.log('📨 Emitting send_message:', messagePayload);
+    
+    socket.emit('send_message', messagePayload, (ack) => {
+      if (ack) {
+        console.log('✅ Message acknowledged by server:', ack);
+      } else {
+        console.warn('⚠️ No acknowledgment from server');
+      }
     });
 
     setInputValue('');
@@ -532,7 +633,7 @@ const AISidebarChat = ({
         <div className="flex items-center gap-2">
           <button 
             onClick={() => fileInputRef.current?.click()}
-            disabled={!isConnected}
+            disabled={!isConnected || !roomJoined}
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
           >
             <Paperclip size={20} />
@@ -552,15 +653,15 @@ const AISidebarChat = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="How can LancerAI help?"
-              disabled={!isConnected || isLoadingAnswer}
+              placeholder={!roomJoined ? "Connecting..." : "How can LancerAI help?"}
+              disabled={!isConnected || !roomJoined || isLoadingAnswer}
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm"
             />
           </div>
 
           <button 
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer}
+            disabled={!inputValue.trim() || !isConnected || !roomJoined || isLoadingAnswer}
             className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
             {isLoadingAnswer ? (
@@ -581,6 +682,11 @@ const AISidebarChat = ({
           {!isConnected && (
             <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
               Reconnecting
+            </span>
+          )}
+          {isConnected && !roomJoined && (
+            <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-0.5 rounded-full">
+              Joining room...
             </span>
           )}
         </div>

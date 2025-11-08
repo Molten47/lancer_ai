@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {useDispatch} from 'react-redux'
 import { setUserData, setAuthData } from '../../store/userSlice';
 import useAuthService from '../auth'
-import SignupImage from '../../assets/Images/business.jpg'
+import SignupImage from '../../assets/Images/group-people-holding-laptop-template@3x.png'
 
 
 const Signin = () => {
@@ -344,13 +344,13 @@ dispatch(setAuthData({
         <img 
         loading='lazy'
         src={SignupImage} 
-        className='w-full h-full object-cover object-center opacity-75 rounded-lg ' alt="CRM Platform" />
+        className='w-full h-full object-cover object-center rounded-lg ' alt="CRM Platform" />
         
         {/* Blur Overlay with Text */}
         <div className='absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-md p-6 text-white rounded-b-lg gap-2'>
-          <h2 className='text-xl font-bold mb-2 text-center'>Join Our CRM - Streamline Your Business Today!</h2>
-          <p className='text-sm leading-relaxed text-center'>
-            Sign up for our powerful CRM and take control of your business operations with ease. Manage customer relationships, track sales, and boost productivity-all in one intuitive platform. Get started today!
+          <h2 className='text-2xl font-medium mb-2 text-center'>Join Lancer - Streamline Your Business Today!</h2>
+          <p className='text-sm text-center leading-5'>
+            Sign up to use our AI-powerered tools and agent to grow your business and people grow thiers. Get started today!
           </p>
           
           {/* Carousel Dots */}
