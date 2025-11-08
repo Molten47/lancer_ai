@@ -375,8 +375,12 @@ const DynamicDashboard = () => {
                         <div className="w-4 bg-gray-200 rounded-t" style={{ height: '90%' }}></div>
                       </div>
                     </div>
+                    <div className='flex flex-col items-center justify-center gap-1'>
                     <h2 className="text-sm font-normal text-[#6B7280] mb-2">Project activity chart would render here</h2>
                     <p className="text-[#9CA3AF] text-xs">Using actual chart library in production</p>
+                     <span className="text-[#2255d7] p-2 text-sm font-bold">Click the blue chat icon in the bottom right to setup project</span>
+                    </div>
+
                   </div>
                 </div>
               ) : (

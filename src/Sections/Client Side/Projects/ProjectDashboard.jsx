@@ -28,7 +28,8 @@ import AISidebarChat from '../Client Assistant/SideAsssistant';
 import ProjectManagerSidebar from '../Client Assistant/SidePMAgent';
 import { useNavigate } from 'react-router-dom';
 
-// Update EmptyProjectsState
+//
+// Update EmptyProjectsState - keep onOpenSidebar prop
 const EmptyProjectsState = ({ onOpenSidebar }) => {
   const handleNewProject = () => {
     if (onOpenSidebar) {
@@ -44,26 +45,24 @@ const EmptyProjectsState = ({ onOpenSidebar }) => {
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Projects</h1>
             <p className="text-xs sm:text-sm text-gray-600">Manage your projects and track their progress.</p>
           </div>
-          <button 
-            onClick={handleNewProject}
-            className="flex items-center justify-center gap-2 px-4 md:px-5 py-2 md:py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm w-full sm:w-auto"
-          >
-            <Plus size={18} />
-            Create New Project
-          </button>
+          {/* REMOVE the "Create New Project" button from header since it's in the empty state */}
         </div>
 
         <div className="flex items-center justify-center min-h-[400px] md:min-h-[500px] bg-white rounded-lg shadow-sm border border-gray-100">
           <div className="text-center px-4">
             <div className="flex justify-center mb-6">
-              <FileText className="w-12 h-12 md:w-16 md:h-16 text-gray-300" strokeWidth={1.5} />
+              <div className="flex items-end justify-center gap-3 h-16">
+                <div className="w-1 bg-gray-200 rounded-t" style={{ height: '50%' }}></div>
+                <div className="w-1 bg-gray-300 rounded-t" style={{ height: '75%' }}></div>
+                <div className="w-1 bg-gray-200 rounded-t" style={{ height: '90%' }}></div>
+              </div>
             </div>
 
             <p className="text-gray-500 text-sm md:text-base font-medium mb-2">
               Space is empty. Project card would render here
             </p>
             <p className="text-gray-400 text-xs sm:text-sm mb-6 md:mb-8">
-              Click below to get started
+              Using actual chart library in production
             </p>
 
             <button
@@ -714,7 +713,108 @@ const ProjectDashboard = ({ onSelectProject }) => {
   }
 
   if (projectsData.length === 0) {
-    return <EmptyProjectsState onOpenSidebar={() => setIsChatOpen(true)} />;
+    <div className="w-full h-full bg-gray-50 third-font flex overflow-hidden">
+      return <EmptyProjectsState onOpenSidebar={() => setIsChatOpen(true)} />;
+           {isChatOpen && (
+  <div className="hidden lg:flex lg:w-96 h-full bg-white border-l border-gray-200 flex-col pt-4">
+    {/* Chat Header with Dropdown */}
+    <div className="p-2 pt-10 border-b border-gray-200 flex-shrink-0">
+      {/* Dropdown Selector */}
+      <div className="relative">
+        <button
+          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+          className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700"
+        >
+          <span className="flex items-center gap-2">
+            <Bot size={16} className="text-blue-600" />
+            {getAssistantName()}
+          </span>
+          <ChevronDown size={16} className={`text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {/* Dropdown Menu */}
+        {isDropdownOpen && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+            <button
+              onClick={() => handleAssistantSelect('client')}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                selectedAssistant === 'client' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+              }`}
+            >
+              <Bot size={16} className={selectedAssistant === 'client' ? 'text-blue-600' : 'text-gray-500'} />
+              <span className="font-medium">Client Assistant</span>
+              {selectedAssistant === 'client' && (
+                <CheckCircle size={14} className="ml-auto text-blue-600" />
+              )}
+            </button>
+            <button
+              onClick={() => handleAssistantSelect('manager')}
+              className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                selectedAssistant === 'manager' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+              }`}
+            >
+              <Briefcase size={16} className={selectedAssistant === 'manager' ? 'text-blue-600' : 'text-gray-500'} />
+              <span className="font-medium">Project Manager</span>
+              {selectedAssistant === 'manager' && (
+                <CheckCircle size={14} className="ml-auto text-blue-600" />
+              )}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+
+    {/* Chat Component - Conditionally render based on selected assistant */}
+    <div className="flex-1 overflow-hidden">
+      {selectedAssistant === 'client' ? (
+        <AISidebarChat 
+          onClose={toggleChat}
+          onActionClick={handleChatAction}
+          className="w-full h-full"
+        />
+      ) : (
+        <ProjectManagerSidebar 
+          userId={localStorage.getItem('user_id')}
+          projectId={filteredProjects[0]?.id} // You might want to select a specific project
+          assistantName="Project Manager"
+          assistantAvatar="PM"
+          onClose={toggleChat}
+          className="w-full h-full"
+        />
+      )}
+    </div>
+  </div>
+)}
+
+      {/* Pulsing indicator when FAB is hidden */}
+      {!showFAB && (
+        <div className="fixed bottom-12 right-12 z-40 pointer-events-none">
+          <div className="relative w-6 h-6">
+            <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+            <div className="absolute inset-0 bg-blue-500 rounded-full animate-pulse opacity-50"></div>
+            <div className="absolute inset-0 m-auto w-3 h-3 bg-blue-600 rounded-full"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Toggle FAB - Auto-hides on inactivity */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        onMouseEnter={() => setShowFAB(true)}
+        className={`fixed bottom-16 right-16 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300 z-50 ${
+          showFAB ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+        aria-label={isChatOpen ? "Close chat" : "Open chat"}
+      >
+        {isChatOpen ? (
+          <Bot className="text-white" size={24} />
+        ) : (
+          <Bot className="text-white" size={24} />
+        )}
+      </button>
+      </div>
+
+    
   }
 
   return (
