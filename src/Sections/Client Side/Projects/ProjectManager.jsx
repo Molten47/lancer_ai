@@ -854,7 +854,7 @@ const ProjectManager = ({
               onKeyDown={handleKeyPress}
               placeholder="What do you want to get done?"
               disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId || !!socketError}
-              className="w-full px-6 py-4 pr-12 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all text-sm resize-none"
+              className="w-full px-6 py-4 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed transition-all text-sm resize-none"
               minRows={1}
               maxRows={6}
             />
@@ -863,7 +863,7 @@ const ProjectManager = ({
                 onClick={() => setInputValue('')}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                ×
+                
               </button>
             )}
           </div>

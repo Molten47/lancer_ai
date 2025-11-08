@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, DollarSign, Bot, ArrowRight, Briefcase, CheckCircle, Sparkles, X } from 'lucide-react';
+import { Calendar, DollarSign, Bot, ArrowRight, Briefcase, CheckCircle, Sparkles, X, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AISidebarChat from '../../Sections/Client Side/Client Assistant/SideAsssistant';
+import ProjectManagerSidebar from '../../Sections/Client Side/Client Assistant/SidePMAgent';
 
 const DynamicDashboard = () => {
   const [profileData, setProfileData] = useState(null);
@@ -18,12 +19,24 @@ const DynamicDashboard = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   
-const [isChatOpen, setIsChatOpen] = useState(false);
-const [showFAB, setShowFAB] = useState(true);
-const [fabTimeout, setFabTimeout] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [showFAB, setShowFAB] = useState(true);
+  const [fabTimeout, setFabTimeout] = useState(null);
+  const [selectedAssistant, setSelectedAssistant] = useState('client');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-const toggleChat = () => setIsChatOpen(prev => !prev);
+  const toggleChat = () => setIsChatOpen(prev => !prev);
 
+  // Handle assistant selection
+  const handleAssistantSelect = (assistant) => {
+    setSelectedAssistant(assistant);
+    setIsDropdownOpen(false);
+  };
+
+  // Get assistant display name
+  const getAssistantName = () => {
+    return selectedAssistant === 'client' ? 'Client Assistant' : 'Project Manager';
+  };
 
   // Fetch profile data
   const fetchProfileData = async (token, apiUrl) => {
@@ -267,36 +280,44 @@ const toggleChat = () => setIsChatOpen(prev => !prev);
 
     fetchAllData();
   }, []);
-  //FAB appearance control
-useEffect(() => {
-  const handleMouseMove = () => {
-    // Show FAB on mouse movement
-    setShowFAB(true);
-    
-    // Clear existing timeout
-    if (fabTimeout) {
-      clearTimeout(fabTimeout);
-    }
-    
-    // Set new timeout to hide FAB after 3 seconds of inactivity
-    const timeout = setTimeout(() => {
-      setShowFAB(false);
-    }, 3000);
-    
-    setFabTimeout(timeout);
-  };
 
-  // Add mouse move listener
-  window.addEventListener('mousemove', handleMouseMove);
-  
-  // Cleanup
-  return () => {
-    window.removeEventListener('mousemove', handleMouseMove);
-    if (fabTimeout) {
-      clearTimeout(fabTimeout);
-    }
-  };
-}, [fabTimeout]);
+  // FAB appearance control
+  useEffect(() => {
+    const handleMouseMove = () => {
+      setShowFAB(true);
+      
+      if (fabTimeout) {
+        clearTimeout(fabTimeout);
+      }
+      
+      const timeout = setTimeout(() => {
+        setShowFAB(false);
+      }, 3000);
+      
+      setFabTimeout(timeout);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (fabTimeout) {
+        clearTimeout(fabTimeout);
+      }
+    };
+  }, [fabTimeout]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isDropdownOpen && !event.target.closest('.relative')) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDropdownOpen]);
 
   if (loading) {
     return (
@@ -563,46 +584,103 @@ useEffect(() => {
       </div>
 
       {/* Right Side Chat Assistant - Desktop (toggleable) */}
-          {isChatOpen && (
-            <div className="hidden lg:flex lg:w-96 bg-white border-l border-gray-200 flex-col">
-           {/* Chat Component */}
-           <div className="flex-1 overflow-hidden">
-           <AISidebarChat 
-              onClose={toggleChat} // Pass the function to close the sidebar
-              onActionClick={handleChatAction}
-              className="w-full h-full" //
-            />
-            </div>
-         </div>
-          )}
-        {!showFAB && (
-          <div className="fixed bottom-12 right-12 z-40 pointer-events-none">
-            <div className="relative w-6 h-6">
-              {/* Outer pulsing ring */}
-              <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
-              {/* Middle ring */}
-              <div className="absolute inset-0 bg-blue-500 rounded-full animate-pulse opacity-50"></div>
-              {/* Center dot */}
-              <div className="absolute inset-0 m-auto w-3 h-3 bg-blue-600 rounded-full"></div>
+      {isChatOpen && (
+        <div className="hidden lg:flex lg:w-96 h-full bg-white border-l border-gray-200 flex-col pt-4">
+          {/* Chat Header with Dropdown */}
+          <div className="p-2 pt-10 border-b border-gray-200 flex-shrink-0">
+            {/* Dropdown Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700"
+              >
+                <span className="flex items-center gap-2">
+                  <Bot size={16} className="text-blue-600" />
+                  {getAssistantName()}
+                </span>
+                <ChevronDown size={16} className={`text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {/* Dropdown Menu */}
+              {isDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden">
+                  <button
+                    onClick={() => handleAssistantSelect('client')}
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                      selectedAssistant === 'client' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                    }`}
+                  >
+                    <Bot size={16} className={selectedAssistant === 'client' ? 'text-blue-600' : 'text-gray-500'} />
+                    <span className="font-medium">Client Assistant</span>
+                    {selectedAssistant === 'client' && (
+                      <CheckCircle size={14} className="ml-auto text-blue-600" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleAssistantSelect('manager')}
+                    className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
+                      selectedAssistant === 'manager' ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
+                    }`}
+                  >
+                    <Briefcase size={16} className={selectedAssistant === 'manager' ? 'text-blue-600' : 'text-gray-500'} />
+                    <span className="font-medium">Project Manager</span>
+                    {selectedAssistant === 'manager' && (
+                      <CheckCircle size={14} className="ml-auto text-blue-600" />
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        )}
 
-{/* Chat Toggle FAB - Auto-hides on inactivity */}
-          <button
-            onClick={() => setIsChatOpen(!isChatOpen)}
-            onMouseEnter={() => setShowFAB(true)}
-            className={`fixed bottom-16 right-16 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300 z-50 ${
-              showFAB ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-            }`}
-            aria-label={isChatOpen ? "Close chat" : "Open chat"}
-          >
-            {isChatOpen ? (
-              <Bot className="text-white" size={24} />
+          {/* Chat Component - Conditionally render based on selected assistant */}
+          <div className="flex-1 overflow-hidden">
+            {selectedAssistant === 'client' ? (
+              <AISidebarChat 
+                onClose={toggleChat}
+                onActionClick={handleChatAction}
+                className="w-full h-full"
+              />
             ) : (
-              <Bot className="text-white" size={24} />
+              <ProjectManagerSidebar 
+                userId={localStorage.getItem('user_id')}
+                projectId={projectsData[0]?.id}
+                assistantName="Project Manager"
+                assistantAvatar="PM"
+                onClose={toggleChat}
+                className="w-full h-full"
+              />
             )}
-          </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pulsing indicator when FAB is hidden */}
+      {!showFAB && (
+        <div className="fixed bottom-12 right-12 z-40 pointer-events-none">
+          <div className="relative w-6 h-6">
+            <div className="absolute inset-0 bg-blue-500 rounded-full animate-ping opacity-75"></div>
+            <div className="absolute inset-0 bg-blue-500 rounded-full animate-pulse opacity-50"></div>
+            <div className="absolute inset-0 m-auto w-3 h-3 bg-blue-600 rounded-full"></div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Toggle FAB - Auto-hides on inactivity */}
+      <button
+        onClick={() => setIsChatOpen(!isChatOpen)}
+        onMouseEnter={() => setShowFAB(true)}
+        className={`fixed bottom-16 right-16 w-14 h-14 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-all duration-300 z-50 ${
+          showFAB ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+        aria-label={isChatOpen ? "Close chat" : "Open chat"}
+      >
+        {isChatOpen ? (
+          <Bot className="text-white" size={24} />
+        ) : (
+          <Bot className="text-white" size={24} />
+        )}
+      </button>
 
       {/* Mobile Chat Overlay */}
       {isChatOpen && (
@@ -616,7 +694,7 @@ useEffect(() => {
                     <Sparkles className="text-white" size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Client Assistant</h3>
+                    <h3 className="font-semibold text-gray-900">{getAssistantName()}</h3>
                     <p className="text-xs text-gray-500">
                       {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
                     </p>
@@ -633,12 +711,23 @@ useEffect(() => {
 
             {/* Mobile Chat Component */}
             <div className="flex-1 overflow-hidden">
-              <AISidebarChat 
-                assistantName="Client Assistant"
-                userName={firstName}
-                userAvatar={userInitials}
-                onActionClick={handleChatAction}
-              />
+              {selectedAssistant === 'client' ? (
+                <AISidebarChat 
+                  assistantName="Client Assistant"
+                  userName={firstName}
+                  userAvatar={userInitials}
+                  onActionClick={handleChatAction}
+                />
+              ) : (
+                <ProjectManagerSidebar 
+                  userId={localStorage.getItem('user_id')}
+                  projectId={projectsData[0]?.id}
+                  assistantName="Project Manager"
+                  assistantAvatar="PM"
+                  onClose={toggleChat}
+                  className="w-full h-full"
+                />
+              )}
             </div>
           </div>
         </div>

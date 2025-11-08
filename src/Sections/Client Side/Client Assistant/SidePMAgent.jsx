@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Loader2, CheckCircle, Bot, X } from 'lucide-react';
+import { Send, Loader2, CheckCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
-// Mock socket for demonstration - replace with your actual socket import
-const socket = {
-  connected: true,
-  on: () => {},
-  off: () => {},
-  emit: () => {}
-};
+import TextareaAutosize from 'react-textarea-autosize';
+import socket, { isSocketConnected, isSocketConnecting } from '../../../Components/socket';
 
 const STATUS_MESSAGE_MAP = {
   'initializing': 'Setting up your project manager...',
@@ -31,7 +25,8 @@ const ProjectManagerSidebar = ({
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(isSocketConnected());
+  const [isConnecting, setIsConnecting] = useState(isSocketConnecting());
   const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(true);
   const [socketError, setSocketError] = useState('');
@@ -48,21 +43,20 @@ const ProjectManagerSidebar = ({
   const dynamicRecipientIdRef = useRef(null);
   const ownIdRef = useRef(userId || localStorage.getItem('user_id'));
   const [dynamicRecipientId, setDynamicRecipientIdState] = useState(null);
+  // NEW: Track optimistic messages waiting for server confirmation
+  const optimisticMessagesRef = useRef(new Map());
 
   const own_id = userId || localStorage.getItem('user_id');
 
-  // Synchronized state setter for dynamicRecipientId
   const setDynamicRecipientId = (value) => {
     dynamicRecipientIdRef.current = value;
     setDynamicRecipientIdState(value);
   };
 
-  // Generate unique message ID
   const generateMessageId = (prefix = 'msg') => {
     return `${prefix}-${Date.now()}-${++messageSequenceRef.current}-${Math.random().toString(36).substr(2, 9)}`;
   };
 
-  // Mark last status complete
   const markLastStatusComplete = () => {
     if (pendingStatusRef.current) return;
     pendingStatusRef.current = true;
@@ -98,7 +92,6 @@ const ProjectManagerSidebar = ({
     setIsLoadingAnswer(false);
   };
 
-  // Determine message type
   const determineMessageType = (messageData, currentUserId) => {
     const currentUserStr = String(currentUserId);
     const senderStr = String(messageData.sender_id || messageData.own_id);
@@ -123,20 +116,37 @@ const ProjectManagerSidebar = ({
     return { type: 'ai', sender: assistantName };
   };
 
-  // Sort messages
+  // ✅ FIXED: Better timestamp handling with fallback
   const sortMessages = (messagesArray) => {
     return messagesArray.sort((a, b) => {
-      const timeA = new Date(a.timestamp).getTime();
-      const timeB = new Date(b.timestamp).getTime();
+      let timeA, timeB;
+      
+      try {
+        timeA = a.timestamp instanceof Date 
+          ? a.timestamp.getTime() 
+          : new Date(a.timestamp).getTime();
+      } catch {
+        timeA = 0;
+      }
+      
+      try {
+        timeB = b.timestamp instanceof Date 
+          ? b.timestamp.getTime() 
+          : new Date(b.timestamp).getTime();
+      } catch {
+        timeB = 0;
+      }
+
       if (timeA !== timeB) return timeA - timeB;
+
       const seqA = a.sequence || 0;
       const seqB = b.sequence || 0;
       if (seqA !== seqB) return seqA - seqB;
+
       return a.id > b.id ? 1 : a.id < b.id ? -1 : 0;
     });
   };
 
-  // Fetch user profile
   const fetchUserProfile = async () => {
     try {
       const API_URL = import.meta.env.VITE_API_URL;
@@ -165,7 +175,6 @@ const ProjectManagerSidebar = ({
     }
   };
 
-  // Initialize chat
   const initializeChat = async (recipientId) => {
     if (initializingRef.current) return false;
     initializingRef.current = true;
@@ -199,6 +208,7 @@ const ProjectManagerSidebar = ({
       if (chatData.message_history && Array.isArray(chatData.message_history)) {
         const currentUserId = own_id || localStorage.getItem('user_id');
         processedMessageIds.current.clear();
+        optimisticMessagesRef.current.clear(); // Clear optimistic messages on init
         
         const formattedMessages = chatData.message_history.map((msg) => {
           const { type: messageType, sender: senderName } = determineMessageType({
@@ -219,7 +229,8 @@ const ProjectManagerSidebar = ({
             timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
             sender: senderName,
             sequence: ++messageSequenceRef.current,
-            isStatus: false
+            isStatus: false,
+            serverId: msg.id // Store server ID for reference
           };
         });
         
@@ -237,7 +248,6 @@ const ProjectManagerSidebar = ({
     }
   };
 
-  // Setup socket listeners
   const setupSocketListeners = () => {
     if (socketListenersRef.current) return;
 
@@ -257,6 +267,22 @@ const ProjectManagerSidebar = ({
       setSocketError('Connection error. Please try refreshing the page.');
     });
 
+    socket.on('reconnecting', (attemptNumber) => {
+      setIsConnecting(true);
+      setSocketError(`Reconnecting... Attempt ${attemptNumber}`);
+    });
+    
+    // ✅ FIXED: Use ref instead of undefined variable
+    socket.on('reconnect', async (attemptNumber) => {
+      setIsConnecting(false);
+      setSocketError('');
+      const currentRecipientId = dynamicRecipientIdRef.current;
+      if (currentRecipientId) {
+        await initializeChat(currentRecipientId);
+      }
+    });
+
+    // ✅ FIXED: Better handling of optimistic messages
     socket.on('new_message', (data, callback) => {
       const userId = ownIdRef.current || localStorage.getItem('user_id');
       const currentRecipientId = dynamicRecipientIdRef.current;
@@ -279,13 +305,19 @@ const ProjectManagerSidebar = ({
       }
       
       const serverMessageId = data.id || data.message_id;
-      const messageId = serverMessageId 
-        ? `server-${serverMessageId}`
-        : generateMessageId('incoming');
       
-      if (processedMessageIds.current.has(messageId)) {
-        if (callback) callback();
-        return;
+      // Check if this is a confirmation of an optimistic message
+      let optimisticMessageId = null;
+      for (const [optId, optData] of optimisticMessagesRef.current.entries()) {
+        // Match by content and timestamp proximity (within 5 seconds)
+        const timeDiff = data.timestamp 
+          ? Math.abs(new Date(data.timestamp).getTime() - optData.timestamp.getTime())
+          : Infinity;
+        
+        if (optData.content === data.message_content && timeDiff < 5000) {
+          optimisticMessageId = optId;
+          break;
+        }
       }
       
       markLastStatusComplete();
@@ -297,25 +329,54 @@ const ProjectManagerSidebar = ({
         message_content: data.message_content
       }, userId);
 
-      const newMessage = {
-        id: messageId,
-        type: messageType,
-        content: data.message_content,
-        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-        sender: senderName,
-        sequence: ++messageSequenceRef.current,
-        isStatus: false
-      };
-      
-      processedMessageIds.current.add(messageId);
-      
       setMessages(prev => {
-        const isDuplicate = prev.some(msg => msg.id === messageId);
-        if (isDuplicate) return prev;
+        // If this confirms an optimistic message, replace it
+        if (optimisticMessageId) {
+          optimisticMessagesRef.current.delete(optimisticMessageId);
+          
+          const updatedMessages = prev.map(msg => 
+            msg.id === optimisticMessageId
+              ? {
+                  ...msg,
+                  id: serverMessageId ? `server-${serverMessageId}` : msg.id,
+                  timestamp: data.timestamp ? new Date(data.timestamp) : msg.timestamp,
+                  serverId: serverMessageId,
+                  isOptimistic: false
+                }
+              : msg
+          );
+          
+          processedMessageIds.current.add(serverMessageId ? `server-${serverMessageId}` : optimisticMessageId);
+          return sortMessages(updatedMessages);
+        }
+        
+        // Otherwise, add as new message
+        const messageId = serverMessageId 
+          ? `server-${serverMessageId}`
+          : generateMessageId('incoming');
+        
+        if (processedMessageIds.current.has(messageId)) {
+          return prev;
+        }
+
+        const newMessage = {
+          id: messageId,
+          type: messageType,
+          content: data.message_content,
+          timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+          sender: senderName,
+          sequence: ++messageSequenceRef.current,
+          isStatus: false,
+          serverId: serverMessageId
+        };
+        
+        processedMessageIds.current.add(messageId);
+        
+        if (messageType === 'ai') clearLoadingStates();
+        
         return sortMessages([...prev, newMessage]);
       });
       
-      if (messageType === 'ai') clearLoadingStates();
       if (callback) callback();
     });
 
@@ -362,13 +423,23 @@ const ProjectManagerSidebar = ({
     socket.off('connect');
     socket.off('disconnect');
     socket.off('connect_error');
+    socket.off('reconnecting');
+    socket.off('reconnect');
     socket.off('new_message');
     socket.off('status_update');
     socket.off('control_instruction');
     socketListenersRef.current = false;
   };
 
-  // Component lifecycle
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsConnected(isSocketConnected());
+      setIsConnecting(isSocketConnecting());
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   useEffect(() => {
     if (!projectId) return;
 
@@ -389,7 +460,6 @@ const ProjectManagerSidebar = ({
   useEffect(() => {
     if (!dynamicRecipientId) return;
     
-    setIsConnected(socket.connected);
     setupSocketListeners();
     
     return () => cleanupSocketListeners();
@@ -399,45 +469,63 @@ const ProjectManagerSidebar = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Handlers
+  // ✅ FIXED: Better optimistic message handling
   const handleSendMessage = () => {
-    if (!inputValue.trim() || !isConnected || !dynamicRecipientId) return;
+    if (!inputValue.trim() || (!isConnected && !isConnecting) || !dynamicRecipientId) return;
 
     markLastStatusComplete();
 
     const userId = own_id || localStorage.getItem('user_id');
     const messageContent = inputValue.trim();
-    const messageId = generateMessageId('user');
+    const messageId = generateMessageId('optimistic');
+    const timestamp = new Date();
 
     const userMessage = {
       id: messageId,
       type: 'user',
       content: messageContent,
-      timestamp: new Date(),
+      timestamp: timestamp,
       sender: userName,
       sequence: ++messageSequenceRef.current,
-      isStatus: false
+      isStatus: false,
+      isOptimistic: true // Mark as optimistic
     };
 
-    processedMessageIds.current.add(messageId);
+    // Store optimistic message for matching with server confirmation
+    optimisticMessagesRef.current.set(messageId, {
+      content: messageContent,
+      timestamp: timestamp
+    });
 
     const messagePayload = {
       message_content: messageContent,
       own_id: parseInt(userId),
       recipient_id: dynamicRecipientId,
       chat_type: chat_type,
-      timestamp: new Date().toISOString()
+      timestamp: timestamp.toISOString()
     };
 
-    setMessages(prev => {
-      const updated = sortMessages([...prev, userMessage]);
-      queueMicrotask(() => socket.emit('send_message', messagePayload));
-      return updated;
-    });
+    // Add message optimistically
+    setMessages(prev => sortMessages([...prev, userMessage]));
+
+    // Emit to server
+    if (socket.connected) {
+      socket.emit('send_message', messagePayload);
+    } else {
+      console.warn('Socket not connected, message will be queued by socket.io');
+    }
 
     setInputValue('');
     setIsLoadingAnswer(true);
     setTimeout(() => setIsTyping(true), 500);
+    
+    // Cleanup optimistic message after timeout if not confirmed
+    setTimeout(() => {
+      if (optimisticMessagesRef.current.has(messageId)) {
+        console.warn('Optimistic message not confirmed by server:', messageId);
+        optimisticMessagesRef.current.delete(messageId);
+      }
+    }, 10000); // 10 second timeout
   };
 
   const handleKeyPress = (e) => {
@@ -455,7 +543,6 @@ const ProjectManagerSidebar = ({
     });
   };
 
-  // Loading state
   if (isLoadingChat) {
     return (
       <div className={`flex flex-col h-full bg-white ${className} border-l border-gray-200`}>
@@ -471,7 +558,6 @@ const ProjectManagerSidebar = ({
 
   return (
     <div className={`flex flex-col h-full bg-white shadow-xl border-l border-gray-200 ${className}`}>
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
@@ -490,12 +576,10 @@ const ProjectManagerSidebar = ({
         )}
       </div>
 
-      {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.map((message) => {
           const isFromCurrentUser = message.type === 'user';
           
-          // Status Message
           if (message.isStatus) {
             return (
               <div key={message.id} className="flex items-start gap-2 justify-center my-3">
@@ -528,11 +612,12 @@ const ProjectManagerSidebar = ({
                     isFromCurrentUser
                       ? 'bg-blue-600 text-white rounded-tr-none'
                       : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                }`}>
+                } ${message.isOptimistic ? 'opacity-70' : ''}`}>
                   <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {formatTime(message.timestamp)}
+                  {message.isOptimistic && ' (sending...)'}
                 </p>
               </div>
 
@@ -545,7 +630,6 @@ const ProjectManagerSidebar = ({
           );
         })}
 
-        {/* Typing Indicator */}
         {isTyping && (
           <div className="flex gap-3 justify-start">
             <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -565,19 +649,19 @@ const ProjectManagerSidebar = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="border-t border-gray-200 p-4 bg-white">
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <input
+            <TextareaAutosize
               ref={inputRef}
-              type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="What do you want to get done?"
-              disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm"
+              onKeyDown={handleKeyPress}
+              placeholder="What do you want to get done? (Shift+Enter for new line)"
+              disabled={(!isConnected && !isConnecting) || isLoadingAnswer || !dynamicRecipientId}
+              minRows={1}
+              maxRows={6}
+              className="w-full resize-none px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm overflow-hidden"
             />
           </div>
 
@@ -594,7 +678,6 @@ const ProjectManagerSidebar = ({
           </button>
         </div>
 
-        {/* Status */}
         <div className="flex justify-between items-center mt-2 px-2">
           <div className="flex items-center gap-1">
             <span className="text-blue-600 text-xs">⚡</span>
@@ -603,8 +686,8 @@ const ProjectManagerSidebar = ({
             </p>
           </div>
           {!isConnected && (
-            <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">
-              Reconnecting
+            <span className={`text-xs px-2 py-0.5 rounded-full ${isConnecting ? 'text-yellow-700 bg-yellow-100' : 'text-red-600 bg-red-50'}`}>
+              {isConnecting ? 'Reconnecting...' : 'Disconnected'}
             </span>
           )}
         </div>
