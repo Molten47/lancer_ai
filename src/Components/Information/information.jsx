@@ -1,50 +1,67 @@
 import React from 'react';
+import { ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 const CallToAction = () => {
-  const navigate = useNavigate();
 
-  const handleNavigateToSignup = (role) => {
+   const navigate = useNavigate();
+
+   const handleNavigateToSignup = (role) => {
     navigate('/signup', {
       state: { preselectedRole: role }
     });
   };
   
   return (
-    <div className='min-h-[50vh] sm:min-h-[55vh] md:min-h-[60vh] flex flex-col bg-white items-center justify-center py-10 sm:py-12 md:py-14 lg:py-16 px-4 sm:px-6 md:px-8 w-full third-font'>
-      <div className='flex flex-col items-center max-w-4xl w-full'>
+    <div className='min-h-[60vh] flex flex-col bg-[#F3F4F6] items-center justify-center py-16 px-4 sm:px-6 md:px-8 w-full'>
+      <div className='flex  bg-[#151B25] p-9 flex-col items-center max-w-6xl w-full rounded-lg'>
         {/* Header Section */}
-        <h2 className='text-[#151B25] font-semibold text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-center mb-5 sm:mb-6 px-4'>
-          Throw in the lance and get started
-        </h2>
+       
         
-        <div className='text-center mb-6 sm:mb-8'>
-          <p className='text-[#151B25] text-sm sm:text-base md:text-lg max-w-96 mx-auto px-4'>
-            Ready to simplify your business with Lancer? Join the waitlist
+        <div className='text-center mb-12 gap-3 flex flex-col'>
+           <h2 className='text-white font-semibold text-2xl sm:text-4xl md:text-[24px] text-center mb-4 px-4'>
+          Ready to simplify your business with Lancer?
+        </h2>
+          <p className='text-[#DBEAFE] text-sm sm:text-lg max-w-3xl mx-auto px-4'>
+            Join thousands of founders, businesses, and freelancers who are transforming how they work with our AI-powered platform.
           </p>
         </div>
 
-        {/* Buttons Section */}
-        <div className='flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8 w-full sm:w-auto px-4 sm:px-0'>
-          <button 
-            onClick={() => handleNavigateToSignup('client')}
-            className='bg-[#2255D7] text-white font-medium px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-sm sm:text-base md:text-lg hover:bg-[#1a45b8] transition-colors duration-200 w-full sm:w-auto'
-          >
-            For Business - Join Here
-          </button>
-          
-          <button 
-            onClick={() => handleNavigateToSignup('freelancer')}
-            className='bg-white text-[#151B25] font-medium px-6 sm:px-8 py-3 sm:py-4 rounded-lg text-sm sm:text-base md:text-lg border-2 border-[#151B25] hover:bg-gray-50 transition-colors duration-200 w-full sm:w-auto'
-          >
-            For Freelancers - Join Here
-          </button>
-        </div>
+        {/* Cards Section */}
+        <div className='flex flex-col lg:flex-row gap-6 w-full max-w-2xl px-4'>
+          {/* For Businesses Card */}
+          <div className='bg-[#2a3441] rounded-2xl p-8 flex-1 flex flex-col items-center text-center'>
+            <h3 className='text-white font-semibold text-xl mb-4'>
+              For Businesses
+            </h3>
+            <p className='text-gray-300 text-sm font-normal mb-8 max-w-[256px]'>
+              Start a project and connect with talented freelancers or build your full business infrastructure
+            </p>
+            <button 
+              onClick={() => handleNavigateToSignup('client')}
+              className='bg-white text-[#2255D7] font-medium px-5 py-3 rounded-lg text-sm hover:bg-gray-100 transition-colors duration-200 w-full max-w-xs flex items-center justify-center gap-2'
+            >
+              Start A Project
+            <ArrowRight/>
+            </button>
+          </div>
 
-        {/* Footer Text */}
-        <p className='text-[#151B25] font-bold text-lg sm:text-xl md:text-2xl lg:text-2xl max-w-3xl text-center px-4'>
-          3000+ people already showed indication to start lancing it.
-        </p>
+          {/* For Freelancers Card */}
+          <div className='bg-[#2a3441] rounded-2xl  min-w-[36px] p-8 flex-1 flex flex-col items-center text-center'>
+            <h3 className='text-white font-semibold text-xl mb-4'>
+              For Freelancers
+            </h3>
+            <p className='text-gray-300 text-sm mb-8 max-w-[256px] font-normal'>
+              Showcase your skills and get connected with businesses that value your expertise
+            </p>
+            <button 
+              onClick={() => handleNavigateToSignup('freelancer')}
+              className='bg-white text-[#2255D7] font-medium px-5 py-3 rounded-lg text-sm hover:bg-gray-100 transition-colors duration-200 w-full max-w-xs flex items-center justify-center gap-2'
+            >
+              Sign Up and Get Hired
+             <ArrowRight/>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -99,9 +99,9 @@ const Philosophy = () => {
       </div>
 
       {/* Demo Video Section - Centered */}
-      <div className='flex flex-col items-center justify-center gap-6 sm:gap-8 w-full max-w-5xl mx-auto'>
+      <div className='flex flex-col items-center justify-center gap-6 sm:gap-8 w-full max-w-5xl mx-auto '>
         {/* Video Player Container */}
-        <div className='relative w-full aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl flex items-center justify-center'>
+        <div className='relative w-5/6 aspect-video rounded-xl sm:rounded-2xl overflow-hidden border-dashed border-2 border-amber-50 shadow-2xl flex items-center justify-center m-5'>
           
           {/* Centered Video Icon */}
           <div className='flex items-center justify-center'>
