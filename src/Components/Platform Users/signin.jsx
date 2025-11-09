@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {useDispatch} from 'react-redux'
 import { setUserData, setAuthData } from '../../store/userSlice';
 import useAuthService from '../auth'
-import SignupImage from '../../assets/Images/group-people-holding-laptop-template@3x.png'
+import SignupImage from '../../assets/Images/business.jpg'
 
 
 const Signin = () => {

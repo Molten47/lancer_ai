@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Paperclip, Loader2, CheckCircle, Bot, X } from 'lucide-react';
 import socket, { initializeSocket, getConnectionStatus, hasJoinedRoom } from '../../../Components/socket';
+import TextareaAutosize from 'react-textarea-autosize'
 
 const STATUS_MESSAGE_MAP = {
   'initializing': 'Setting up your AI assistant...',
@@ -647,18 +648,18 @@ const AISidebarChat = ({
           />
           
           <div className="flex-1">
-            <input
+            <TextareaAutosize
               ref={inputRef}
-              type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={!roomJoined ? "Connecting..." : "How can LancerAI help?"}
+              onKeyDown={handleKeyPress}
+              placeholder={!roomJoined ? "Connecting..." : "How can Lancer help?"}
               disabled={!isConnected || !roomJoined || isLoadingAnswer}
-              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm"
+              minRows={1}
+              maxRows={6}
+              className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm resize-none"
             />
           </div>
-
           <button 
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || !isConnected || !roomJoined || isLoadingAnswer}

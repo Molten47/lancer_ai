@@ -1,7 +1,7 @@
 import React, { useState, useEffect, lazy } from 'react';
 import { Mail, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import SignupImage from '../../assets/Images/group-people-holding-laptop-template@3x.png'
+import SignupImage from '../../assets/Images/business.jpg'
 
 const Signup = () => {
   const location = useLocation();
