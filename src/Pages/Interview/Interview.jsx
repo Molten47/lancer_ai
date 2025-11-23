@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2, MessageSquare, Send, XCircle, CheckCircle } from 'lucide-react';
-import socket from '../../Components/socket';
+import { getSocket, initializeSocket, getConnectionStatus } from '../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize';
-
 
 // Define a map for custom status messages
 const STATUS_MESSAGE_MAP = {
@@ -11,7 +10,6 @@ const STATUS_MESSAGE_MAP = {
   'Updating user_profile with generated username and robust profile bio after interview termination.': 'Updating your profile...',
   'Recording chat performance score and review for freelancer 100.': 'Calculating final score...',
   'Updating freelancer username and profile bio after interview': 'Finalizing your profile...',
-  // Add more mappings as needed
 };
 
 const Interview = ({ chat_type = 'platform_interviewer' }) => {
@@ -19,11 +17,12 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const location = useLocation();
   const own_id = localStorage.getItem('user_id');
   const messagesEndRef = useRef(null);
+  const socketRef = useRef(null);
+  const initializationAttempted = useRef(false);
 
   // State declarations
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
-  //const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [socketError, setSocketError] = useState('');
@@ -89,6 +88,40 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     return true;
   };
 
+  // Initialize socket connection properly
+  const initializeSocketConnection = async () => {
+    try {
+      console.log('🔌 Starting socket initialization...');
+      setIsLoadingQuestion(true);
+      setStatusMessage('Connecting to server...');
+      
+      // Use the proper initialization function from socket utility
+      await initializeSocket();
+      
+      // Get the socket instance after initialization
+      socketRef.current = getSocket();
+      
+      // Verify connection status
+      const status = getConnectionStatus();
+      console.log('📊 Connection status after init:', status);
+      
+      if (status.isConnected && status.userJoined) {
+        console.log('✅ Socket fully initialized and room joined');
+        setIsConnected(true);
+        setSocketError('');
+        return true;
+      } else {
+        throw new Error('Socket initialization incomplete');
+      }
+    } catch (error) {
+      console.error('❌ Socket initialization failed:', error);
+      setSocketError('Failed to connect to interview server. Please refresh the page.');
+      setIsLoadingQuestion(false);
+      setStatusMessage('');
+      return false;
+    }
+  };
+
   // Initialize chat
   const initializeChat = async () => {
     try {
@@ -123,9 +156,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         chatData = await response.json();
       } catch (jsonError) {
         if (import.meta.env.DEV) {
-          if (!socket.connected) {
-            socket.connect();
-          }
+          console.log('⚠️ Dev mode: proceeding despite JSON error');
           return;
         }
         throw new Error('Invalid response format from server');
@@ -155,9 +186,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         }
       }
 
-      if (!socket.connected) {
-        socket.connect();
-      }
+      console.log('✅ Chat initialized successfully');
+      setIsLoadingQuestion(false);
+      setStatusMessage('');
 
     } catch (error) {
       let errorMessage = 'Failed to initialize interview';
@@ -191,22 +222,26 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
   // Setup socket listeners
   const setupSocketListeners = () => {
+    if (!socketRef.current) {
+      console.warn('⚠️ No socket instance available for setting up listeners');
+      return;
+    }
+
+    const socket = socketRef.current;
+
     socket.on('connect', () => {
+      console.log('✅ Socket connected event');
       setIsConnected(true);
       setSocketError('');
-      
-      const userId = own_id || localStorage.getItem('user_id');
-      socket.emit('join', {
-        room_name: String(userId),
-        user: parseInt(userId)
-      });
     });
 
     socket.on('disconnect', () => {
+      console.log('❌ Socket disconnected event');
       setIsConnected(false);
     });
 
     socket.on('connect_error', (error) => {
+      console.error('❌ Socket connection error:', error);
       setSocketError('Failed to connect to interview server');
       setIsConnected(false);
       setIsLoadingQuestion(false);
@@ -214,7 +249,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     });
 
     socket.on('new_message', (data, callback) => {
-      // Mark the last status message as complete before adding new message
+      console.log('📨 New message received:', data);
       markLastStatusComplete();
 
       const { message_content, sender_tag, own_id: senderOwnId, recipient_id } = data;
@@ -230,7 +265,6 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
         isStatus: false
       };
       setMessages(prev => [...prev, newMessage]);
-      //setIsWaitingForResponse(true);
       setIsLoadingQuestion(false);
       setStatusMessage('');
 
@@ -239,30 +273,35 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
       }
     });
 
-    socket.on('control_instruction', (data, callback) => {
-      const { command, data: instructionData } = data;
+  socket.on('control_instruction', (data, callback) => {
+  console.log('🎮 Control instruction received:', data);
+  const { command, data: instructionData } = data;
 
-      switch (command) {
-        case 'redirect':
-          if (instructionData?.type === 'url' && instructionData.content) {
-            navigate(instructionData.content); 
-          } else if (instructionData?.type === 'external_url' && instructionData.content) {
-            window.location.href = instructionData.content;
-          }
-          break;
-
-        default:
-          console.log('Unknown command:', command);
+  switch (command) {
+    case 'redirect':
+      // Handle both object format and direct string format
+      if (typeof instructionData === 'string') {
+        // Direct string path
+        navigate(instructionData);
+      } else if (instructionData?.type === 'url' && instructionData.content) {
+        navigate(instructionData.content); 
+      } else if (instructionData?.type === 'external_url' && instructionData.content) {
+        window.location.href = instructionData.content;
       }
+      break;
 
-      if (callback && typeof callback === 'function') {
-        callback();
-      }
-    });
+    default:
+      console.log('Unknown command:', command);
+  }
+
+  if (callback && typeof callback === 'function') {
+    callback();
+  }
+});
 
     socket.on('status_update', (data, callback) => {
+      console.log('📊 Status update received:', data);
       if (data.update) {
-        // Mark the previous status message as complete before adding new one
         markLastStatusComplete();
 
         const customMessage = STATUS_MESSAGE_MAP[data.update] || data.update;
@@ -273,7 +312,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
           message_content: customMessage,
           timestamp: new Date().toISOString(),
           isStatus: true,
-          isComplete: false  // New status starts as incomplete
+          isComplete: false
         };
         setMessages(prev => [...prev, statusMessage]);
       }
@@ -283,6 +322,7 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     });
 
     socket.on('notification', (data, callback) => {
+      console.log('🔔 Notification received:', data);
       const { message, type } = data;
       if (type === 'error') {
         setSocketError(message);
@@ -299,6 +339,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
   // Cleanup socket listeners
   const cleanupSocketListeners = () => {
+    if (!socketRef.current) return;
+
+    const socket = socketRef.current;
     socket.off('connect');
     socket.off('disconnect');
     socket.off('connect_error');
@@ -320,11 +363,10 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (currentInput.trim() === '' || isLoadingQuestion || !isConnected) {
+    if (currentInput.trim() === '' || isLoadingQuestion || !isConnected || !socketRef.current) {
       return;
     }
 
-    // Mark last status as complete when user sends a message
     markLastStatusComplete();
 
     const userMessage = {
@@ -338,15 +380,15 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
 
     setMessages(prev => [...prev, userMessage]);
 
-    socket.emit('send_message', {
+    socketRef.current.emit('send_message', {
       message_content: currentInput.trim(),
       own_id: parseInt(own_id || localStorage.getItem('user_id')),
       recipient_id: 'platform_interviewer'
     }, () => {
+      console.log('✅ Message sent successfully');
     });
 
     setCurrentInput('');
-  //setIsWaitingForResponse(false);
     setIsLoadingQuestion(true);
     setStatusMessage('Processing your answer...');
   };
@@ -355,15 +397,45 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
     navigate('/task');
   };
 
-  // Use Effects
+  // Main initialization effect
   useEffect(() => {
-    if (!checkAuthentication()) {
+    // Prevent double initialization in React 18 strict mode
+    if (initializationAttempted.current) {
+      console.log('⏭️ Skipping duplicate initialization');
       return;
     }
-    initializeChat();
-    setupSocketListeners();
-    return cleanupSocketListeners;
-  }, [navigate, own_id, chat_type, location.state]);
+    initializationAttempted.current = true;
+
+    const initialize = async () => {
+      console.log('🚀 Starting Interview component initialization');
+      
+      // Check authentication first
+      if (!checkAuthentication()) {
+        return;
+      }
+
+      // Initialize socket connection
+      const socketReady = await initializeSocketConnection();
+      if (!socketReady) {
+        console.error('❌ Socket initialization failed, aborting');
+        return;
+      }
+
+      // Setup socket event listeners
+      setupSocketListeners();
+
+      // Initialize the chat session
+      await initializeChat();
+    };
+
+    initialize();
+
+    // Cleanup function
+    return () => {
+      console.log('🧹 Cleaning up Interview component');
+      cleanupSocketListeners();
+    };
+  }, []); // Empty dependency array - only run once
 
   useEffect(() => {
     scrollToBottom();
@@ -398,7 +470,9 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             Has Token: {localStorage.getItem('access_jwt') ? 'Yes' : 'No'}<br />
             API URL: {import.meta.env.VITE_API_URL || 'Not set'}<br />
             User Role: {localStorage.getItem('userRole') || 'Not set'}<br />
-            From Profile Setup: {location.state?.fromProfileSetup ? 'Yes' : 'No'}
+            From Profile Setup: {location.state?.fromProfileSetup ? 'Yes' : 'No'}<br />
+            Socket Connected: {getConnectionStatus().isConnected ? 'Yes' : 'No'}<br />
+            Room Joined: {getConnectionStatus().userJoined ? 'Yes' : 'No'}
           </div>
         )}
         <div className="space-y-2">
@@ -483,7 +557,6 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
             {messages.map((message) => (
               <div key={message.id}>
                 {message.isStatus ? (
-                  // Status message with conditional spinner
                   <div className="flex items-start gap-3 px-2 py-1">
                     <div className="flex-shrink-0 mt-0.5">
                       {!message.isComplete ? (
@@ -499,7 +572,6 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
                     </div>
                   </div>
                 ) : (
-                  // Regular chat message bubble
                   <div
                     className={`flex ${message.sender_id === parseInt(own_id) ? 'justify-end' : 'justify-start'}`}
                   >
@@ -543,14 +615,14 @@ const Interview = ({ chat_type = 'platform_interviewer' }) => {
                 <TextareaAutosize
                   value={currentInput}
                   onChange={handleInputChange}
-                 disabled={!isConnected || isLoadingQuestion}
+                  disabled={!isConnected || isLoadingQuestion}
                   className="flex-1 resize-none border border-gray-300 rounded-l-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500 h-12 overflow-hidden"
-               placeholder={
+                  placeholder={
                     !isConnected
                       ? 'Connecting...'
                       : isLoadingQuestion
                         ? STATUS_MESSAGE_MAP[statusMessage] || statusMessage || 'AI is thinking...'
-                        : 'Type your response...' // Input is ready
+                        : 'Type your response...'
                   }
                   rows={1}
                   minRows={1}

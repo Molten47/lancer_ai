@@ -3,6 +3,7 @@ import { Send, Paperclip, Loader2, CheckCircle, Bot, X } from 'lucide-react';
 import socket from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize'
 
+
 const STATUS_MESSAGE_MAP = {
   'initializing': 'Setting up your AI assistant...',
   'connecting': 'Connecting to AI services...',

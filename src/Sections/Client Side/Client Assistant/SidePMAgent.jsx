@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Loader2, CheckCircle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import TextareaAutosize from 'react-textarea-autosize';
-import socket, { isSocketConnected, isSocketConnecting } from '../../../Components/socket';
+import { getSocket, initializeSocket, getConnectionStatus } from '../../../Components/socket';
 
 const STATUS_MESSAGE_MAP = {
   'initializing': 'Setting up your project manager...',
@@ -25,8 +25,7 @@ const ProjectManagerSidebar = ({
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [isConnected, setIsConnected] = useState(isSocketConnected());
-  const [isConnecting, setIsConnecting] = useState(isSocketConnecting());
+  const [isConnected, setIsConnected] = useState(false);
   const [isLoadingAnswer, setIsLoadingAnswer] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(true);
   const [socketError, setSocketError] = useState('');
@@ -35,6 +34,7 @@ const ProjectManagerSidebar = ({
   
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const socketRef = useRef(null);
   const socketListenersRef = useRef(false);
   const processedMessageIds = useRef(new Set());
   const messageSequenceRef = useRef(0);
@@ -43,8 +43,7 @@ const ProjectManagerSidebar = ({
   const dynamicRecipientIdRef = useRef(null);
   const ownIdRef = useRef(userId || localStorage.getItem('user_id'));
   const [dynamicRecipientId, setDynamicRecipientIdState] = useState(null);
-  // NEW: Track optimistic messages waiting for server confirmation
-  const optimisticMessagesRef = useRef(new Map());
+  const initializationAttempted = useRef(false);
 
   const own_id = userId || localStorage.getItem('user_id');
 
@@ -116,7 +115,6 @@ const ProjectManagerSidebar = ({
     return { type: 'ai', sender: assistantName };
   };
 
-  // ✅ FIXED: Better timestamp handling with fallback
   const sortMessages = (messagesArray) => {
     return messagesArray.sort((a, b) => {
       let timeA, timeB;
@@ -208,7 +206,6 @@ const ProjectManagerSidebar = ({
       if (chatData.message_history && Array.isArray(chatData.message_history)) {
         const currentUserId = own_id || localStorage.getItem('user_id');
         processedMessageIds.current.clear();
-        optimisticMessagesRef.current.clear(); // Clear optimistic messages on init
         
         const formattedMessages = chatData.message_history.map((msg) => {
           const { type: messageType, sender: senderName } = determineMessageType({
@@ -230,7 +227,7 @@ const ProjectManagerSidebar = ({
             sender: senderName,
             sequence: ++messageSequenceRef.current,
             isStatus: false,
-            serverId: msg.id // Store server ID for reference
+            serverId: msg.id
           };
         });
         
@@ -248,33 +245,59 @@ const ProjectManagerSidebar = ({
     }
   };
 
+  // Initialize socket connection (like Interview component)
+  const initializeSocketConnection = async () => {
+    try {
+      console.log('🔌 Starting socket initialization for ProjectManager...');
+      
+      await initializeSocket();
+      socketRef.current = getSocket();
+      
+      const status = getConnectionStatus();
+      console.log('📊 Socket status:', status);
+      
+      if (status.isConnected && status.userJoined) {
+        console.log('✅ Socket ready for ProjectManager');
+        setIsConnected(true);
+        setSocketError('');
+        return true;
+      } else {
+        throw new Error('Socket initialization incomplete');
+      }
+    } catch (error) {
+      console.error('❌ Socket initialization failed:', error);
+      setSocketError('Failed to connect. Please refresh.');
+      return false;
+    }
+  };
+
   const setupSocketListeners = () => {
-    if (socketListenersRef.current) return;
+    if (socketListenersRef.current || !socketRef.current) return;
+
+    const socket = socketRef.current;
 
     socket.on('connect', () => {
+      console.log('✅ ProjectManager socket connected');
       setIsConnected(true);
       setSocketError('');
     });
 
     socket.on('disconnect', () => {
+      console.log('❌ ProjectManager socket disconnected');
       setIsConnected(false);
       clearLoadingStates();
     });
 
     socket.on('connect_error', () => {
+      console.error('❌ ProjectManager connection error');
       setIsConnected(false);
       clearLoadingStates();
       setSocketError('Connection error. Please try refreshing the page.');
     });
-
-    socket.on('reconnecting', (attemptNumber) => {
-      setIsConnecting(true);
-      setSocketError(`Reconnecting... Attempt ${attemptNumber}`);
-    });
     
-    // ✅ FIXED: Use ref instead of undefined variable
-    socket.on('reconnect', async (attemptNumber) => {
-      setIsConnecting(false);
+    socket.on('reconnect', async () => {
+      console.log('🔄 ProjectManager reconnected');
+      setIsConnected(true);
       setSocketError('');
       const currentRecipientId = dynamicRecipientIdRef.current;
       if (currentRecipientId) {
@@ -282,12 +305,15 @@ const ProjectManagerSidebar = ({
       }
     });
 
-    // ✅ FIXED: Better handling of optimistic messages
+    // ✅ FIXED: Wait for server confirmation like Interview component
     socket.on('new_message', (data, callback) => {
+      console.log('📨 ProjectManager received message:', data);
+      
       const userId = ownIdRef.current || localStorage.getItem('user_id');
       const currentRecipientId = dynamicRecipientIdRef.current;
       const userStr = String(userId);
 
+      // Check if message is relevant to this chat
       const isRelevant = 
         (String(data.sender_id) === currentRecipientId || 
          String(data.recipient_id) === currentRecipientId ||
@@ -305,21 +331,16 @@ const ProjectManagerSidebar = ({
       }
       
       const serverMessageId = data.id || data.message_id;
+      const messageId = serverMessageId 
+        ? `server-${serverMessageId}`
+        : generateMessageId('incoming');
       
-      // Check if this is a confirmation of an optimistic message
-      let optimisticMessageId = null;
-      for (const [optId, optData] of optimisticMessagesRef.current.entries()) {
-        // Match by content and timestamp proximity (within 5 seconds)
-        const timeDiff = data.timestamp 
-          ? Math.abs(new Date(data.timestamp).getTime() - optData.timestamp.getTime())
-          : Infinity;
-        
-        if (optData.content === data.message_content && timeDiff < 5000) {
-          optimisticMessageId = optId;
-          break;
-        }
+      // Skip duplicates
+      if (processedMessageIds.current.has(messageId)) {
+        if (callback) callback();
+        return;
       }
-      
+
       markLastStatusComplete();
       
       const { type: messageType, sender: senderName } = determineMessageType({
@@ -329,58 +350,30 @@ const ProjectManagerSidebar = ({
         message_content: data.message_content
       }, userId);
 
-      setMessages(prev => {
-        // If this confirms an optimistic message, replace it
-        if (optimisticMessageId) {
-          optimisticMessagesRef.current.delete(optimisticMessageId);
-          
-          const updatedMessages = prev.map(msg => 
-            msg.id === optimisticMessageId
-              ? {
-                  ...msg,
-                  id: serverMessageId ? `server-${serverMessageId}` : msg.id,
-                  timestamp: data.timestamp ? new Date(data.timestamp) : msg.timestamp,
-                  serverId: serverMessageId,
-                  isOptimistic: false
-                }
-              : msg
-          );
-          
-          processedMessageIds.current.add(serverMessageId ? `server-${serverMessageId}` : optimisticMessageId);
-          return sortMessages(updatedMessages);
-        }
-        
-        // Otherwise, add as new message
-        const messageId = serverMessageId 
-          ? `server-${serverMessageId}`
-          : generateMessageId('incoming');
-        
-        if (processedMessageIds.current.has(messageId)) {
-          return prev;
-        }
-
-        const newMessage = {
-          id: messageId,
-          type: messageType,
-          content: data.message_content,
-          timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-          sender: senderName,
-          sequence: ++messageSequenceRef.current,
-          isStatus: false,
-          serverId: serverMessageId
-        };
-        
-        processedMessageIds.current.add(messageId);
-        
-        if (messageType === 'ai') clearLoadingStates();
-        
-        return sortMessages([...prev, newMessage]);
-      });
+      const newMessage = {
+        id: messageId,
+        type: messageType,
+        content: data.message_content,
+        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+        sender: senderName,
+        sequence: ++messageSequenceRef.current,
+        isStatus: false,
+        serverId: serverMessageId
+      };
+      
+      processedMessageIds.current.add(messageId);
+      
+      setMessages(prev => sortMessages([...prev, newMessage]));
+      
+      if (messageType === 'ai') {
+        clearLoadingStates();
+      }
       
       if (callback) callback();
     });
 
     socket.on('status_update', (data, callback) => {
+      console.log('📊 Status update:', data);
       if (data.update) {
         const customMessage = STATUS_MESSAGE_MAP[data.update];
         if (!customMessage) {
@@ -408,6 +401,7 @@ const ProjectManagerSidebar = ({
     });
 
     socket.on('control_instruction', (data, callback) => {
+      console.log('🎮 Control instruction:', data);
       if (data.command === 'redirect' && data.data?.url) navigate(data.data.url);
       if (data.command === 'error') { 
         setSocketError(data.data?.message || 'An error occurred'); 
@@ -420,10 +414,12 @@ const ProjectManagerSidebar = ({
   };
 
   const cleanupSocketListeners = () => {
+    if (!socketRef.current) return;
+
+    const socket = socketRef.current;
     socket.off('connect');
     socket.off('disconnect');
     socket.off('connect_error');
-    socket.off('reconnecting');
     socket.off('reconnect');
     socket.off('new_message');
     socket.off('status_update');
@@ -431,23 +427,29 @@ const ProjectManagerSidebar = ({
     socketListenersRef.current = false;
   };
 
+  // Main initialization (first step)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsConnected(isSocketConnected());
-      setIsConnecting(isSocketConnecting());
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (!projectId) return;
+    if (initializationAttempted.current || !projectId) return;
+    initializationAttempted.current = true;
 
     const init = async () => {
+      console.log('🚀 Initializing ProjectManager sidebar');
+      
       const recipientId = `project_manager_${projectId}`;
       setDynamicRecipientId(recipientId);
       ownIdRef.current = own_id;
-      
+
+      // Initialize socket first
+      const socketReady = await initializeSocketConnection();
+      if (!socketReady) {
+        console.error('❌ Socket not ready, aborting');
+        return;
+      }
+
+      // Setup listeners
+      setupSocketListeners();
+
+      // Fetch data
       await Promise.all([
         fetchUserProfile(),
         initializeChat(recipientId)
@@ -455,77 +457,54 @@ const ProjectManagerSidebar = ({
     };
     
     init();
-  }, [projectId]);
 
-  useEffect(() => {
-    if (!dynamicRecipientId) return;
-    
-    setupSocketListeners();
-    
-    return () => cleanupSocketListeners();
-  }, [dynamicRecipientId]);
+    return () => {
+      console.log('🧹 Cleaning up ProjectManager');
+      cleanupSocketListeners();
+    };
+  }, [projectId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // ✅ FIXED: Better optimistic message handling
+  //  No optimistic UI - just send and wait for server confirmation
   const handleSendMessage = () => {
-    if (!inputValue.trim() || (!isConnected && !isConnecting) || !dynamicRecipientId) return;
-
-    markLastStatusComplete();
+    if (!inputValue.trim() || !isConnected || !dynamicRecipientId) {
+      console.warn('Cannot send: conditions not met');
+      return;
+    }
 
     const userId = own_id || localStorage.getItem('user_id');
     const messageContent = inputValue.trim();
-    const messageId = generateMessageId('optimistic');
-    const timestamp = new Date();
 
-    const userMessage = {
-      id: messageId,
-      type: 'user',
-      content: messageContent,
-      timestamp: timestamp,
-      sender: userName,
-      sequence: ++messageSequenceRef.current,
-      isStatus: false,
-      isOptimistic: true // Mark as optimistic
-    };
-
-    // Store optimistic message for matching with server confirmation
-    optimisticMessagesRef.current.set(messageId, {
-      content: messageContent,
-      timestamp: timestamp
-    });
+    // Mark previous status as complete
+    markLastStatusComplete();
 
     const messagePayload = {
       message_content: messageContent,
       own_id: parseInt(userId),
       recipient_id: dynamicRecipientId,
-      chat_type: chat_type,
-      timestamp: timestamp.toISOString()
+      chat_type: chat_type
     };
 
-    // Add message optimistically
-    setMessages(prev => sortMessages([...prev, userMessage]));
+    console.log('📤 Sending message:', messagePayload);
 
-    // Emit to server
-    if (socket.connected) {
-      socket.emit('send_message', messagePayload);
+    // Send to server - message will appear when server confirms via new_message event
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('send_message', messagePayload, () => {
+        console.log('✅ Message sent to server');
+      });
     } else {
-      console.warn('Socket not connected, message will be queued by socket.io');
+      console.error('❌ Socket not connected');
+      setSocketError('Not connected. Please wait...');
+      return;
     }
 
+    // Clear input and show loading
     setInputValue('');
     setIsLoadingAnswer(true);
     setTimeout(() => setIsTyping(true), 500);
-    
-    // Cleanup optimistic message after timeout if not confirmed
-    setTimeout(() => {
-      if (optimisticMessagesRef.current.has(messageId)) {
-        console.warn('Optimistic message not confirmed by server:', messageId);
-        optimisticMessagesRef.current.delete(messageId);
-      }
-    }, 10000); // 10 second timeout
   };
 
   const handleKeyPress = (e) => {
@@ -542,7 +521,7 @@ const ProjectManagerSidebar = ({
       hour12: true
     });
   };
-
+{/*Chat status indicator */}
   if (isLoadingChat) {
     return (
       <div className={`flex flex-col h-full bg-white ${className} border-l border-gray-200`}>
@@ -612,12 +591,11 @@ const ProjectManagerSidebar = ({
                     isFromCurrentUser
                       ? 'bg-blue-600 text-white rounded-tr-none'
                       : 'bg-gray-100 text-gray-800 rounded-tl-none'
-                } ${message.isOptimistic ? 'opacity-70' : ''}`}>
+                }`}>
                   <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {formatTime(message.timestamp)}
-                  {message.isOptimistic && ' (sending...)'}
                 </p>
               </div>
 
@@ -648,6 +626,7 @@ const ProjectManagerSidebar = ({
         )}
         <div ref={messagesEndRef} />
       </div>
+      {/* Input text area */}
 
       <div className="border-t border-gray-200 p-4 bg-white">
         <div className="flex items-center gap-2">
@@ -657,14 +636,20 @@ const ProjectManagerSidebar = ({
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="What do you want to get done? (Shift+Enter for new line)"
-              disabled={(!isConnected && !isConnecting) || isLoadingAnswer || !dynamicRecipientId}
+              placeholder={
+                !isConnected
+                  ? 'Connecting...'
+                  : isLoadingAnswer
+                    ? 'AI is thinking...'
+                    : 'What do you want to get done? (Shift+Enter for new line)'
+              }
+              disabled={!isConnected || isLoadingAnswer || !dynamicRecipientId}
               minRows={1}
               maxRows={6}
               className="w-full resize-none px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm overflow-hidden"
             />
           </div>
-
+{/*Send Button */}
           <button 
             onClick={handleSendMessage}
             disabled={!inputValue.trim() || !isConnected || isLoadingAnswer || !dynamicRecipientId}
@@ -686,8 +671,8 @@ const ProjectManagerSidebar = ({
             </p>
           </div>
           {!isConnected && (
-            <span className={`text-xs px-2 py-0.5 rounded-full ${isConnecting ? 'text-yellow-700 bg-yellow-100' : 'text-red-600 bg-red-50'}`}>
-              {isConnecting ? 'Reconnecting...' : 'Disconnected'}
+            <span className="text-xs px-2 py-0.5 rounded-full text-red-600 bg-red-50">
+              Disconnected
             </span>
           )}
         </div>

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, AlertCircle, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import {useDispatch} from 'react-redux'
 import { setUserData, setAuthData } from '../../store/userSlice';
 import useAuthService from '../auth'
-import SignupImage from '../../assets/Images/business.jpg'
+import SignupImage from '../../assets/Images/493b666c2098471b92173f16e306301b4206aacd.gif'
+
 
 
 const Signin = () => {
@@ -19,6 +20,27 @@ const Signin = () => {
   const navigate = useNavigate();
   const { setTokens } = useAuthService();
   const dispatch = useDispatch()
+
+  // Carousel state and data
+  const [currentSlide, setCurrentSlide] = useState(0);
+  
+  const carouselSlides = [
+    {
+      image: SignupImage,
+      title: "Join Lancer - Streamline Your Business Today!",
+      description: "Sign up to use our AI-powered tools and agent to grow your business and people grow theirs. Get started today!"
+    }
+  
+  ];
+
+  // Auto-swipe effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % carouselSlides.length);
+    }, 3000); // Change slide every 3 seconds
+
+    return () => clearInterval(interval);
+  }, [carouselSlides.length]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -187,7 +209,7 @@ dispatch(setAuthData({
 
   return (
     <div className='flex justify-center items-center bg-[#F9FAFB] min-h-screen w-full p-4 sm:p-6 md:p-8'>
-  <div className="flex flex-row items-stretch justify-center w-full max-w-md lg:w-2/4 lg:max-w-5xl bg-white third-font rounded-lg overflow-hidden shadow-lg">
+  <div className="flex flex-row items-stretch h-3/4 justify-center w-full max-w-md lg:w-2/4 lg:max-w-5xl bg-white third-font rounded-lg overflow-hidden shadow-lg">
     
     {/* Left Section - Sign In Form */}
     <div className="p-6 sm:p-8 w-full lg:w-1/2 flex flex-col">
@@ -338,28 +360,48 @@ dispatch(setAuthData({
       </div>
     </div>
 
-    {/* Right Section - Image with Blur Overlay (hidden on mobile/tablet) */}
+    {/* Right Section - Carousel with Auto-Swipe (hidden on mobile/tablet) */}
     <div className='hidden lg:block relative w-1/2 p-8'>
       <div className='relative h-full rounded-lg overflow-hidden'>
-        <img 
-        loading='lazy'
-        src={SignupImage} 
-        className='w-full h-full object-cover object-center rounded-lg ' alt="CRM Platform" />
-        
-        {/* Blur Overlay with Text */}
-        <div className='absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-md p-6 text-white rounded-b-lg gap-2'>
-          <h2 className='text-2xl font-medium mb-2 text-center'>Join Lancer - Streamline Your Business Today!</h2>
-          <p className='text-sm text-center leading-5'>
-            Sign up to use our AI-powerered tools and agent to grow your business and people grow thiers. Get started today!
-          </p>
-          
-          {/* Carousel Dots */}
-          <div className='flex justify-center gap-2 mt-4'>
-            <div className='w-2 h-2 rounded-full bg-white'></div>
-            <div className='w-2 h-2 rounded-full bg-white/50'></div>
-            <div className='w-2 h-2 rounded-full bg-white/50'></div>
+        {/* Carousel Images */}
+        {carouselSlides.map((slide, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-500 ${
+              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+            }`}
+          >
+            <img 
+              loading='lazy'
+              src={slide.image} 
+              className='w-full h-full object-cover object-center rounded-lg' 
+              alt={`Slide ${index + 1}`} 
+            />
+            
+            {/* Blur Overlay with Text */}
+            <div className='absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-md p-6 text-white rounded-b-lg gap-2'>
+              <h2 className='text-2xl font-medium mb-2 text-center'>{slide.title}</h2>
+              <p className='text-sm text-center leading-5'>
+                {slide.description}
+              </p>
+              
+              {/* Carousel Dots */}
+              <div className='flex justify-center gap-2 mt-4'>
+                {carouselSlides.map((_, dotIndex) => (
+                  <button
+                    key={dotIndex}
+                    onClick={() => setCurrentSlide(dotIndex)}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 cursor-pointer hover:bg-white ${
+                      dotIndex === currentSlide ? 'bg-white w-6' : 'bg-white/50'
+                    }`}
+                    aria-label={`Go to slide ${dotIndex + 1}`}
+                    type="button"
+                  />
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     </div>
     
