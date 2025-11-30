@@ -1,3 +1,4 @@
+
 import { io } from "socket.io-client";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -370,5 +371,356 @@ export const getSocket = () => {
 };
 
 export const getAPIUrl = () => API_URL;
+
+// ============================================================================
+// FILE TRANSFER FUNCTIONALITY
+// ============================================================================
+
+// ============================================================================
+// FILE TRANSFER FUNCTIONALITY - DIAGNOSTIC VERSION
+// ============================================================================
+
+/**
+ * Extract file metadata and convert to binary format
+ * @param {File} file - The file object from input
+ * @param {Array<string>} tags - Optional metadata tags for filtering
+ * @returns {Promise<Object>} - File packet data
+ */
+export const extractFileMetadata = async (file, tags = []) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    
+    reader.onload = (event) => {
+      const arrayBuffer = event.target.result;
+      const rawFile = new Uint8Array(arrayBuffer);
+      
+      // Extract file extension
+      const fileName = file.name;
+      const lastDotIndex = fileName.lastIndexOf('.');
+      const ext = lastDotIndex !== -1 ? fileName.substring(lastDotIndex) : '';
+      
+      // Determine file type
+      const fileType = 'documents';
+      
+      const filePacket = {
+        filename: fileName,
+        raw_file: Array.from(rawFile), // Convert to array for JSON serialization
+        filetype: fileType,
+        ext: ext,
+        size_bytes: file.size,
+        tags: tags
+      };
+      
+      console.log('📦 File packet created:', {
+        filename: fileName,
+        ext: ext,
+        size_bytes: file.size,
+        raw_file_length: filePacket.raw_file.length,
+        first_bytes: filePacket.raw_file.slice(0, 10),
+        tags: tags
+      });
+      
+      resolve(filePacket);
+    };
+    
+    reader.onerror = (error) => {
+      console.error('❌ Error reading file:', error);
+      reject(error);
+    };
+    
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+/**
+ * Send a file to another user via socket - DIAGNOSTIC VERSION
+ * @param {string} recipientUserId - The user ID of the recipient
+ * @param {File} file - The file object to send
+ * @param {Array<string>} tags - Optional metadata tags
+ * @param {Object} additionalData - Any additional data to include in the message
+ * @returns {Promise<Object>} - Server response
+ */
+export const sendFileToUser = async (recipientUserId, file, tags = [], additionalData = {}) => {
+  return new Promise(async (resolve, reject) => {
+    console.log('🔍 FILE TRANSFER DIAGNOSTIC START');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // Step 1: Check socket connection
+    console.log('Step 1: Checking socket connection...');
+    if (!socket) {
+      console.error('❌ Socket is null/undefined');
+      reject(new Error('Socket not initialized'));
+      return;
+    }
+    
+    if (!socket.connected) {
+      console.error('❌ Socket not connected');
+      console.log('Socket state:', {
+        connected: socket.connected,
+        disconnected: socket.disconnected,
+        id: socket.id
+      });
+      reject(new Error('Socket not connected'));
+      return;
+    }
+    
+    console.log('✅ Socket connected:', socket.id);
+    
+    // Step 2: Validate inputs
+    console.log('\nStep 2: Validating inputs...');
+    if (!file) {
+      console.error('❌ No file provided');
+      reject(new Error('No file provided'));
+      return;
+    }
+    
+    if (!recipientUserId) {
+      console.error('❌ No recipient ID provided');
+      reject(new Error('No recipient ID provided'));
+      return;
+    }
+    
+    console.log('✅ Inputs valid:', {
+      recipientUserId,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type
+    });
+    
+    try {
+      // Step 3: Extract file metadata
+      console.log('\nStep 3: Extracting file metadata...');
+      const filePacket = await extractFileMetadata(file, tags);
+      console.log('✅ File metadata extracted');
+      
+      // Step 4: Build message packet per documentation
+      console.log('\nStep 4: Building message packet...');
+      const messagePacket = {
+        recipient_id: recipientUserId,
+        file_packet: [
+          filePacket.filename,    // 1. Filename
+          filePacket.raw_file,    // 2. raw_file (byte/pure binary format)
+          filePacket.filetype,    // 3. filetype
+          filePacket.ext,         // 4. ext (with period)
+          filePacket.size_bytes,  // 5. size_bytes
+          filePacket.tags         // 6. tags (list, can be empty)
+        ],
+        ...additionalData
+      };
+      
+      console.log('✅ Message packet built:', {
+        recipient_id: messagePacket.recipient_id,
+        file_packet_structure: [
+          typeof messagePacket.file_packet[0], // filename
+          `Array(${messagePacket.file_packet[1].length})`, // raw_file
+          messagePacket.file_packet[2], // filetype
+          messagePacket.file_packet[3], // ext
+          messagePacket.file_packet[4], // size_bytes
+          messagePacket.file_packet[5]  // tags
+        ],
+        additionalData: Object.keys(additionalData)
+      });
+      
+      // Step 5: Check if socket has listeners for responses
+      console.log('\nStep 5: Checking socket event listeners...');
+      const listenerCount = socket.listeners('send_file').length;
+      console.log('Socket "send_file" listeners:', listenerCount);
+      
+      // Step 6: Send file with timeout
+      console.log('\nStep 6: Sending file to server...');
+      console.log('Event name: "send_file"');
+      console.log('Waiting for server acknowledgment...');
+      
+      let responseReceived = false;
+      
+      // Set a timeout
+      const timeout = setTimeout(() => {
+        if (!responseReceived) {
+          console.error('❌ TIMEOUT: No response from server after 30 seconds');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🔍 DIAGNOSTIC SUMMARY:');
+          console.log('- Socket connected: ✅');
+          console.log('- File packet built: ✅');
+          console.log('- Event emitted: ✅');
+          console.log('- Server response: ❌ (TIMEOUT)');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('\n💡 POSSIBLE ISSUES:');
+          console.log('1. Server not listening for "send_file" event');
+          console.log('2. Server processing file but not sending acknowledgment');
+          console.log('3. Server encountered an error (check server logs)');
+          console.log('4. Binary data too large for socket buffer');
+          console.log('5. Server expecting different event name');
+          reject(new Error('Server response timeout'));
+        }
+      }, 30000);
+      
+      // Emit with acknowledgment callback
+      socket.emit('send_file', messagePacket, (response) => {
+        responseReceived = true;
+        clearTimeout(timeout);
+        
+        console.log('\n✅ Server response received!');
+        console.log('Response:', JSON.stringify(response, null, 2));
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        if (response?.success) {
+          console.log('✅ FILE TRANSFER SUCCESS');
+          console.log('File URL:', response.file_url);
+          resolve({
+            success: true,
+            message_id: response.message_id,
+            file_url: response.file_url,
+            filename: response.filename,
+            filetype: response.filetype,
+            ext: response.ext,
+            size_bytes: response.size_bytes,
+            ...response
+          });
+        } else if (response?.error) {
+          console.error('❌ FILE TRANSFER FAILED');
+          console.error('Error:', response.error);
+          reject(new Error(response.error));
+        } else {
+          console.warn('⚠️ Unexpected response format');
+          // Assume success if we got a response
+          resolve({
+            success: true,
+            ...response
+          });
+        }
+      });
+      
+      console.log('📨 File packet emitted to server');
+      console.log('⏳ Waiting for acknowledgment...');
+      
+    } catch (error) {
+      console.error('❌ Error in file transfer process:', error);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Setup file transfer event handlers with diagnostics
+ * @param {Function} onFileReceived - Callback when file is received
+ */
+export const setupFileTransferHandlers = (onFileReceived) => {
+  console.log('📥 Setting up file transfer handlers...');
+  
+  if (!socket) {
+    console.warn('⚠️ Socket not initialized, creating socket first');
+    createSocket();
+  }
+  
+  // Remove existing listeners to prevent duplicates
+  socket.removeAllListeners('file_received');
+  socket.removeAllListeners('file_upload_progress');
+  socket.removeAllListeners('file_upload_complete');
+  socket.removeAllListeners('file_upload_error');
+  
+  // Handle incoming file notifications
+  socket.on('file_received', (data) => {
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📥 FILE RECEIVED EVENT TRIGGERED');
+    console.log('Data:', JSON.stringify(data, null, 2));
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    if (data.file_url) {
+      const fileData = {
+        file_url: data.file_url,
+        sender_id: data.sender_id,
+        recipient_id: data.recipient_id,
+        filename: data.filename,
+        filetype: data.filetype,
+        ext: data.ext,
+        size_bytes: data.size_bytes,
+        tags: data.tags || [],
+        timestamp: data.timestamp || new Date().toISOString(),
+        message_id: data.message_id
+      };
+      
+      console.log('✅ File data processed:', {
+        filename: fileData.filename,
+        from: fileData.sender_id,
+        file_url: fileData.file_url
+      });
+      
+      if (onFileReceived && typeof onFileReceived === 'function') {
+        onFileReceived(fileData);
+      }
+    } else {
+      console.warn('⚠️ Received file notification without file_url');
+      console.log('Data structure:', Object.keys(data));
+    }
+  });
+  
+  // Handle upload progress
+  socket.on('file_upload_progress', (data) => {
+    console.log('📊 File upload progress:', data.progress, '%');
+  });
+  
+  // Handle upload completion
+  socket.on('file_upload_complete', (data) => {
+    console.log('✅ File upload complete:', data);
+  });
+  
+  // Handle upload errors
+  socket.on('file_upload_error', (data) => {
+    console.error('❌ File upload error:', data.error);
+  });
+  
+  console.log('✅ File transfer handlers setup complete');
+  console.log('Listening for events:', [
+    'file_received',
+    'file_upload_progress', 
+    'file_upload_complete',
+    'file_upload_error'
+  ]);
+};
+
+/**
+ * Remove file transfer event handlers
+ */
+export const removeFileTransferHandlers = () => {
+  if (socket) {
+    socket.removeAllListeners('file_received');
+    socket.removeAllListeners('file_upload_progress');
+    socket.removeAllListeners('file_upload_complete');
+    socket.removeAllListeners('file_upload_error');
+    console.log('🧹 File transfer handlers removed');
+  }
+};
+
+/**
+ * Download file from URL (helper function)
+ */
+export const downloadFileFromUrl = async (fileUrl, filename) => {
+  try {
+    console.log('⬇️ Starting download:', filename);
+    
+    const response = await fetch(fileUrl);
+    if (!response.ok) throw new Error('Download failed');
+    
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename || 'download';
+    link.target = '_blank';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    window.URL.revokeObjectURL(blobUrl);
+    
+    console.log('✅ Download completed:', filename);
+  } catch (error) {
+    console.error('❌ Download failed:', error);
+    window.open(fileUrl, '_blank');
+  }
+};
 
 export default getSocket();

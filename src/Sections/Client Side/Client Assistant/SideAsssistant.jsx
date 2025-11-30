@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Paperclip, Loader2, CheckCircle, Bot, X } from 'lucide-react';
-import socket from '../../../Components/socket';
+import { Send, Paperclip, Loader2, CheckCircle, Bot, X, FileText } from 'lucide-react';
+import socket, { sendFileToUser, setupFileTransferHandlers, removeFileTransferHandlers } from '../../../Components/socket';
 import TextareaAutosize from 'react-textarea-autosize'
-
 
 const STATUS_MESSAGE_MAP = {
   'initializing': 'Setting up your AI assistant...',
   'connecting': 'Connecting to AI services...',
   'processing': 'Processing your request...',
   'generating': 'Generating response...',
+  'uploading': 'Uploading files...',
 };
 
 const ASSISTANT_ID = 'client_assistant';
@@ -29,6 +29,7 @@ const AISidebarChat = ({
   const [socketError, setSocketError] = useState('');
   const [userName, setSenderName] = useState('You');
   const [userAvatar, setUserAvatar] = useState('U');
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -36,10 +37,8 @@ const AISidebarChat = ({
   const processedMessageIds = useRef(new Set());
   const own_id = useRef(localStorage.getItem('user_id'));
 
-  // Use ref to track if we're currently processing to prevent race conditions
   const isProcessingMessage = useRef(false);
 
-  // Mark last status complete using functional update
   const markLastStatusComplete = useCallback(() => {
     setMessages(prev => {
       const lastStatusIndex = prev.reduceRight((acc, msg, idx) => {
@@ -62,6 +61,7 @@ const AISidebarChat = ({
   const clearLoadingStates = useCallback(() => {
     setIsTyping(false);
     setIsLoadingAnswer(false);
+    setUploadingFiles(false);
     isProcessingMessage.current = false;
   }, []);
 
@@ -163,13 +163,14 @@ const AISidebarChat = ({
             content: msg.message_content, 
             timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(), 
             sender: senderName, 
-            isStatus: false
+            isStatus: false,
+            fileUrl: msg.file_url,
+            filename: msg.filename
           };
         }).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
         setMessages(formattedMessages);
         
-        // Clear processed IDs and repopulate with history
         processedMessageIds.current.clear();
         formattedMessages.forEach(msg => {
           if (msg.id) processedMessageIds.current.add(msg.id);
@@ -184,7 +185,41 @@ const AISidebarChat = ({
     }
   }, [determineMessageType]);
 
-  // FIXED: Handle new messages with better race condition handling
+  // Handle received files
+  const handleFileReceived = useCallback((fileData) => {
+    console.log('📥 File received in chat:', fileData);
+    
+    const messageId = `file-${fileData.sender_id}-${Date.now()}`;
+    
+    if (processedMessageIds.current.has(messageId)) return;
+    processedMessageIds.current.add(messageId);
+    
+    markLastStatusComplete();
+    
+    const userId = own_id.current;
+    const { type: messageType, sender: senderName } = determineMessageType({ 
+      sender_id: fileData.sender_id,
+      sender_tag: 'ai'
+    }, userId);
+
+    const fileMessage = {
+      id: messageId,
+      type: messageType,
+      content: `📎 ${fileData.filename}`,
+      timestamp: new Date(fileData.timestamp),
+      sender: senderName,
+      isStatus: false,
+      isFile: true,
+      fileUrl: fileData.file_url,
+      filename: fileData.filename,
+      filetype: fileData.filetype,
+      size_bytes: fileData.size_bytes
+    };
+    
+    setMessages(prev => [...prev, fileMessage]);
+    clearLoadingStates();
+  }, [determineMessageType, markLastStatusComplete, clearLoadingStates]);
+
   const handleNewMessage = useCallback((data, callback) => {
     const userId = own_id.current;
     if (!userId) {
@@ -209,16 +244,12 @@ const AISidebarChat = ({
     
     const messageId = data.id || `${actualSenderId}-${data.timestamp}-${Date.now()}`;
     
-    // Check if already processed
     if (processedMessageIds.current.has(messageId)) {
       if (callback) callback();
       return;
     }
     
-    // Mark as processing
     processedMessageIds.current.add(messageId);
-    
-    // Mark last status complete
     markLastStatusComplete();
     
     const { type: messageType, sender: senderName } = determineMessageType({ 
@@ -236,18 +267,17 @@ const AISidebarChat = ({
       sender_id: actualSenderId, 
       recipient_id: data.recipient_id, 
       sender_tag: data.sender_tag, 
-      isStatus: false
+      isStatus: false,
+      fileUrl: data.file_url,
+      filename: data.filename
     };
     
-    // Use functional update to avoid race conditions
     setMessages(prev => {
-      // Double-check message doesn't already exist in state
       const exists = prev.some(msg => msg.id === messageId);
       if (exists) return prev;
       return [...prev, newMessage];
     });
     
-    // Clear loading states if this is an AI message
     if (messageType === 'ai') {
       setTimeout(() => clearLoadingStates(), 100);
     }
@@ -255,7 +285,6 @@ const AISidebarChat = ({
     if (callback) callback();
   }, [createMessageFilter, determineMessageType, markLastStatusComplete, clearLoadingStates]);
 
-  // FIXED: Handle status updates
   const handleStatusUpdate = useCallback((data, callback) => {
     if (data.update) {
       const customMessage = STATUS_MESSAGE_MAP[data.update];
@@ -280,7 +309,6 @@ const AISidebarChat = ({
     if (callback) callback();
   }, [markLastStatusComplete]);
 
-  // FIXED: Handle control instructions
   const handleControlInstruction = useCallback((data, callback) => {
     if (data.command === 'redirect' && data.data?.url) {
       window.location.href = data.data.url;
@@ -292,7 +320,6 @@ const AISidebarChat = ({
     if (callback) callback();
   }, [clearLoadingStates]);
 
-  // FIXED: Setup socket listeners with proper cleanup and dependencies
   useEffect(() => {
     const handleConnect = () => { 
       setIsConnected(true); 
@@ -317,6 +344,9 @@ const AISidebarChat = ({
     socket.on('status_update', handleStatusUpdate);
     socket.on('control_instruction', handleControlInstruction);
 
+    // Setup file transfer handlers
+    setupFileTransferHandlers(handleFileReceived);
+
     setIsConnected(socket.connected);
 
     return () => {
@@ -326,10 +356,10 @@ const AISidebarChat = ({
       socket.off('new_message', handleNewMessage);
       socket.off('status_update', handleStatusUpdate);
       socket.off('control_instruction', handleControlInstruction);
+      removeFileTransferHandlers();
     };
-  }, [handleNewMessage, handleStatusUpdate, handleControlInstruction, clearLoadingStates]);
+  }, [handleNewMessage, handleStatusUpdate, handleControlInstruction, handleFileReceived, clearLoadingStates]);
 
-  // Initialize chat on mount
   useEffect(() => {
     const currentUserId = own_id.current;
     if (currentUserId) {
@@ -340,47 +370,106 @@ const AISidebarChat = ({
     }
   }, [fetchUserProfile, initializeChat]);
 
-  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const handleSendMessage = () => {
-    if (!inputValue.trim() || !isConnected) return;
+  // FIXED: Upload files before sending message
+  const uploadFiles = async () => {
+    if (attachments.length === 0) return [];
+
+    setUploadingFiles(true);
+    const uploadedFiles = [];
+
+    try {
+      // Add status message for uploading
+      const statusMessage = {
+        id: `status-upload-${Date.now()}`,
+        type: 'status',
+        content: STATUS_MESSAGE_MAP['uploading'],
+        timestamp: new Date().toISOString(),
+        sender: 'System',
+        isStatus: true,
+        isComplete: false,
+        startedAt: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, statusMessage]);
+
+      for (const file of attachments) {
+        console.log('📤 Uploading file:', file.name);
+        
+        try {
+          await sendFileToUser(
+            ASSISTANT_ID,
+            file,
+            ['client_assistant_chat'],
+            { chat_type: 'client_assistant' }
+          );
+          
+          uploadedFiles.push({
+            filename: file.name,
+            size: file.size,
+            type: file.type
+          });
+        } catch (error) {
+          console.error('Error uploading file:', file.name, error);
+          setSocketError(`Failed to upload ${file.name}`);
+        }
+      }
+
+      markLastStatusComplete();
+      return uploadedFiles;
+    } catch (error) {
+      console.error('Error in file upload process:', error);
+      setSocketError('Failed to upload files');
+      return [];
+    } finally {
+      setUploadingFiles(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if ((!inputValue.trim() && attachments.length === 0) || !isConnected) return;
     
     markLastStatusComplete();
 
     const userId = own_id.current;
-    const messageId = `msg-${Date.now()}-${Math.random()}`;
     
-    const userMessage = {
-      id: messageId, 
-      type: 'user', 
-      content: inputValue.trim(), 
-      timestamp: new Date(), 
-      sender: userName, 
-      sender_id: userId, 
-      recipient_id: ASSISTANT_ID, 
-      sender_tag: 'user', 
-      isStatus: false
-    };
+    // Upload files first if any
+    let uploadedFiles = [];
+    if (attachments.length > 0) {
+      uploadedFiles = await uploadFiles();
+    }
 
-    // Add to processed IDs immediately
-    processedMessageIds.current.add(messageId);
-    
-    setMessages(prev => [...prev, userMessage]);
-    
-    socket.emit('send_message', { 
-      message_content: inputValue.trim(), 
-      own_id: parseInt(userId), 
-      recipient_id: ASSISTANT_ID 
-    });
+    // Send text message if there is one
+    if (inputValue.trim()) {
+      const messageId = `msg-${Date.now()}-${Math.random()}`;
+      
+      const userMessage = {
+        id: messageId, 
+        type: 'user', 
+        content: inputValue.trim(), 
+        timestamp: new Date(), 
+        sender: userName, 
+        sender_id: userId, 
+        recipient_id: ASSISTANT_ID, 
+        sender_tag: 'user', 
+        isStatus: false
+      };
+
+      processedMessageIds.current.add(messageId);
+      setMessages(prev => [...prev, userMessage]);
+      
+      socket.emit('send_message', { 
+        message_content: inputValue.trim(), 
+        own_id: parseInt(userId), 
+        recipient_id: ASSISTANT_ID 
+      });
+    }
 
     setInputValue('');
     setAttachments([]);
     setIsLoadingAnswer(true);
-    
-    // Set typing indicator with slight delay
     setTimeout(() => setIsTyping(true), 500);
   };
 
@@ -406,6 +495,12 @@ const AISidebarChat = ({
       minute: '2-digit', 
       hour12: true 
     });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   if (isLoadingChat) {
@@ -478,7 +573,24 @@ const AISidebarChat = ({
                       ? 'bg-blue-600 text-white rounded-tr-none'
                       : 'bg-gray-100 text-gray-800 rounded-tl-none'
                 }`}>
-                  <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  {message.isFile && message.fileUrl ? (
+                    <a 
+                      href={message.fileUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 hover:underline"
+                    >
+                      <FileText size={16} />
+                      <span>{message.filename}</span>
+                      {message.size_bytes && (
+                        <span className="text-xs opacity-75">
+                          ({formatFileSize(message.size_bytes)})
+                        </span>
+                      )}
+                    </a>
+                  ) : (
+                    <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  )}
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {formatTime(message.timestamp)}
@@ -520,6 +632,7 @@ const AISidebarChat = ({
               <div key={index} className="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full border border-gray-200">
                 <Paperclip size={12} className="text-gray-400" />
                 <span className="text-xs text-gray-600 max-w-[100px] truncate">{file.name}</span>
+                <span className="text-xs text-gray-400">({formatFileSize(file.size)})</span>
                 <button
                   onClick={() => removeAttachment(index)}
                   className="ml-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -534,10 +647,15 @@ const AISidebarChat = ({
         <div className="flex items-center gap-2">
           <button 
             onClick={() => fileInputRef.current?.click()}
-            disabled={!isConnected}
+            disabled={!isConnected || uploadingFiles}
             className="p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+            title="Attach files"
           >
-            <Paperclip size={20} />
+            {uploadingFiles ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Paperclip size={20} />
+            )}
           </button>
           <input
             ref={fileInputRef}
@@ -545,9 +663,9 @@ const AISidebarChat = ({
             multiple
             onChange={handleFileSelect}
             className="hidden"
+            accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg,.gif"
           />
           
-        
           <div className="flex-1">
             <TextareaAutosize
               ref={inputRef}
@@ -555,20 +673,19 @@ const AISidebarChat = ({
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="How can Lancer help?"
-              disabled={!isConnected || isLoadingAnswer}
+              disabled={!isConnected || isLoadingAnswer || uploadingFiles}
               minRows={1}
               maxRows={6}
               className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-3xl focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm resize-none"
             />
           </div>
-          
 
           <button 
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || !isConnected || isLoadingAnswer}
+            disabled={(!inputValue.trim() && attachments.length === 0) || !isConnected || isLoadingAnswer || uploadingFiles}
             className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
           >
-            {isLoadingAnswer ? (
+            {isLoadingAnswer || uploadingFiles ? (
               <Loader2 size={18} className="text-white animate-spin" />
             ) : (
               <Send size={18} className="text-white" />
@@ -580,7 +697,7 @@ const AISidebarChat = ({
           <div className="flex items-center gap-1">
             <span className="text-blue-600 text-xs">⚡</span>
             <p className="text-xs text-gray-500">
-              Define your project scope and suggested tasks.
+              {uploadingFiles ? 'Uploading files...' : 'Define your project scope and suggested tasks.'}
             </p>
           </div>
           {!isConnected && (

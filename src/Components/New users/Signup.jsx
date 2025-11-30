@@ -195,7 +195,7 @@ const Signup = () => {
     console.log('Google sign-in initiated - COMMENTED OUT FOR DEBUG');
     // GOOGLE SIGN-IN BACKEND CALLS COMMENTED OUT
   };
-
+  
   const togglePasswordVisibility = (field) => {
     if (field === 'password') {
       setShowPassword(!showPassword);
